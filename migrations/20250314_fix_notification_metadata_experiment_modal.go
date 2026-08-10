@@ -23,6 +23,9 @@ func (m MigrateFixNotificationMetadataExperimentModal20241212) Down(ctx context.
 
 func (m MigrateFixNotificationMetadataExperimentModal20241212) Up(ctx context.Context, db *gorm.DB) error {
 	log := logging.FromContext(ctx)
+	if !db.Migrator().HasColumn("chores", "notification_meta") {
+		return nil
+	}
 
 	// Start a transaction
 	return db.Transaction(func(tx *gorm.DB) error {

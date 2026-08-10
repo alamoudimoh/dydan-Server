@@ -57,6 +57,9 @@ func (m MigrateChatIdToNotificationTarget20241212) Up(ctx context.Context, db *g
 		}
 
 		// Insert all notification targets
+		if len(notificationTargets) == 0 {
+			return nil
+		}
 		if err := tx.Table("user_notification_targets").Create(&notificationTargets).Error; err != nil {
 			log.Errorf("Failed to insert notification targets: %v", err)
 		}

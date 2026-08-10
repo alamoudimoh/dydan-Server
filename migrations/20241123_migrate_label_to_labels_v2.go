@@ -24,6 +24,11 @@ func (m MigrateLabels20241123) Down(ctx context.Context, db *gorm.DB) error {
 
 func (m MigrateLabels20241123) Up(ctx context.Context, db *gorm.DB) error {
 	log := logging.FromContext(ctx)
+	// Fresh databases already use the normalized labels tables and never had
+	// the legacy chores.labels column. There is nothing to migrate in that case.
+	if !db.Migrator().HasColumn("chores", "labels") {
+		return nil
+	}
 
 	type Label struct {
 		ID        int    `gorm:"column:id;primary_key"`
