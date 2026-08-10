@@ -45,6 +45,7 @@ import (
 	"donetick.com/core/internal/realtime"
 	"donetick.com/core/internal/resource"
 	"donetick.com/core/internal/reward"
+	"donetick.com/core/internal/routine"
 	"donetick.com/core/internal/storage"
 	storageRepo "donetick.com/core/internal/storage/repo"
 	spRepo "donetick.com/core/internal/subtask/repo"
@@ -142,6 +143,7 @@ func main() {
 		fx.Provide(mRepo.NewRepository),
 		fx.Provide(meter.NewHandler),
 		fx.Provide(maintenance.NewHandler),
+		fx.Provide(routine.NewHandler),
 
 		// points
 		fx.Provide(pRepo.NewPointsRepository),
@@ -212,6 +214,7 @@ func main() {
 			thing.APIs,
 			meter.Routes,
 			maintenance.Routes,
+			routine.Routes,
 			label.Routes,
 			project.Routes,
 			filter.Routes,

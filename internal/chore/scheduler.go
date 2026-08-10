@@ -12,6 +12,26 @@ import (
 	"donetick.com/core/logging"
 )
 
+// InitialDueDate anchors a newly-created chore to an application start date.
+// Calendar-pattern chores use the same scheduler as completion rescheduling;
+// simple recurring and one-time chores begin on the selected start date.
+func InitialDueDate(ctx context.Context, chore *chModel.Chore, start time.Time) (*time.Time, error) {
+	start = start.UTC()
+	if chore.FrequencyMetadataV2 != nil && chore.FrequencyMetadataV2.Time != "" {
+		if configured, err := time.Parse(time.RFC3339, chore.FrequencyMetadataV2.Time); err == nil {
+			start = time.Date(start.Year(), start.Month(), start.Day(), configured.Hour(), configured.Minute(), configured.Second(), 0, time.UTC)
+		}
+	}
+	switch chore.FrequencyType {
+	case chModel.FrequencyTypeDayOfTheWeek, chModel.FrequencyTypeDayOfTheMonth:
+		base := start.AddDate(0, 0, -1)
+		chore.NextDueDate = &base
+		return scheduleNextDueDate(ctx, chore, base)
+	default:
+		return &start, nil
+	}
+}
+
 func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDate time.Time) (*time.Time, error) {
 	if chore.FrequencyType == "once" || chore.FrequencyType == "no_repeat" || chore.FrequencyType == "trigger" {
 		return nil, nil

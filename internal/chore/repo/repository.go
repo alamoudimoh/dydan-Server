@@ -15,6 +15,7 @@ import (
 	storageModel "donetick.com/core/internal/storage/model"
 	stModel "donetick.com/core/internal/subtask/model"
 	syncModel "donetick.com/core/internal/sync/model"
+	tModel "donetick.com/core/internal/thing/model"
 	"donetick.com/core/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -23,6 +24,84 @@ import (
 type ChoreRepository struct {
 	db     *gorm.DB
 	dbType string
+}
+
+// CreateSpec describes the complete persistent side of normal chore creation.
+// It is shared by single-chore and bulk domain workflows so related records are
+// committed atomically and meter baselines always come from the current meter.
+type CreateSpec struct {
+	Chore        *chModel.Chore
+	AssigneeIDs  []int
+	LabelIDs     []int
+	SubTaskNames []string
+	ThingID      *int
+	Meter        *mModel.ChoreScheduleRequest
+}
+
+// CreateChoreSet creates an all-or-nothing set of independent ordinary chores.
+func (r *ChoreRepository) CreateChoreSet(ctx context.Context, specs []CreateSpec, actorID int) ([]int, error) {
+	ids := make([]int, 0, len(specs))
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var err error
+		ids, err = r.CreateChoreSetInTransaction(ctx, tx, specs, actorID)
+		return err
+	})
+	return ids, err
+}
+
+// CreateChoreSetInTransaction is the transactional primitive for workflows
+// that must atomically commit ordinary chores alongside their own receipt.
+func (r *ChoreRepository) CreateChoreSetInTransaction(ctx context.Context, tx *gorm.DB, specs []CreateSpec, actorID int) ([]int, error) {
+	if len(specs) == 0 {
+		return nil, errors.New("at least one chore is required")
+	}
+	ids := make([]int, 0, len(specs))
+	circleID := specs[0].Chore.CircleID
+	firstVersion, err := r.nextSyncVersionRangeWithDB(ctx, tx, circleID, len(specs))
+	if err != nil {
+		return nil, err
+	}
+	for index, spec := range specs {
+		if spec.Chore.CircleID != circleID {
+			return nil, errors.New("chore set crosses circles")
+		}
+		spec.Chore.SyncVersion = firstVersion + int64(index)
+		if err := tx.WithContext(ctx).Create(spec.Chore).Error; err != nil {
+			return nil, err
+		}
+		ids = append(ids, spec.Chore.ID)
+		for _, userID := range spec.AssigneeIDs {
+			if err := tx.WithContext(ctx).Create(&chModel.ChoreAssignees{ChoreID: spec.Chore.ID, UserID: userID}).Error; err != nil {
+				return nil, err
+			}
+		}
+		for _, labelID := range spec.LabelIDs {
+			if err := tx.WithContext(ctx).Create(&chModel.ChoreLabels{ChoreID: spec.Chore.ID, LabelID: labelID, UserID: actorID}).Error; err != nil {
+				return nil, err
+			}
+		}
+		for order, name := range spec.SubTaskNames {
+			if err := tx.WithContext(ctx).Create(&stModel.SubTask{ChoreID: spec.Chore.ID, OrderID: int8(order), Name: name}).Error; err != nil {
+				return nil, err
+			}
+		}
+		if spec.ThingID != nil {
+			if err := tx.WithContext(ctx).Create(&tModel.ThingChore{ThingID: *spec.ThingID, ChoreID: spec.Chore.ID}).Error; err != nil {
+				return nil, err
+			}
+		}
+		if spec.Meter != nil {
+			var meter mModel.Meter
+			if err := tx.WithContext(ctx).Where("id = ? AND circle_id = ?", spec.Meter.MeterID, circleID).First(&meter).Error; err != nil {
+				return nil, err
+			}
+			schedule := mModel.ChoreSchedule{ChoreID: spec.Chore.ID, MeterID: meter.ID, Interval: spec.Meter.Interval, Baseline: meter.CurrentReading, CalendarDueDate: spec.Chore.NextDueDate}
+			if err := tx.WithContext(ctx).Create(&schedule).Error; err != nil {
+				return nil, err
+			}
+		}
+	}
+	return ids, nil
 }
 
 // SyncOptions configures sync-aware queries for chores and histories.
