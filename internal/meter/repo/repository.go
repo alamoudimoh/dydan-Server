@@ -109,11 +109,18 @@ func (r *Repository) DeleteSchedule(ctx context.Context, choreID int) error {
 }
 
 func (r *Repository) MarkLinkedChoresDue(ctx context.Context, meterID, circleID int) error {
+	return r.MarkLinkedChoresDueAt(ctx, meterID, circleID, time.Now().UTC())
+}
+
+// MarkLinkedChoresDueAt evaluates meter thresholds at a caller-supplied instant.
+// Production callers use MarkLinkedChoresDue; the explicit instant keeps scheduler
+// and integration tests deterministic without changing the host clock.
+func (r *Repository) MarkLinkedChoresDueAt(ctx context.Context, meterID, circleID int, now time.Time) error {
 	meter, err := r.Get(ctx, meterID, circleID)
 	if err != nil {
 		return err
 	}
-	now := time.Now().UTC()
+	now = now.UTC()
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var choreIDs []int
 		if err := tx.Table("chores").
@@ -137,6 +144,11 @@ func (r *Repository) MarkLinkedChoresDue(ctx context.Context, meterID, circleID 
 }
 
 func PopulateSchedule(schedule *mModel.ChoreSchedule, meter mModel.Meter) {
+	PopulateScheduleAt(schedule, meter, time.Now().UTC())
+}
+
+// PopulateScheduleAt derives due state using a caller-supplied instant.
+func PopulateScheduleAt(schedule *mModel.ChoreSchedule, meter mModel.Meter, now time.Time) {
 	schedule.CurrentReading = meter.CurrentReading
 	schedule.Target = schedule.Baseline + schedule.Interval
 	schedule.Unit = meter.Unit
@@ -157,7 +169,8 @@ func PopulateSchedule(schedule *mModel.ChoreSchedule, meter mModel.Meter) {
 		schedule.Progress = 100
 	}
 	schedule.DueByMeter = meter.CurrentReading >= schedule.Target
-	schedule.DueByTime = schedule.CalendarDueDate != nil && !schedule.CalendarDueDate.After(time.Now().UTC())
+	schedule.DueByTime = schedule.CalendarDueDate != nil && !schedule.CalendarDueDate.After(now.UTC())
+	schedule.DueReason = ""
 	switch {
 	case schedule.DueByMeter && schedule.DueByTime:
 		schedule.DueReason = "both"
