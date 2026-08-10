@@ -3,6 +3,15 @@ donetick.db
 /data/
 /jwt-secret
 /uploads/
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.log
+/taskier-zero-config-*
+/taskier-container-*
+node_modules/
 .vscode/launch.json
 *.exe
 config/prod.yaml

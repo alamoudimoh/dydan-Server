@@ -1,90 +1,40 @@
-name: Test and Build
+name: Taskier Server CI
 
 on:
-  pull_request:
-    branches: [ "main" ]
   push:
-    branches: [ "main" ]
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+  workflow_dispatch:
 
-env:
-  GOLANG_VERSION: '1.22'
-  GOLANGCI_LINT_VERSION: 'v1.64.8'
+permissions:
+  contents: read
+
+concurrency:
+  group: server-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  check:
-    name: 📃 Check
+  core:
+    name: Core, build, and focused race tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Restore dependencies
+        run: go mod download
+      - name: Verify server
+        run: bash scripts/verify.sh
 
-    - name: Check time.Now().UTC() usage
-      run: bash scripts/check-time-utc.sh
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GOLANG_VERSION }}
-        
-    - name: Install dependencies
-      run: go mod download
-
-    - name: Verify go.mod and go.sum
-      run: |
-        go mod tidy
-        git diff --exit-code
-
-  lint:
-    name: 🔍 Lint
+  zero-config-container:
+    name: Zero-config container persistence
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GOLANG_VERSION }}
-
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: ${{ env.GOLANGCI_LINT_VERSION }}
-
-  test:
-    name: 🔬 Test
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GOLANG_VERSION }}
-
-    - name: Run tests
-      run: go test ./...
-
-  build:
-    name: 🏗 Build
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GOLANG_VERSION }}
-
-    - name: Get Version from Git Tag (or commit if no tag)
-      id: get_version
-      run: |
-        VERSION=$(git describe --tags --abbrev=0 2>/dev/null || git rev-parse HEAD)
-        echo "::set-output name=version::$VERSION"
-
-    - name: Install and Generate Swagger docs
-      run: |
-        go install github.com/swaggo/swag/cmd/swag@latest
-        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-        swag init -g docs/handler.go
-
-    - name: Build
-      run: go build -ldflags "-X donetick.com/core/config.Version=${{ steps.get_version.outputs.version }} -X donetick.com/core/config.Commit=$(git rev-parse HEAD) -X donetick.com/core/config.Date=$(date +%Y-%m-%d)" -v ./...
+      - uses: actions/checkout@v4
+      - name: Verify Compose and fresh/restart container behavior
+        run: bash scripts/verify-container.sh
