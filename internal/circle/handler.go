@@ -1,6 +1,7 @@
 package circle
 
 import (
+	"errors"
 	"log"
 
 	"strconv"
@@ -678,7 +679,7 @@ func (h *Handler) RedeemPoints(c *gin.Context) {
 		})
 		return
 	}
-	if member.Points-redeemReq.Points < 0 {
+	if member.PointsAvailable-redeemReq.Points < 0 {
 		log.Error("Error redeeming points: user does not have enough points")
 		c.JSON(400, gin.H{
 			"error": "User does not have enough points",
@@ -687,6 +688,10 @@ func (h *Handler) RedeemPoints(c *gin.Context) {
 	}
 
 	err = h.circleRepo.RedeemPoints(c, currentUser.CircleID, redeemReq.UserID, redeemReq.Points, currentUser.ID)
+	if errors.Is(err, cRepo.ErrInsufficientPoints) {
+		c.JSON(400, gin.H{"error": "User does not have enough points"})
+		return
+	}
 	if err != nil {
 		log.Error("Error redeeming points:", err)
 		c.JSON(500, gin.H{

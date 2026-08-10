@@ -34,6 +34,11 @@ type UserCircle struct {
 	UpdatedAt      time.Time `json:"updatedAt" gorm:"column:updated_at"`                              // Updated at
 	Points         int       `json:"points" gorm:"column:points;default:0;not null"`                  // Points
 	PointsRedeemed int       `json:"pointsRedeemed" gorm:"column:points_redeemed;default:0;not null"` // Points Redeemed
+	PointsAdjusted int       `json:"pointsAdjusted" gorm:"column:points_adjusted;default:0;not null"` // Non-redemption balance adjustments
+}
+
+func (uc UserCircle) CurrentBalance() int {
+	return uc.Points - uc.PointsRedeemed - uc.PointsAdjusted
 }
 
 type UserRole string
@@ -46,6 +51,7 @@ const (
 
 type UserCircleDetail struct {
 	UserCircle
+	PointsAvailable  int                         `json:"pointsAvailable" gorm:"column:points_available;<-:false"`
 	Username         string                      `json:"username" gorm:"column:username"`
 	DisplayName      string                      `json:"displayName" gorm:"column:display_name"`
 	NotificationType nModel.NotificationPlatform `json:"-" gorm:"column:notification_type"`

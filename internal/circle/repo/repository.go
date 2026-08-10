@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	cModel "donetick.com/core/internal/circle/model"
@@ -10,6 +11,8 @@ import (
 	"donetick.com/core/logging"
 	"gorm.io/gorm"
 )
+
+var ErrInsufficientPoints = errors.New("insufficient available points")
 
 type ICircleRepository interface {
 	CreateCircle(circle *cModel.Circle) error
@@ -53,7 +56,7 @@ func (r *CircleRepository) GetCircleUsers(c context.Context, circleID int) ([]*c
 	var circleUsers []*cModel.UserCircleDetail
 	if err := r.db.WithContext(c).
 		Table("user_circles uc").
-		Select("uc.*, u.username, u.display_name, u.chat_id, u.image, unt.user_id as user_id, unt.target_id as target_id, unt.type as notification_type").
+		Select("uc.*, uc.points - uc.points_redeemed - uc.points_adjusted AS points_available, u.username, u.display_name, u.chat_id, u.image, unt.user_id as user_id, unt.target_id as target_id, unt.type as notification_type").
 		Joins("left join users u on u.id = uc.user_id").
 		Joins("left join user_notification_targets unt on unt.user_id = u.id").
 		Where("uc.circle_id = ?", circleID).
@@ -161,8 +164,14 @@ func (r *CircleRepository) RedeemPoints(c context.Context, circleID int, userID 
 	logger := logging.FromContext(c)
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 
-		if err := tx.Model(&cModel.UserCircle{}).Where("user_id = ? AND circle_id = ?", userID, circleID).Update("points_redeemed", gorm.Expr("points_redeemed + ?", points)).Error; err != nil {
-			return err
+		result := tx.Model(&cModel.UserCircle{}).
+			Where("user_id = ? AND circle_id = ? AND points - points_redeemed - points_adjusted >= ?", userID, circleID, points).
+			Update("points_redeemed", gorm.Expr("points_redeemed + ?", points))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return ErrInsufficientPoints
 		}
 		if err := tx.Create(&pModel.PointsHistory{
 			Action:    pModel.PointsHistoryActionRedeem,
@@ -198,12 +207,12 @@ func (r *CircleRepository) ResetPoints(c context.Context, circleID int, userID *
 			return gorm.ErrRecordNotFound
 		}
 		for _, membership := range memberships {
-			balance := membership.Points - membership.PointsRedeemed
+			balance := membership.CurrentBalance()
 			if balance == 0 {
 				continue
 			}
 			zero := 0
-			if err := tx.Model(&cModel.UserCircle{}).Where("id = ? AND circle_id = ?", membership.ID, circleID).Update("points_redeemed", membership.Points).Error; err != nil {
+			if err := tx.Model(&cModel.UserCircle{}).Where("id = ? AND circle_id = ?", membership.ID, circleID).Update("points_adjusted", gorm.Expr("points_adjusted + ?", balance)).Error; err != nil {
 				return err
 			}
 			if err := tx.Create(&pModel.PointsHistory{Action: pModel.PointsHistoryActionReset, CircleID: circleID, UserID: membership.UserID, Points: -balance, PreviousBalance: &balance, ResultingBalance: &zero, CreatedAt: time.Now().UTC(), CreatedBy: createdBy}).Error; err != nil {
