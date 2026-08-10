@@ -9,6 +9,7 @@ import (
 
 	cModel "donetick.com/core/internal/circle/model"
 	lModel "donetick.com/core/internal/label/model"
+	mModel "donetick.com/core/internal/meter/model"
 	pModel "donetick.com/core/internal/project/model"
 	storageModel "donetick.com/core/internal/storage/model"
 	stModel "donetick.com/core/internal/subtask/model"
@@ -66,16 +67,17 @@ type Chore struct {
 	CreatedBy              int                        `json:"createdBy" gorm:"column:created_by"`                                                     // Who created the chore
 	UpdatedBy              int                        `json:"updatedBy" gorm:"column:updated_by"`                                                     // Who last updated the chore
 	ThingChore             *tModel.ThingChore         `json:"thingChore" gorm:"foreignkey:chore_id;references:id;<-:false"`                           // ThingChore relationship
-	Status                 Status                     `json:"status" gorm:"column:status"`                                                            //
-	Priority               int                        `json:"priority" gorm:"column:priority"`                                                        //
-	CompletionWindow       *int                       `json:"completionWindow,omitempty" gorm:"column:completion_window"`                             // Number seconds before the chore is due that it can be completed
-	Points                 *int                       `json:"points,omitempty" gorm:"column:points"`                                                  // Points for completing the chore
-	Description            *string                    `json:"description,omitempty" gorm:"type:text;column:description"`                              // Description of the chore
-	SubTasks               *[]stModel.SubTask         `json:"subTasks,omitempty" gorm:"foreignkey:ChoreID;references:ID"`                             // Subtasks for the chore
-	RequireApproval        bool                       `json:"requireApproval" gorm:"column:require_approval"`                                         // Whether chore completion requires admin approval
-	IsPrivate              bool                       `json:"isPrivate" gorm:"column:is_private;default:false"`                                       // Whether the chore is private
-	ProjectID              *int                       `json:"projectId,omitempty" gorm:"column:project_id;index"`                                     // The project this chore belongs to
-	Project                *pModel.Project            `json:"project,omitempty" gorm:"foreignkey:ProjectID;references:ID"`                            // Project relationship
+	MeterSchedule          *mModel.ChoreSchedule      `json:"meterSchedule,omitempty" gorm:"foreignKey:ChoreID;references:ID"`
+	Status                 Status                     `json:"status" gorm:"column:status"`                                 //
+	Priority               int                        `json:"priority" gorm:"column:priority"`                             //
+	CompletionWindow       *int                       `json:"completionWindow,omitempty" gorm:"column:completion_window"`  // Number seconds before the chore is due that it can be completed
+	Points                 *int                       `json:"points,omitempty" gorm:"column:points"`                       // Points for completing the chore
+	Description            *string                    `json:"description,omitempty" gorm:"type:text;column:description"`   // Description of the chore
+	SubTasks               *[]stModel.SubTask         `json:"subTasks,omitempty" gorm:"foreignkey:ChoreID;references:ID"`  // Subtasks for the chore
+	RequireApproval        bool                       `json:"requireApproval" gorm:"column:require_approval"`              // Whether chore completion requires admin approval
+	IsPrivate              bool                       `json:"isPrivate" gorm:"column:is_private;default:false"`            // Whether the chore is private
+	ProjectID              *int                       `json:"projectId,omitempty" gorm:"column:project_id;index"`          // The project this chore belongs to
+	Project                *pModel.Project            `json:"project,omitempty" gorm:"foreignkey:ProjectID;references:ID"` // Project relationship
 	SyncVersion            int64                      `json:"syncVersion" gorm:"column:sync_version;not null;default:0;index;index:idx_chores_circle_sync_version,priority:2"`
 	Attachments            []storageModel.StorageFile `json:"attachments,omitempty" gorm:"-"`
 }
@@ -95,19 +97,21 @@ type ChoreAssignees struct {
 	UserID  int `json:"userId" gorm:"column:user_id;uniqueIndex:idx_chore_user"` // The user this assignee is for
 }
 type ChoreHistory struct {
-	ID          int                `json:"id" gorm:"primary_key"`                                       // Unique identifier
-	ChoreID     int                `json:"choreId" gorm:"column:chore_id"`                              // The chore this history is for
-	PerformedAt *time.Time         `json:"performedAt" gorm:"column:performed_at"`                      // When the chore was performed (completed or skipped)
-	CompletedBy int                `json:"completedBy" gorm:"column:completed_by"`                      // Who completed the chore
-	AssignedTo  *int               `json:"assignedTo" gorm:"column:assigned_to"`                        // Who the chore was assigned to
-	Note        *string            `json:"notes" gorm:"column:notes"`                                   // Notes about the chore
-	DueDate     *time.Time         `json:"dueDate" gorm:"column:due_date"`                              // When the chore was due
-	UpdatedAt   *time.Time         `json:"updatedAt" gorm:"column:updated_at"`                          // When the record was last updated
-	CreatedAt   time.Time          `json:"createdAt" gorm:"column:created_at;autoCreateTime;<-:create"` // When the record was created (immutable after insert)
-	Status      ChoreHistoryStatus `json:"status" gorm:"column:status"`                                 // Status of the chore (1=completed, 2=skipped)
-	Points      *int               `json:"points,omitempty" gorm:"column:points"`                       // Points for completing the chore
-	Duration    *int               `json:"duration,omitempty" gorm:"<-:false;-:migration"`              // Duration in seconds calculated from query (read-only, no DB column)
-	SyncVersion int64              `json:"syncVersion" gorm:"column:sync_version;not null;default:0;index:idx_chore_history_sync_version"`
+	ID           int                `json:"id" gorm:"primary_key"`                                       // Unique identifier
+	ChoreID      int                `json:"choreId" gorm:"column:chore_id"`                              // The chore this history is for
+	PerformedAt  *time.Time         `json:"performedAt" gorm:"column:performed_at"`                      // When the chore was performed (completed or skipped)
+	CompletedBy  int                `json:"completedBy" gorm:"column:completed_by"`                      // Who completed the chore
+	AssignedTo   *int               `json:"assignedTo" gorm:"column:assigned_to"`                        // Who the chore was assigned to
+	Note         *string            `json:"notes" gorm:"column:notes"`                                   // Notes about the chore
+	DueDate      *time.Time         `json:"dueDate" gorm:"column:due_date"`                              // When the chore was due
+	UpdatedAt    *time.Time         `json:"updatedAt" gorm:"column:updated_at"`                          // When the record was last updated
+	CreatedAt    time.Time          `json:"createdAt" gorm:"column:created_at;autoCreateTime;<-:create"` // When the record was created (immutable after insert)
+	Status       ChoreHistoryStatus `json:"status" gorm:"column:status"`                                 // Status of the chore (1=completed, 2=skipped)
+	Points       *int               `json:"points,omitempty" gorm:"column:points"`                       // Points for completing the chore
+	MeterID      *int               `json:"meterId,omitempty" gorm:"column:meter_id"`
+	MeterReading *int64             `json:"meterReading,omitempty" gorm:"column:meter_reading"`
+	Duration     *int               `json:"duration,omitempty" gorm:"<-:false;-:migration"` // Duration in seconds calculated from query (read-only, no DB column)
+	SyncVersion  int64              `json:"syncVersion" gorm:"column:sync_version;not null;default:0;index:idx_chore_history_sync_version"`
 }
 
 type ChoreHistoryStatus int8
@@ -192,6 +196,7 @@ type ChoreDetail struct {
 	IsActive            bool                       `json:"isActive" gorm:"column:is_active"`
 	SyncVersion         int64                      `json:"syncVersion" gorm:"column:sync_version"`
 	Attachments         []storageModel.StorageFile `json:"attachments,omitempty" gorm:"-"`
+	MeterSchedule       *mModel.ChoreSchedule      `json:"meterSchedule,omitempty" gorm:"-"`
 }
 
 type ChoreLabels struct {

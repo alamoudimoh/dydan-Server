@@ -10,6 +10,8 @@ import (
 	config "donetick.com/core/config"
 	chModel "donetick.com/core/internal/chore/model"
 	cModel "donetick.com/core/internal/circle/model"
+	mModel "donetick.com/core/internal/meter/model"
+	mRepo "donetick.com/core/internal/meter/repo"
 	storageModel "donetick.com/core/internal/storage/model"
 	stModel "donetick.com/core/internal/subtask/model"
 	syncModel "donetick.com/core/internal/sync/model"
@@ -277,11 +279,25 @@ func (r *ChoreRepository) GetChore(c context.Context, choreID int, userID int, c
 		Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id AND chore_assignees.user_id = ?", userID).
 		Where("chores.id = ? AND chores.circle_id = ? AND ((chores.is_private = false) OR (chores.is_private = true AND (chores.created_by = ? OR chore_assignees.user_id = ?)))", choreID, circleID, userID, userID)
 
+	if r.db.Migrator().HasTable(&mModel.ChoreSchedule{}) {
+		query = query.Preload("MeterSchedule")
+	}
 	if err := query.First(&chore).Error; err != nil {
 		return nil, err
 	}
 	r.db.WithContext(c).Where("entity_type = ? AND entity_id = ?", storageModel.EntityTypeChoreAttachment, choreID).Find(&chore.Attachments)
+	r.populateMeterSchedule(c, &chore)
 	return &chore, nil
+}
+
+func (r *ChoreRepository) populateMeterSchedule(c context.Context, chore *chModel.Chore) {
+	if chore.MeterSchedule == nil {
+		return
+	}
+	var meter mModel.Meter
+	if r.db.WithContext(c).Where("id = ? AND circle_id = ?", chore.MeterSchedule.MeterID, chore.CircleID).First(&meter).Error == nil {
+		mRepo.PopulateSchedule(chore.MeterSchedule, meter)
+	}
 }
 
 // GetChores retrieves chores for a user in a circle, respecting privacy and optionally filtered by sync version.
@@ -297,6 +313,9 @@ func (r *ChoreRepository) GetChores(c context.Context, circleID int, userID int,
 		Where("chores.circle_id = ?", circleID).
 		Where(privacyPredicate(userID)).
 		Group("chores.id")
+	if r.db.Migrator().HasTable(&mModel.ChoreSchedule{}) {
+		query = query.Preload("MeterSchedule")
+	}
 
 	if includeSubtasks {
 		query = query.Preload("SubTasks")
@@ -317,6 +336,9 @@ func (r *ChoreRepository) GetChores(c context.Context, circleID int, userID int,
 
 	if err := query.Find(&chores).Error; err != nil {
 		return nil, err
+	}
+	for _, chore := range chores {
+		r.populateMeterSchedule(c, chore)
 	}
 	return chores, nil
 }
@@ -369,6 +391,12 @@ func (r *ChoreRepository) DeleteChore(c context.Context, id int) (int64, error) 
 		// Delete all chore labels
 		if err := tx.Where("chore_id = ?", id).Delete(&chModel.ChoreLabels{}).Error; err != nil {
 			return err
+		}
+		// Delete the optional meter schedule before its parent chore.
+		if r.db.Migrator().HasTable(&mModel.ChoreSchedule{}) {
+			if err := tx.Where("chore_id = ?", id).Delete(&mModel.ChoreSchedule{}).Error; err != nil {
+				return err
+			}
 		}
 		// Delete all storage files associated with the chore
 		if err := tx.Where("entity_type = ? AND entity_id = ?", storageModel.EntityTypeChoreDescription, id).Delete(&storageModel.StorageFile{}).Error; err != nil {
@@ -477,6 +505,14 @@ func (r *ChoreRepository) ApproveChore(c context.Context, chore *chModel.Chore, 
 		return err
 	}
 	err = r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		var meterSchedule mModel.ChoreSchedule
+		hasMeter := tx.Where("chore_id = ?", chore.ID).First(&meterSchedule).Error == nil
+		var meter mModel.Meter
+		if hasMeter {
+			if err := tx.Where("id = ? AND circle_id = ?", meterSchedule.MeterID, chore.CircleID).First(&meter).Error; err != nil {
+				return err
+			}
+		}
 		choreUpdates := map[string]interface{}{}
 		choreUpdates["next_due_date"] = dueDate
 		choreUpdates["status"] = chModel.ChoreStatusNoStatus
@@ -484,6 +520,9 @@ func (r *ChoreRepository) ApproveChore(c context.Context, chore *chModel.Chore, 
 
 		if dueDate != nil {
 			choreUpdates["assigned_to"] = nextAssignedTo
+		} else if hasMeter {
+			choreUpdates["assigned_to"] = nextAssignedTo
+			choreUpdates["is_active"] = true
 		} else {
 			// one time task
 			choreUpdates["is_active"] = false
@@ -501,6 +540,13 @@ func (r *ChoreRepository) ApproveChore(c context.Context, chore *chModel.Chore, 
 		// Update status to completed
 		history.Status = chModel.ChoreHistoryStatusCompleted
 		history.SyncVersion = nextVersion
+		if hasMeter {
+			history.MeterID = &meter.ID
+			history.MeterReading = &meter.CurrentReading
+			if err := tx.Model(&mModel.ChoreSchedule{}).Where("chore_id = ?", chore.ID).Updates(map[string]interface{}{"baseline": meter.CurrentReading, "calendar_due_date": dueDate}).Error; err != nil {
+				return err
+			}
+		}
 
 		// Update UserCircle Points if applicable
 		if applyPoints && chore.Points != nil && *chore.Points > 0 {
@@ -567,6 +613,14 @@ func (r *ChoreRepository) CompleteChore(c context.Context, chore *chModel.Chore,
 		return err
 	}
 	err = r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		var meterSchedule mModel.ChoreSchedule
+		hasMeter := tx.Where("chore_id = ?", chore.ID).First(&meterSchedule).Error == nil
+		var meter mModel.Meter
+		if hasMeter {
+			if err := tx.Where("id = ? AND circle_id = ?", meterSchedule.MeterID, chore.CircleID).First(&meter).Error; err != nil {
+				return err
+			}
+		}
 
 		choreUpdates := map[string]interface{}{}
 		choreUpdates["next_due_date"] = dueDate
@@ -576,6 +630,9 @@ func (r *ChoreRepository) CompleteChore(c context.Context, chore *chModel.Chore,
 		switch {
 		case dueDate != nil:
 			choreUpdates["assigned_to"] = nextAssignedTo
+		case hasMeter:
+			choreUpdates["assigned_to"] = nextAssignedTo
+			choreUpdates["is_active"] = true
 		case chore.FrequencyType == "trigger":
 			// In case of trigger frequency type we need to still set the next assigned but need the task archived.
 			choreUpdates["assigned_to"] = nextAssignedTo
@@ -618,6 +675,13 @@ func (r *ChoreRepository) CompleteChore(c context.Context, chore *chModel.Chore,
 		if applyPoints && chore.Points != nil && *chore.Points > 0 {
 			ch.Points = chore.Points
 			if err := tx.Model(&cModel.UserCircle{}).Where("user_id = ? AND circle_id = ?", userID, chore.CircleID).Update("points", gorm.Expr("points + ?", chore.Points)).Error; err != nil {
+				return err
+			}
+		}
+		if hasMeter {
+			ch.MeterID = &meter.ID
+			ch.MeterReading = &meter.CurrentReading
+			if err := tx.Model(&mModel.ChoreSchedule{}).Where("chore_id = ?", chore.ID).Updates(map[string]interface{}{"baseline": meter.CurrentReading, "calendar_due_date": dueDate}).Error; err != nil {
 				return err
 			}
 		}
@@ -983,6 +1047,16 @@ func (r *ChoreRepository) GetChoreDetailByID(c context.Context, choreID int, cir
 		return nil, err
 	}
 	r.db.WithContext(c).Where("entity_type = ? AND entity_id = ?", storageModel.EntityTypeChoreAttachment, choreID).Find(&choreDetail.Attachments)
+	if r.db.Migrator().HasTable(&mModel.ChoreSchedule{}) {
+		var schedule mModel.ChoreSchedule
+		if r.db.WithContext(c).Where("chore_id = ?", choreID).First(&schedule).Error == nil {
+			var meter mModel.Meter
+			if r.db.WithContext(c).Where("id = ? AND circle_id = ?", schedule.MeterID, circleID).First(&meter).Error == nil {
+				mRepo.PopulateSchedule(&schedule, meter)
+				choreDetail.MeterSchedule = &schedule
+			}
+		}
+	}
 	return &choreDetail, nil
 }
 

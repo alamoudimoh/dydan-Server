@@ -22,6 +22,8 @@ import (
 	"donetick.com/core/internal/events"
 	lModel "donetick.com/core/internal/label/model"
 	lRepo "donetick.com/core/internal/label/repo"
+	mModel "donetick.com/core/internal/meter/model"
+	mRepo "donetick.com/core/internal/meter/repo"
 	"donetick.com/core/internal/notifier"
 	nRepo "donetick.com/core/internal/notifier/repo"
 	nps "donetick.com/core/internal/notifier/service"
@@ -49,6 +51,7 @@ type Handler struct {
 	nPlanner        *nps.NotificationPlanner
 	nRepo           *nRepo.NotificationRepository
 	tRepo           *tRepo.ThingRepository
+	meterRepo       *mRepo.Repository
 	lRepo           *lRepo.LabelRepository
 	uRepo           *uRepo.UserRepository
 	deviceRepo      *dRepo.DeviceRepository
@@ -61,7 +64,7 @@ type Handler struct {
 }
 
 func NewHandler(cr *chRepo.ChoreRepository, circleRepo *cRepo.CircleRepository, nt *notifier.Notifier,
-	np *nps.NotificationPlanner, nRepo *nRepo.NotificationRepository, tRepo *tRepo.ThingRepository, lRepo *lRepo.LabelRepository,
+	np *nps.NotificationPlanner, nRepo *nRepo.NotificationRepository, tRepo *tRepo.ThingRepository, meterRepo *mRepo.Repository, lRepo *lRepo.LabelRepository,
 	ep *events.EventsProducer, stRepo *stRepo.SubTasksRepository,
 	stor storage.Storage,
 	ur *uRepo.UserRepository,
@@ -78,6 +81,7 @@ func NewHandler(cr *chRepo.ChoreRepository, circleRepo *cRepo.CircleRepository, 
 		nPlanner:        np,
 		nRepo:           nRepo,
 		tRepo:           tRepo,
+		meterRepo:       meterRepo,
 		lRepo:           lRepo,
 		eventProducer:   ep,
 		stRepo:          stRepo,
@@ -328,6 +332,7 @@ type ChoreReq struct {
 	IsPrivate            *bool                         `json:"isPrivate" binding:"omitempty"`
 	ProjectID            *int                          `json:"projectId" binding:"omitempty"`
 	ThingTrigger         *tModel.ThingTrigger          `json:"thingTrigger"`
+	MeterSchedule        *mModel.ChoreScheduleRequest  `json:"meterSchedule"`
 	DraftId              *string                       `json:"draftId,omitempty"`
 }
 
@@ -455,6 +460,9 @@ func (h *Handler) CreateChore(c *gin.Context) {
 			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
+		return
+	}
+	if validateMeterSchedule(choreReq, h, c, currentUser.CircleID) {
 		return
 	}
 
@@ -631,6 +639,9 @@ func (h *Handler) CreateChore(c *gin.Context) {
 	if shouldReturn {
 		return
 	}
+	if handleMeterAssociation(choreReq, createdChore, h, c, currentUser.CircleID) {
+		return
+	}
 	response := gin.H{"res": id}
 	if len(warnings) > 0 {
 		response["warnings"] = warnings
@@ -704,6 +715,9 @@ func (h *Handler) EditChore(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"error": "Invalid request: " + err.Error(),
 		})
+		return
+	}
+	if validateMeterSchedule(choreReq, h, c, currentUser.CircleID) {
 		return
 	}
 
@@ -913,7 +927,6 @@ func (h *Handler) EditChore(c *gin.Context) {
 		}
 	}
 
-
 	if dueDatesDiffer(oldChore.NextDueDate, updatedChore.NextDueDate) {
 		historyEntry := &chModel.ChoreHistory{
 			ChoreID:     oldChore.ID,
@@ -950,6 +963,14 @@ func (h *Handler) EditChore(c *gin.Context) {
 	}
 	shouldReturn := handleThingAssociation(choreReq, updatedChore, h, c, &currentUser.User)
 	if shouldReturn {
+		return
+	}
+	if choreReq.MeterSchedule == nil {
+		if err := h.meterRepo.DeleteSchedule(c, updatedChore.ID); err != nil {
+			c.JSON(500, gin.H{"error": "Error updating meter schedule"})
+			return
+		}
+	} else if handleMeterAssociation(choreReq, updatedChore, h, c, currentUser.CircleID) {
 		return
 	}
 
@@ -1052,6 +1073,44 @@ func handleThingAssociation(choreReq ChoreReq, savedChore *chModel.Chore, h *Han
 			return true
 		}
 
+	}
+	return false
+}
+
+func handleMeterAssociation(choreReq ChoreReq, savedChore *chModel.Chore, h *Handler, c *gin.Context, circleID int) bool {
+	if choreReq.MeterSchedule == nil {
+		return false
+	}
+	if choreReq.MeterSchedule.Interval <= 0 {
+		c.JSON(400, gin.H{"error": "Meter interval must be greater than zero"})
+		return true
+	}
+	if err := h.meterRepo.UpsertSchedule(c, savedChore.ID, circleID, *choreReq.MeterSchedule); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(400, gin.H{"error": "Meter not found in this circle"})
+		} else {
+			c.JSON(500, gin.H{"error": "Error associating meter with chore"})
+		}
+		return true
+	}
+	return false
+}
+
+func validateMeterSchedule(choreReq ChoreReq, h *Handler, c *gin.Context, circleID int) bool {
+	if choreReq.MeterSchedule == nil {
+		return false
+	}
+	if choreReq.MeterSchedule.Interval <= 0 {
+		c.JSON(400, gin.H{"error": "Meter interval must be greater than zero"})
+		return true
+	}
+	if _, err := h.meterRepo.Get(c, choreReq.MeterSchedule.MeterID, circleID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(400, gin.H{"error": "Meter not found in this circle"})
+		} else {
+			c.JSON(500, gin.H{"error": "Error validating meter schedule"})
+		}
+		return true
 	}
 	return false
 }

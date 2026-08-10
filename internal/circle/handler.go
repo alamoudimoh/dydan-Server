@@ -700,6 +700,84 @@ func (h *Handler) RedeemPoints(c *gin.Context) {
 	})
 }
 
+func (h *Handler) ResetPoints(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(401, gin.H{"error": "Authentication failed"})
+		return
+	}
+	circleID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || circleID != currentUser.CircleID {
+		c.JSON(400, gin.H{"error": "Invalid circle"})
+		return
+	}
+	members, err := h.circleRepo.GetCircleUsers(c, circleID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve circle members"})
+		return
+	}
+	memberIDs := map[int]bool{}
+	for _, member := range members {
+		memberIDs[member.UserID] = true
+	}
+	if !canResetPoints(members, currentUser.ID) {
+		c.JSON(403, gin.H{"error": "You are not an admin of this circle"})
+		return
+	}
+	var target *int
+	if raw := c.Param("userId"); raw != "" {
+		id, parseErr := strconv.Atoi(raw)
+		if parseErr != nil || !memberIDs[id] {
+			c.JSON(404, gin.H{"error": "User is not a member of this circle"})
+			return
+		}
+		target = &id
+	}
+	count, err := h.circleRepo.ResetPoints(c, circleID, target, currentUser.ID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Error resetting points"})
+		return
+	}
+	c.JSON(200, gin.H{"res": "Points reset successfully", "resetCount": count})
+}
+
+func canResetPoints(members []*cModel.UserCircleDetail, actorID int) bool {
+	for _, member := range members {
+		if member.UserID == actorID && member.Role == cModel.UserRoleAdmin {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *Handler) GetPointsHistory(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(401, gin.H{"error": "Authentication failed"})
+		return
+	}
+	circleID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || circleID != currentUser.CircleID {
+		c.JSON(400, gin.H{"error": "Invalid circle"})
+		return
+	}
+	var target *int
+	if raw := c.Query("userId"); raw != "" {
+		id, e := strconv.Atoi(raw)
+		if e != nil {
+			c.JSON(400, gin.H{"error": "Invalid user"})
+			return
+		}
+		target = &id
+	}
+	history, err := h.circleRepo.GetPointsHistory(c, circleID, target)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Error retrieving points history"})
+		return
+	}
+	c.JSON(200, gin.H{"res": history})
+}
+
 // ChangeMemberRole godoc
 //
 //	@Summary		Change member role
@@ -807,6 +885,9 @@ func Routes(router *gin.Engine, h *Handler, multiAuthMiddleware *auth.MultiAuthM
 		circleRoutes.PUT("/members/role", h.ChangeMemberRole)
 		circleRoutes.GET("/", h.GetUserCircles)
 		circleRoutes.POST("/:id/members/points/redeem", h.RedeemPoints)
+		circleRoutes.POST("/:id/members/:userId/points/reset", h.ResetPoints)
+		circleRoutes.POST("/:id/members/points/reset", h.ResetPoints)
+		circleRoutes.GET("/:id/members/points/history", h.GetPointsHistory)
 
 		if !h.singleCircleInstance {
 			circleRoutes.PUT("/members/requests/accept", h.AcceptJoinRequest)

@@ -183,6 +183,49 @@ func (r *CircleRepository) RedeemPoints(c context.Context, circleID int, userID 
 	return nil
 }
 
+func (r *CircleRepository) ResetPoints(c context.Context, circleID int, userID *int, createdBy int) (int, error) {
+	resetCount := 0
+	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		query := tx.Where("circle_id = ?", circleID)
+		if userID != nil {
+			query = query.Where("user_id = ?", *userID)
+		}
+		var memberships []cModel.UserCircle
+		if err := query.Find(&memberships).Error; err != nil {
+			return err
+		}
+		if userID != nil && len(memberships) == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		for _, membership := range memberships {
+			balance := membership.Points - membership.PointsRedeemed
+			if balance == 0 {
+				continue
+			}
+			zero := 0
+			if err := tx.Model(&cModel.UserCircle{}).Where("id = ? AND circle_id = ?", membership.ID, circleID).Update("points_redeemed", membership.Points).Error; err != nil {
+				return err
+			}
+			if err := tx.Create(&pModel.PointsHistory{Action: pModel.PointsHistoryActionReset, CircleID: circleID, UserID: membership.UserID, Points: -balance, PreviousBalance: &balance, ResultingBalance: &zero, CreatedAt: time.Now().UTC(), CreatedBy: createdBy}).Error; err != nil {
+				return err
+			}
+			resetCount++
+		}
+		return nil
+	})
+	return resetCount, err
+}
+
+func (r *CircleRepository) GetPointsHistory(c context.Context, circleID int, userID *int) ([]pModel.PointsHistory, error) {
+	var history []pModel.PointsHistory
+	query := r.db.WithContext(c).Where("circle_id = ?", circleID)
+	if userID != nil {
+		query = query.Where("user_id = ?", *userID)
+	}
+	err := query.Order("created_at DESC, id DESC").Limit(200).Find(&history).Error
+	return history, err
+}
+
 func (r *CircleRepository) SetWebhookURL(c context.Context, circleID int, webhookURL *string) error {
 	return r.db.WithContext(c).Model(&cModel.Circle{}).Where("id = ?", circleID).Update("webhook_url", webhookURL).Error
 }

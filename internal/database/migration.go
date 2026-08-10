@@ -14,6 +14,7 @@ import (
 	cModel "donetick.com/core/internal/circle/model"
 	filterModel "donetick.com/core/internal/filter/model"
 	lModel "donetick.com/core/internal/label/model"
+	mModel "donetick.com/core/internal/meter/model"
 	nModel "donetick.com/core/internal/notifier/model"
 	pModel "donetick.com/core/internal/points"
 	projModel "donetick.com/core/internal/project/model"
@@ -56,6 +57,9 @@ func Migration(db *gorm.DB) error {
 		filterModel.Filter{},
 		migrations.Migration{},
 		pModel.PointsHistory{},
+		mModel.Meter{},
+		mModel.Reading{},
+		mModel.ChoreSchedule{},
 		stModel.SubTask{},
 		storageModel.StorageFile{},
 		storageModel.StorageUsage{},
