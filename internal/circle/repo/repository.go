@@ -101,6 +101,12 @@ func (r *CircleRepository) GetUserCircleRole(c context.Context, circleID, userID
 	return role, err
 }
 
+func (r *CircleRepository) GetActiveUserCircleRole(c context.Context, circleID, userID int) (cModel.Role, error) {
+	var membership cModel.UserCircle
+	err := r.db.WithContext(c).Select("role").Where("circle_id = ? AND user_id = ? AND is_active = ?", circleID, userID, true).First(&membership).Error
+	return cModel.Role(membership.Role), err
+}
+
 func (r *CircleRepository) GetCircleByInviteCode(c context.Context, inviteCode string) (*cModel.Circle, error) {
 	var circle cModel.Circle
 	if err := r.db.WithContext(c).Where("invite_code = ?", inviteCode).First(&circle).Error; err != nil {

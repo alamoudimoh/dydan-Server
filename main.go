@@ -43,6 +43,7 @@ import (
 	pRepo "donetick.com/core/internal/points/repo"
 	"donetick.com/core/internal/realtime"
 	"donetick.com/core/internal/resource"
+	"donetick.com/core/internal/reward"
 	"donetick.com/core/internal/storage"
 	storageRepo "donetick.com/core/internal/storage/repo"
 	spRepo "donetick.com/core/internal/subtask/repo"
@@ -87,6 +88,8 @@ func main() {
 		fx.Provide(auth.NewMultiAuthMiddleware),
 		fx.Provide(auth.NewIdentityProvider),
 		fx.Provide(resource.NewHandler),
+		fx.Provide(reward.NewRepository),
+		fx.Provide(reward.NewHandler),
 
 		// fx.Provide(NewBot),
 		fx.Provide(database.NewDatabase),
@@ -214,6 +217,7 @@ func main() {
 			frontend.Routes,
 			docs.Routes,
 			resource.Routes,
+			reward.Routes,
 			// backup.Routes,
 			payment.Routes,
 			payment.Webhooks,

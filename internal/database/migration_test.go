@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"donetick.com/core/config"
+	rewardModel "donetick.com/core/internal/reward"
 	"donetick.com/core/migrations"
 )
 
@@ -21,6 +22,12 @@ func TestMigrationScriptsSQLite(t *testing.T) {
 
 	if err := Migration(db); err != nil {
 		t.Fatalf("AutoMigrate failed: %v", err)
+	}
+	if !db.Migrator().HasTable(&rewardModel.Reward{}) || !db.Migrator().HasTable(&rewardModel.RewardRequest{}) || !db.Migrator().HasColumn("points_histories", "reward_request_id") {
+		t.Fatal("rewards schema was not created")
+	}
+	if err := Migration(db); err != nil {
+		t.Fatalf("AutoMigrate second run failed: %v", err)
 	}
 	// main.go ignores the error from migrations.Run; some legacy Go migrations
 	// (e.g. 20241123_migrate_label_to_labels_v2) fail on a fresh database.

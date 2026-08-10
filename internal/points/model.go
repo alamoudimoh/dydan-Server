@@ -12,6 +12,7 @@ type PointsHistory struct {
 	CircleID         int                 `json:"circle_id" gorm:"column:circle_id;index"` // Circle ID with index
 	PreviousBalance  *int                `json:"previousBalance,omitempty" gorm:"column:previous_balance"`
 	ResultingBalance *int                `json:"resultingBalance,omitempty" gorm:"column:resulting_balance"`
+	RewardRequestID  *int                `json:"rewardRequestId,omitempty" gorm:"column:reward_request_id;uniqueIndex"`
 }
 
 type PointsHistoryAction int8
