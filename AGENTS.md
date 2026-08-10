@@ -1,8 +1,9 @@
 # Taskier Server Verification Policy
 
-- Run `./scripts/verify.sh` before completing substantial backend changes.
-- Run `./scripts/verify-container.sh` when changing configuration, migrations,
-  persistence, Docker, frontend serving, or startup behavior.
+- Run `./scripts/verify.sh` before completing substantial backend changes. It
+  includes the zero-config container smoke test. Set
+  `TASKIER_SKIP_CONTAINER_SMOKE=true` only when that check runs separately, as
+  it does in parallel CI jobs.
 - Never bypass failing required CI; fix regressions before declaring work complete.
 - Add a regression test for every reasonably testable bug fix and appropriate
   automated tests for every new backend feature.

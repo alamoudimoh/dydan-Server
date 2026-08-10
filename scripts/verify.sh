@@ -16,3 +16,7 @@ go test -race \
   ./internal/chore/repo \
   ./internal/circle \
   ./internal/circle/repo
+
+if [[ "${TASKIER_SKIP_CONTAINER_SMOKE:-false}" != "true" ]]; then
+  bash scripts/verify-container.sh
+fi

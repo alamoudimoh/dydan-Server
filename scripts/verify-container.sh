@@ -51,13 +51,15 @@ container_port() {
 }
 
 assert_clean_migrations() {
-  if docker logs "$container" 2>&1 | grep -Eiq 'failed to apply migration|automatic (schema|data|SQL) migration'; then
-    docker logs "$container" >&2
+  local container_logs
+  container_logs=$(docker logs "$container" 2>&1)
+  if grep -Eiq 'failed to apply migration|automatic (schema|data|SQL) migration' <<<"$container_logs"; then
+    printf '%s\n' "$container_logs" >&2
     echo "Migration failure found in container logs" >&2
     exit 1
   fi
-  if ! docker logs "$container" 2>&1 | grep -Eq 'Applied [0-9]+ migrations!'; then
-    docker logs "$container" >&2
+  if ! grep -Eq 'Applied [0-9]+ migrations!' <<<"$container_logs"; then
+    printf '%s\n' "$container_logs" >&2
     echo "Migration completion was not confirmed in container logs" >&2
     exit 1
   fi
@@ -71,8 +73,8 @@ docker exec "$container" test ! -e /config/selfhosted.yaml
 
 test -s "$data_dir/taskier.db"
 test -s "$data_dir/jwt-secret"
-test "$(stat -c '%a' "$data_dir/jwt-secret")" = "600"
-secret_before=$(sha256sum "$data_dir/jwt-secret" | cut -d' ' -f1)
+test "$(docker exec "$container" stat -c '%a' /data/jwt-secret)" = "600"
+secret_before=$(docker exec "$container" sha256sum /data/jwt-secret | cut -d' ' -f1)
 
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:${port}/")" = "200"
 test "$(curl --silent --output "$signup_response" --write-out '%{http_code}' \
@@ -86,7 +88,7 @@ port=$(container_port)
 wait_for_health "$port"
 assert_clean_migrations
 
-secret_after=$(sha256sum "$data_dir/jwt-secret" | cut -d' ' -f1)
+secret_after=$(docker exec "$container" sha256sum /data/jwt-secret | cut -d' ' -f1)
 test "$secret_before" = "$secret_after"
 test -s "$data_dir/taskier.db"
 test "$(curl --silent --output "$login_response" --write-out '%{http_code}' \
