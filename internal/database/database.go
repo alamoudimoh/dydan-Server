@@ -69,11 +69,7 @@ func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 		}
 
 	default:
-		path := os.Getenv("DT_SQLITE_PATH")
-		if path == "" {
-			path = "donetick.db"
-		}
-		db, err = gorm.Open(sqlite.Open(path), &gormConfig)
+		db, err = gorm.Open(sqlite.Open(cfg.Database.Path), &gormConfig)
 
 	}
 

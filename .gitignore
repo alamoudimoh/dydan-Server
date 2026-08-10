@@ -1,4 +1,8 @@
 donetick.db
+/taskier.db
+/data/
+/jwt-secret
+/uploads/
 .vscode/launch.json
 *.exe
 config/prod.yaml

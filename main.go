@@ -284,11 +284,14 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if cfg.Database.Migration {
-				database.Migration(db)
-				migrations.Run(context.Background(), db)
-				err := database.MigrationScripts(db, cfg)
-				if err != nil {
-					panic(err)
+				if err := database.Migration(db); err != nil {
+					return fmt.Errorf("automatic schema migration: %w", err)
+				}
+				if err := migrations.Run(context.Background(), db); err != nil {
+					return fmt.Errorf("automatic data migration: %w", err)
+				}
+				if err := database.MigrationScripts(db, cfg); err != nil {
+					return fmt.Errorf("automatic SQL migration: %w", err)
 				}
 			}
 			notifier.Start(context.Background())

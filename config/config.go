@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"go.uber.org/zap/zapcore"
 
-	"github.com/mcuadros/go-defaults"
 	"github.com/spf13/viper"
 )
 
@@ -22,6 +22,7 @@ var (
 )
 
 type Config struct {
+	DataDir                string              `mapstructure:"data_dir" yaml:"data_dir"`
 	Name                   string              `mapstructure:"name" yaml:"name"`
 	Telegram               TelegramConfig      `mapstructure:"telegram" yaml:"telegram"`
 	Pushover               PushoverConfig      `mapstructure:"pushover" yaml:"pushover"`
@@ -111,6 +112,7 @@ type PushoverConfig struct {
 
 type DatabaseConfig struct {
 	Type      string `mapstructure:"type" yaml:"type" default:"sqlite"`
+	Path      string `mapstructure:"path" yaml:"path"`
 	Host      string `mapstructure:"host" yaml:"host"`
 	Port      int    `mapstructure:"port" yaml:"port"`
 	User      string `mapstructure:"user" yaml:"user"`
@@ -122,6 +124,7 @@ type DatabaseConfig struct {
 
 type JwtConfig struct {
 	Secret      string        `mapstructure:"secret" yaml:"secret"`
+	SecretFile  string        `mapstructure:"secret_file" yaml:"secret_file"`
 	SessionTime time.Duration `mapstructure:"session_time" yaml:"session_time" default:"24h"` // 24 hours
 	MaxRefresh  time.Duration `mapstructure:"max_refresh" yaml:"max_refresh" default:"1440h"` // 60 days
 }
@@ -256,29 +259,35 @@ type LogConfig struct {
 }
 
 func NewConfig() *Config {
-	// Generate a secure secret instead of using a weak default
-	secureSecret, err := generateSecureSecret()
-	if err != nil {
-		// If we can't generate a secure secret, panic - this is a security requirement
-		panic(fmt.Sprintf("Failed to generate secure JWT secret: %v", err))
-	}
-
-	config := &Config{
-		Telegram: TelegramConfig{
-			Token: "",
-		},
+	return &Config{
+		DataDir: "data",
+		Name:    "taskier",
 		Database: DatabaseConfig{
 			Type:      "sqlite",
 			Migration: true,
 		},
 		Jwt: JwtConfig{
-			Secret:      secureSecret,
 			SessionTime: 24 * time.Hour,
 			MaxRefresh:  60 * 24 * time.Hour,
 		},
+		Server: ServerConfig{
+			Port:             2021,
+			RatePeriod:       60 * time.Second,
+			RateLimit:        300,
+			ReadTimeout:      10 * time.Second,
+			WriteTimeout:     10 * time.Second,
+			WebhookTimeout:   5 * time.Second,
+			CorsAllowOrigins: []string{"http://localhost:5173", "http://localhost:7926", "http://localhost", "https://localhost", "capacitor://localhost"},
+			ServeFrontend:    true,
+		},
+		SchedulerJobs: SchedulerConfig{
+			DueJob:     30 * time.Minute,
+			OverdueJob: 3 * time.Hour,
+			PreDueJob:  3 * time.Hour,
+		},
 		RealTimeConfig: RealTimeConfig{
 			Enabled:               true,
-			WebSocketEnabled:      false,
+			WebSocketEnabled:      true,
 			SSEEnabled:            true,
 			HeartbeatInterval:     30 * time.Second,
 			ConnectionTimeout:     60 * time.Second,
@@ -290,20 +299,34 @@ func NewConfig() *Config {
 			StaleThreshold:        5 * time.Minute,
 			EnableCompression:     true,
 			EnableStats:           true,
-			AllowedOrigins:        []string{"*"},
+			AllowedOrigins:        []string{"http://localhost:5173", "http://localhost:7926", "http://localhost", "https://localhost", "capacitor://localhost"},
 			MaxSSETickets:         10000,
+		},
+		WebhookConfig: WebhookConfig{Timeout: 5 * time.Second, QueueSize: 100},
+		MFAConfig: MFAConfig{
+			Enabled:                 true,
+			SessionTimeoutMinutes:   15,
+			BackupCodeCount:         10,
+			MaxVerificationAttempts: 5,
+			RateLimitWindow:         5 * time.Minute,
 		},
 		Logging: LogConfig{
 			Level:       "info",
 			Encoding:    "console",
 			Development: false,
 		},
+		Storage: StorageConfig{
+			StorageType:    "local",
+			MaxUserStorage: 10 * 1024 * 1024 * 1024,
+			MaxFileSize:    10 * 1024 * 1024,
+		},
+		FeatureLimits: FeatureLimitsConfig{
+			MaxCircleMembers:     2,
+			PlusCircleMaxMembers: 6,
+			MaxSubaccounts:       1,
+			PlusMaxSubaccounts:   5,
+		},
 	}
-
-	// Apply default values for fields with default tags
-	defaults.SetDefaults(config)
-
-	return config
 }
 
 func configEnvironmentOverrides(config *Config) {
@@ -328,61 +351,127 @@ func configEnvironmentOverrides(config *Config) {
 		config.Logging.Development = true
 	}
 }
-func LoadConfig() *Config {
-	// https://github.com/spf13/viper/issues/1895#issuecomment-3316091229
-	viper.SetOptions(viper.ExperimentalBindStruct())
+func setTaskierDefaults(v *viper.Viper) {
+	cfg := NewConfig()
+	v.SetDefault("name", cfg.Name)
+	v.SetDefault("data_dir", cfg.DataDir)
+	v.SetDefault("is_done_tick_dot_com", false)
+	v.SetDefault("is_user_creation_disabled", false)
+	v.SetDefault("database.type", cfg.Database.Type)
+	v.SetDefault("database.migration", cfg.Database.Migration)
+	v.SetDefault("jwt.session_time", cfg.Jwt.SessionTime)
+	v.SetDefault("jwt.max_refresh", cfg.Jwt.MaxRefresh)
+	v.SetDefault("server.port", cfg.Server.Port)
+	v.SetDefault("server.rate_period", cfg.Server.RatePeriod)
+	v.SetDefault("server.rate_limit", cfg.Server.RateLimit)
+	v.SetDefault("server.read_timeout", cfg.Server.ReadTimeout)
+	v.SetDefault("server.write_timeout", cfg.Server.WriteTimeout)
+	v.SetDefault("server.webhook_timeout", cfg.Server.WebhookTimeout)
+	v.SetDefault("server.cors_allow_origins", cfg.Server.CorsAllowOrigins)
+	v.SetDefault("server.serve_frontend", cfg.Server.ServeFrontend)
+	v.SetDefault("server.serve_swagger", false)
+	v.SetDefault("scheduler_jobs.due_job", cfg.SchedulerJobs.DueJob)
+	v.SetDefault("scheduler_jobs.overdue_job", cfg.SchedulerJobs.OverdueJob)
+	v.SetDefault("scheduler_jobs.pre_due_job", cfg.SchedulerJobs.PreDueJob)
+	v.SetDefault("storage.storage_type", cfg.Storage.StorageType)
+	v.SetDefault("storage.max_user_storage", cfg.Storage.MaxUserStorage)
+	v.SetDefault("storage.max_file_size", cfg.Storage.MaxFileSize)
+	v.SetDefault("realtime.enabled", cfg.RealTimeConfig.Enabled)
+	v.SetDefault("realtime.websocket_enabled", cfg.RealTimeConfig.WebSocketEnabled)
+	v.SetDefault("realtime.sse_enabled", cfg.RealTimeConfig.SSEEnabled)
+	v.SetDefault("realtime.heartbeat_interval", cfg.RealTimeConfig.HeartbeatInterval)
+	v.SetDefault("realtime.connection_timeout", cfg.RealTimeConfig.ConnectionTimeout)
+	v.SetDefault("realtime.min_connection_interval", cfg.RealTimeConfig.MinConnectionInterval)
+	v.SetDefault("realtime.max_connections", cfg.RealTimeConfig.MaxConnections)
+	v.SetDefault("realtime.max_connections_per_user", cfg.RealTimeConfig.MaxConnectionsPerUser)
+	v.SetDefault("realtime.event_queue_size", cfg.RealTimeConfig.EventQueueSize)
+	v.SetDefault("realtime.cleanup_interval", cfg.RealTimeConfig.CleanupInterval)
+	v.SetDefault("realtime.stale_threshold", cfg.RealTimeConfig.StaleThreshold)
+	v.SetDefault("realtime.enable_compression", cfg.RealTimeConfig.EnableCompression)
+	v.SetDefault("realtime.enable_stats", cfg.RealTimeConfig.EnableStats)
+	v.SetDefault("realtime.allowed_origins", cfg.RealTimeConfig.AllowedOrigins)
+	v.SetDefault("realtime.max_sse_tickets", cfg.RealTimeConfig.MaxSSETickets)
+	v.SetDefault("logging.level", cfg.Logging.Level)
+	v.SetDefault("logging.encoding", cfg.Logging.Encoding)
+	v.SetDefault("logging.development", cfg.Logging.Development)
+	v.SetDefault("webhook.timeout", cfg.WebhookConfig.Timeout)
+	v.SetDefault("webhook.queue_size", cfg.WebhookConfig.QueueSize)
+	v.SetDefault("mfa.enabled", cfg.MFAConfig.Enabled)
+	v.SetDefault("mfa.session_timeout_minutes", cfg.MFAConfig.SessionTimeoutMinutes)
+	v.SetDefault("mfa.backup_code_count", cfg.MFAConfig.BackupCodeCount)
+	v.SetDefault("mfa.max_verification_attempts", cfg.MFAConfig.MaxVerificationAttempts)
+	v.SetDefault("mfa.rate_limit_window", cfg.MFAConfig.RateLimitWindow)
+	v.SetDefault("feature_limits.max_circle_members", cfg.FeatureLimits.MaxCircleMembers)
+	v.SetDefault("feature_limits.plus_circle_max_members", cfg.FeatureLimits.PlusCircleMaxMembers)
+	v.SetDefault("feature_limits.max_subaccounts", cfg.FeatureLimits.MaxSubaccounts)
+	v.SetDefault("feature_limits.plus_max_subaccounts", cfg.FeatureLimits.PlusMaxSubaccounts)
+}
 
-	// set the config name based on the environment:
-	switch env := os.Getenv("DT_ENV"); env {
-	case "local":
-		viper.SetConfigName("local")
-	case "prod":
-		viper.SetConfigName("prod")
-	case "selfhosted":
-		viper.SetConfigName("selfhosted")
-	case "r2":
-		viper.SetConfigName("r2")
-	default:
-		viper.SetConfigName("local")
-	}
-	// get logger and log the current environment:
-	fmt.Printf("--ConfigLoad config for environment: %s\n", os.Getenv("DT_ENV"))
-	viper.SetEnvPrefix("DT")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	viper.AddConfigPath("./config")
-	viper.SetConfigType("yaml")
-
-	err := viper.ReadInConfig()
-	// print a useful error:
-	if err != nil {
-		var configNotFoundError viper.ConfigFileNotFoundError
-		if errors.As(err, &configNotFoundError) {
-			fmt.Printf("Config file not found, using defaults and environment variables")
-		} else {
-			fmt.Printf("Error reading config file: %v", err)
-			panic(err)
+func firstEnvironment(names ...string) string {
+	for _, name := range names {
+		if value := os.Getenv(name); value != "" {
+			return value
 		}
 	}
-	// Override with environment variables if set:
-	viper.AutomaticEnv()
+	return ""
+}
 
-	var config Config
-	err = viper.Unmarshal(&config)
+func LoadConfig() *Config {
+	cfg, err := LoadConfigE()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Taskier configuration error: %v", err))
+	}
+	return cfg
+}
+
+func LoadConfigE() (*Config, error) {
+	// https://github.com/spf13/viper/issues/1895#issuecomment-3316091229
+	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
+	setTaskierDefaults(v)
+
+	configFile := firstEnvironment("TASKIER_CONFIG_FILE", "DT_CONFIG_FILE")
+	if configFile != "" {
+		v.SetConfigFile(configFile)
+	} else if profile := os.Getenv("DT_ENV"); profile != "" {
+		v.SetConfigName(profile)
+	} else {
+		v.SetConfigName("taskier")
+	}
+	v.SetEnvPrefix("DT")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	v.AddConfigPath("./config")
+	v.AddConfigPath("/config")
+	v.AddConfigPath(".")
+	v.SetConfigType("yaml")
+
+	err := v.ReadInConfig()
+	if err != nil {
+		var configNotFoundError viper.ConfigFileNotFoundError
+		if !errors.As(err, &configNotFoundError) {
+			return nil, fmt.Errorf("read optional config: %w", err)
+		}
+	}
+	v.AutomaticEnv()
+	if value := os.Getenv("TASKIER_DATA_DIR"); value != "" {
+		v.Set("data_dir", value)
+	}
+	if value := os.Getenv("TASKIER_JWT_SECRET"); value != "" {
+		v.Set("jwt.secret", value)
+	}
+	if value := os.Getenv("TASKIER_SQLITE_PATH"); value != "" {
+		v.Set("database.path", value)
 	}
 
-	// Apply default values for fields with default tags
-	defaults.SetDefaults(&config)
-
-	fmt.Printf("--ConfigLoad name : %s ", config.Name)
+	var config Config
+	err = v.Unmarshal(&config)
+	if err != nil {
+		return nil, fmt.Errorf("decode config: %w", err)
+	}
 
 	configEnvironmentOverrides(&config)
-
-	// Validate JWT secret strength
-	if config.Name != "local" {
-		validateJWTSecret(config.Jwt.Secret)
+	if err := initializePersistentRuntime(&config); err != nil {
+		return nil, err
 	}
 
 	config.Info.Version = Version
@@ -395,9 +484,123 @@ func LoadConfig() *Config {
 	}
 	time.Local, _ = time.LoadLocation(os.Getenv("TZ"))
 
-	return &config
+	return &config, nil
+}
 
-	// return LocalConfig()
+func initializePersistentRuntime(config *Config) error {
+	if config.DataDir == "" {
+		config.DataDir = "data"
+	}
+	useLegacyWorkingDirectory := config.DataDir == "data"
+	dataDir, err := filepath.Abs(config.DataDir)
+	if err != nil {
+		return fmt.Errorf("resolve data directory: %w", err)
+	}
+	config.DataDir = dataDir
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		return fmt.Errorf("create data directory %s: %w", dataDir, err)
+	}
+	if config.Database.Type == "" {
+		config.Database.Type = "sqlite"
+	}
+	if config.Database.Type == "sqlite" {
+		if path := firstEnvironment("TASKIER_SQLITE_PATH", "DT_SQLITE_PATH"); path != "" {
+			config.Database.Path = path
+		}
+		if config.Database.Path == "" {
+			config.Database.Path = defaultSQLitePath(dataDir, useLegacyWorkingDirectory)
+		}
+		if err := os.MkdirAll(filepath.Dir(config.Database.Path), 0o700); err != nil {
+			return fmt.Errorf("create SQLite directory: %w", err)
+		}
+	}
+	if config.Storage.StorageType == "local" && config.Storage.BasePath == "" {
+		config.Storage.BasePath = filepath.Join(dataDir, "uploads")
+	}
+	if explicitSecret := firstEnvironment("TASKIER_JWT_SECRET", "DT_JWT_SECRET"); explicitSecret != "" {
+		config.Jwt.Secret = explicitSecret
+		return validateJWTSecret(config.Jwt.Secret)
+	}
+	if config.Jwt.Secret != "" && config.Jwt.Secret != "change_this_to_a_secure_random_string_32_characters_long" {
+		return validateJWTSecret(config.Jwt.Secret)
+	}
+	config.Jwt.Secret = ""
+	if config.Jwt.SecretFile == "" {
+		config.Jwt.SecretFile = filepath.Join(dataDir, "jwt-secret")
+	}
+	secret, err := loadOrCreateSecret(config.Jwt.SecretFile)
+	if err != nil {
+		return fmt.Errorf("initialize persistent JWT secret: %w", err)
+	}
+	config.Jwt.Secret = secret
+	return validateJWTSecret(secret)
+}
+
+func defaultSQLitePath(dataDir string, useWorkingDirectory bool) string {
+	preferred := filepath.Join(dataDir, "taskier.db")
+	if _, err := os.Stat(preferred); err == nil {
+		return preferred
+	}
+	legacyPaths := []string{filepath.Join(dataDir, "donetick.db")}
+	if useWorkingDirectory {
+		legacyPaths = append(legacyPaths, "donetick.db")
+	}
+	for _, legacy := range legacyPaths {
+		if info, err := os.Stat(legacy); err == nil && !info.IsDir() {
+			return legacy
+		}
+	}
+	return preferred
+}
+
+func loadOrCreateSecret(path string) (string, error) {
+	if contents, err := os.ReadFile(path); err == nil {
+		secret := strings.TrimSpace(string(contents))
+		if err := validateJWTSecret(secret); err != nil {
+			return "", fmt.Errorf("invalid secret file %s: %w", path, err)
+		}
+		if err := os.Chmod(path, 0o600); err != nil {
+			return "", err
+		}
+		return secret, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	secret, err := generateSecureSecret()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return "", err
+	}
+	temp, err := os.CreateTemp(filepath.Dir(path), ".jwt-secret-*")
+	if err != nil {
+		return "", err
+	}
+	tempName := temp.Name()
+	defer os.Remove(tempName)
+	if err := temp.Chmod(0o600); err != nil {
+		temp.Close()
+		return "", err
+	}
+	if _, err := temp.WriteString(secret + "\n"); err != nil {
+		temp.Close()
+		return "", err
+	}
+	if err := temp.Sync(); err != nil {
+		temp.Close()
+		return "", err
+	}
+	if err := temp.Close(); err != nil {
+		return "", err
+	}
+	if err := os.Rename(tempName, path); err != nil {
+		return "", err
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		return "", err
+	}
+	return secret, nil
 }
 
 // List of known weak secrets that should not be allowed
@@ -433,17 +636,7 @@ func validateJWTSecret(secret string) error {
 		}
 	}
 	if err != nil {
-		fmt.Printf("\n\n🚨 SECURITY ERROR: %s\n", err.Error())
-		fmt.Printf("\n💡 To fix this issue:\n")
-		fmt.Printf("   1. Generate a secure JWT secret:\n")
-		if secureSecret, genErr := generateSecureSecret(); genErr == nil {
-			fmt.Printf("      Suggested secret: %s\n", secureSecret)
-		}
-		fmt.Printf("   2. Set it in your configuration:\n")
-		fmt.Printf("      - YAML: jwt.secret: \"<your_secure_secret>\"\n")
-		fmt.Printf("      - ENV:  export DT_JWT_SECRET=\"<your_secure_secret>\"\n")
-		fmt.Printf("\n❌ Application will not start with weak JWT secrets for security reasons.\n\n")
-		panic("Weak JWT secret detected - application startup aborted for security")
+		return err
 	}
 	return nil
 }
