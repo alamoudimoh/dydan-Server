@@ -25,6 +25,7 @@ import (
 	"donetick.com/core/internal/events"
 	label "donetick.com/core/internal/label"
 	lRepo "donetick.com/core/internal/label/repo"
+	"donetick.com/core/internal/maintenance"
 	"donetick.com/core/internal/meter"
 	mRepo "donetick.com/core/internal/meter/repo"
 	"donetick.com/core/internal/mfa"
@@ -140,6 +141,7 @@ func main() {
 		fx.Provide(tRepo.NewThingRepository),
 		fx.Provide(mRepo.NewRepository),
 		fx.Provide(meter.NewHandler),
+		fx.Provide(maintenance.NewHandler),
 
 		// points
 		fx.Provide(pRepo.NewPointsRepository),
@@ -209,6 +211,7 @@ func main() {
 			thing.Routes,
 			thing.APIs,
 			meter.Routes,
+			maintenance.Routes,
 			label.Routes,
 			project.Routes,
 			filter.Routes,

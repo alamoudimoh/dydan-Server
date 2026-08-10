@@ -10,6 +10,8 @@ import (
 
 	"donetick.com/core/config"
 	rewardModel "donetick.com/core/internal/reward"
+	tModel "donetick.com/core/internal/thing/model"
+	uModel "donetick.com/core/internal/user/model"
 	"donetick.com/core/migrations"
 )
 
@@ -42,5 +44,36 @@ func TestMigrationScriptsSQLite(t *testing.T) {
 	// Running again must be idempotent (already-applied migrations skipped).
 	if err := MigrationScripts(db, cfg); err != nil {
 		t.Fatalf("MigrationScripts second run failed: %v", err)
+	}
+}
+
+func TestMigrationBackfillsLegacyThingCircleAndIsIdempotent(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "legacy.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&uModel.User{}, &tModel.Thing{}); err != nil {
+		t.Fatal(err)
+	}
+	user := uModel.User{Username: "legacy", CircleID: 42}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	thing := tModel.Thing{UserID: user.ID, Name: "Existing filter", Type: "text"}
+	if err := db.Create(&thing).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := Migration(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migration(db); err != nil {
+		t.Fatal(err)
+	}
+	var migrated tModel.Thing
+	if err := db.First(&migrated, thing.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if migrated.CircleID != 42 || migrated.Name != thing.Name {
+		t.Fatalf("legacy thing was not preserved: %#v", migrated)
 	}
 }

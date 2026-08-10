@@ -73,10 +73,11 @@ func (h *Handler) CreateThing(c *gin.Context) {
 		return
 	}
 	thing := &tModel.Thing{
-		Name:   req.Name,
-		UserID: currentUser.ID,
-		Type:   req.Type,
-		State:  req.State,
+		Name:     req.Name,
+		UserID:   currentUser.ID,
+		CircleID: currentUser.CircleID,
+		Type:     req.Type,
+		State:    req.State,
 	}
 	if !isValidThingState(thing) {
 		c.JSON(400, gin.H{"error": "Invalid state"})

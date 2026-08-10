@@ -25,6 +25,7 @@ type Meter struct {
 	ID             int       `json:"id" gorm:"primaryKey"`
 	CircleID       int       `json:"circleId" gorm:"column:circle_id;not null;index"`
 	CreatedBy      int       `json:"createdBy" gorm:"column:created_by;not null"`
+	ThingID        *int      `json:"assetId,omitempty" gorm:"column:thing_id;index"`
 	Name           string    `json:"name" gorm:"column:name;not null"`
 	Unit           Unit      `json:"unit" gorm:"column:unit;not null"`
 	CurrentReading int64     `json:"currentReading" gorm:"column:current_reading;not null"`

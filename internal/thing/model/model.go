@@ -7,8 +7,11 @@ type Thing struct {
 	UserID      int          `json:"userID" gorm:"column:user_id"`
 	CircleID    int          `json:"circleId" gorm:"column:circle_id"`
 	Name        string       `json:"name" gorm:"column:name"`
+	Description *string      `json:"description,omitempty" gorm:"column:description;type:text"`
+	Category    string       `json:"category,omitempty" gorm:"column:category"`
 	State       string       `json:"state" gorm:"column:state"`
 	Type        string       `json:"type" gorm:"column:type"`
+	ArchivedAt  *time.Time   `json:"archivedAt,omitempty" gorm:"column:archived_at;index"`
 	ThingChores []ThingChore `json:"thingChores" gorm:"foreignkey:ThingID;references:ID"`
 	UpdatedAt   *time.Time   `json:"updatedAt" gorm:"column:updated_at"`
 	CreatedAt   *time.Time   `json:"createdAt" gorm:"column:created_at"`
