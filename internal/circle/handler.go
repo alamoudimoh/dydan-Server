@@ -3,6 +3,7 @@ package circle
 import (
 	"errors"
 	"log"
+	"net/http"
 
 	"strconv"
 	"time"
@@ -130,6 +131,12 @@ func (h *Handler) JoinCircle(c *gin.Context) {
 	}
 
 	circle, err := h.circleRepo.GetCircleByInviteCode(c, requestedCircleID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Circle invite not found",
+		})
+		return
+	}
 
 	if circle.ID == currentUser.CircleID {
 		c.JSON(409, gin.H{
