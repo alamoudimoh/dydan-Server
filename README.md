@@ -75,61 +75,39 @@ Donetick is an open-source, user-friendly app designed to help you organize task
 ---
 
 ## Quick Start
-> [!NOTE]
-> Before running the application, ensure you have a valid `selfhosted.yaml` configuration file. 
-> If you don't have one, create a `selfhosted.yaml` file based on the example provided [here](https://github.com/donetick/donetick/blob/main/config/selfhosted.yaml).
-> Place the `selfhosted.yaml` file in the `/config` directory within your application's root directory 
-
-
-
-### Using Docker
-1. **Pull the latest image:**
-   ```bash
-   docker pull donetick/donetick
-   ```
-2. **Run the container:** Replace `/path/to/host/data` and `/path/to/host/config`:
-   ```bash
-   docker run \
-     -v /path/to/host/data:/donetick-data \
-     -v /path/to/host/config:/config \
-     -p 2021:2021 \
-     -e DT_ENV=selfhosted \
-     -e DT_SQLITE_PATH=/donetick-data/donetick.db \
-     -e TZ=Etc/UTC \  
-     --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:2021/api/v1/health || exit 1" \
-     --health-start-period 1m \
-     --health-timeout 5s \
-     --health-interval 1m \
-     --health-retries 3 \
-     donetick/donetick
-   ```
+Taskier works with secure built-in defaults. No YAML file, database selection,
+JWT secret, CORS list, or scheduler/realtime tuning is required.
 
 ### Using Docker Compose
-Use this template to set up Donetick with Docker Compose:
-```yaml
-services:
-  donetick:
-    image: donetick/donetick
-    container_name: donetick
-    restart: unless-stopped
-    ports:
-      - 2021:2021
-    volumes:
-      - ./data:/donetick-data
-      - ./config:/config
-    environment:
-      - DT_ENV=selfhosted
-      - DT_SQLITE_PATH=/donetick-data/donetick.db
-      - TZ=Etc/UTC
-    healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:2021/api/v1/health || exit 1
-      start_period: 1m
-      timeout: 5s
-      interval: 1m
-      retries: 3
-      
+
+The included Compose file builds Taskier, exposes port 2021, and mounts one
+persistent data volume:
+
+```bash
+docker compose up -d
 ```
 
+Persistent runtime state lives in `/data` inside the container:
+
+- `/data/taskier.db` — SQLite database
+- `/data/jwt-secret` — automatically generated session-signing secret
+- `/data/uploads` — local attachments
+
+The backend serves both the embedded frontend and `/api/...` from the same
+origin. On upgrades, keep the same data volume and restart the container.
+
+Configuration remains optional. Existing `DT_*` environment variables and
+`DT_ENV=selfhosted` YAML profiles remain compatible. Advanced users can set
+`TASKIER_DATA_DIR`, `TASKIER_CONFIG_FILE`, or use the minimal example in
+`config/taskier.example.yaml`; PostgreSQL and external integrations remain
+optional overrides.
+
+### Using Docker
+
+```bash
+docker build -t taskier .
+docker run -d --name taskier -p 2021:2021 -v taskier-data:/data taskier
+```
 
 ### Using the Binary
 1. **Download the latest release** from the [Releases](https://github.com/donetick/donetick/releases) page.
@@ -137,9 +115,9 @@ services:
    ```bash
    cd path/to/extracted-folder
    ```
-3. **Run Donetick:**
+3. **Run Taskier:**
    ```bash
-   DT_ENV=selfhosted ./donetick 
+   ./taskier
    ```
 
 ---
@@ -191,8 +169,7 @@ services:
    rm -rf ./frontend/dist
    cp -r ../donetick-frontend/dist ./frontend
    ```
-5. Set a valid JWT secret in `config/selfhosted.yaml`. It must be a 32 characters long string.
-6. Run the app locally:
+5. Run the app locally; configuration and JWT setup are automatic:
    ```bash
    go run .
    ```

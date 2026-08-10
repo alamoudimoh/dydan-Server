@@ -38,19 +38,19 @@ FROM alpine:latest
 # Install necessary CA certificates and timezone data
 RUN apk --no-cache add ca-certificates libc6-compat tzdata
 
-# Copy the binary and config folder from the builder stage
+# Copy the self-contained binary. The frontend is embedded at build time.
 COPY --from=builder /donetick /donetick
-COPY --from=builder /usr/src/app/config /config
 
-# Set environment variables; override at `docker run`/compose time to pick
-# the config file under /config (e.g. DT_ENV=selfhosted or DT_ENV=prod)
-ENV DT_ENV="selfhosted"
+# Taskier keeps its SQLite database, generated JWT secret, and local uploads
+# under one persistent directory. No configuration file is required.
+ENV TASKIER_DATA_DIR="/data"
+VOLUME ["/data"]
 
 # Expose the application port
 EXPOSE 2021
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:2021/health || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost:2021/api/v1/health || exit 1
 
 # Command to run the application
 CMD ["/donetick"]
