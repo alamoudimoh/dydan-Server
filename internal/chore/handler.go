@@ -157,6 +157,49 @@ func (h *Handler) GetChores(c *gin.Context) {
 	})
 }
 
+// GetCalendar returns a bounded, personal, read-only occurrence projection.
+func (h *Handler) GetCalendar(c *gin.Context) {
+	u, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
+		return
+	}
+	from, err := time.Parse(time.RFC3339, c.Query("from"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "from must be RFC3339"})
+		return
+	}
+	to, err := time.Parse(time.RFC3339, c.Query("to"))
+	if err != nil || !to.After(from) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "to must be RFC3339 and after from"})
+		return
+	}
+	if to.Sub(from) > 91*24*time.Hour {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "calendar range cannot exceed 90 days"})
+		return
+	}
+	timezone := u.Timezone
+	if timezone == "" {
+		timezone = "UTC"
+	}
+	if !utils.IsValidTimezone(timezone) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "configured timezone is invalid"})
+		return
+	}
+	chores, err := h.choreRepo.GetPersonalChores(c, u.CircleID, u.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve calendar"})
+		return
+	}
+	projection, err := GenerateCalendarProjection(c, chores, from.UTC(), to.UTC(), time.Now().UTC(), timezone)
+	if err != nil {
+		logging.FromContext(c).Error("Failed to project calendar", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to project calendar"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"res": projection})
+}
+
 // GetArchivedChores godoc
 //
 //	@Summary		Get archived chores
@@ -4608,6 +4651,7 @@ func Routes(router *gin.Engine, h *Handler, multiAuthMiddleware *auth.MultiAuthM
 	choresRoutes.Use(auth.ImpersonationMiddleware(h.uRepo, h.circleRepo))
 	{
 		choresRoutes.GET("/", h.GetChores)
+		choresRoutes.GET("/calendar", h.GetCalendar)
 		choresRoutes.GET("/archived", h.GetArchivedChores)
 		choresRoutes.GET("/history", h.GetChoresHistory)
 		choresRoutes.PUT("/", h.EditChore)
