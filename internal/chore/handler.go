@@ -128,6 +128,16 @@ func (h *Handler) GetChores(c *gin.Context) {
 	if c.Query("includeArchived") == "true" {
 		includeArchived = true
 	}
+	if c.Query("personal") == "true" {
+		chores, err := h.choreRepo.GetPersonalChores(c, u.CircleID, u.ID)
+		if err != nil {
+			logger.Error("Failed to retrieve personal chores", "error", err, "userID", u.ID, "circleID", u.CircleID)
+			c.JSON(500, gin.H{"error": "Failed to retrieve personal chores"})
+			return
+		}
+		c.JSON(200, gin.H{"res": chores})
+		return
+	}
 
 	chores, err := h.choreRepo.GetChores(c, u.CircleID, u.ID, includeArchived, nil, includeSubtasks)
 	if err != nil {

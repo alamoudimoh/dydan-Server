@@ -566,6 +566,34 @@ func (r *ChoreRepository) GetChores(c context.Context, circleID int, userID int,
 	return chores, nil
 }
 
+// GetPersonalChores returns only active work explicitly assigned to the user.
+// It deliberately derives both circle and user scope from the authenticated
+// caller in the handler; dashboard clients cannot select another member.
+func (r *ChoreRepository) GetPersonalChores(c context.Context, circleID int, userID int) ([]*chModel.Chore, error) {
+	var chores []*chModel.Chore
+	query := r.db.WithContext(c).
+		Preload("Assignees").
+		Preload("LabelsV2").
+		Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id").
+		Where("chores.circle_id = ? AND chores.is_active = ?", circleID, true).
+		Where("chores.assigned_to = ? OR chore_assignees.user_id = ?", userID, userID).
+		Group("chores.id").
+		Order("chores.next_due_date ASC, chores.id ASC")
+	if r.db.Migrator().HasTable(&mModel.ChoreSchedule{}) {
+		query = query.Preload("MeterSchedule")
+	}
+	if r.db.Migrator().HasTable(&mModel.UpdateReminder{}) {
+		query = query.Preload("MeterUpdateReminder")
+	}
+	if err := query.Find(&chores).Error; err != nil {
+		return nil, err
+	}
+	for _, chore := range chores {
+		r.populateMeterSchedule(c, chore)
+	}
+	return chores, nil
+}
+
 func (r *ChoreRepository) GetArchivedChores(c context.Context, circleID int, userID int) ([]*chModel.Chore, error) {
 	var chores []*chModel.Chore
 	if err := r.db.WithContext(c).
