@@ -1,9 +1,11 @@
 package chore
 
 import (
+	"strings"
 	"time"
 
 	chModel "donetick.com/core/internal/chore/model"
+	"donetick.com/core/internal/utils"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -25,6 +27,18 @@ func ChoreReqStructLevelValidation(sl validator.StructLevel) {
 
 func validateFrequencyLogic(sl validator.StructLevel, req ChoreReq) {
 	hasMetadata := req.FrequencyMetadata != nil
+	if hasMetadata {
+		if req.FrequencyMetadata.Timezone != "" {
+			if !utils.IsValidTimezone(req.FrequencyMetadata.Timezone) {
+				sl.ReportError(req.FrequencyMetadata.Timezone, "Timezone", "timezone", "timezone", "")
+			}
+		}
+		if req.FrequencyMetadata.Time != "" {
+			if _, err := time.Parse(time.RFC3339, req.FrequencyMetadata.Time); err != nil {
+				sl.ReportError(req.FrequencyMetadata.Time, "Time", "time", "datetime", "RFC3339")
+			}
+		}
+	}
 
 	switch req.FrequencyType {
 	case chModel.FrequencyTypeInterval:
@@ -33,7 +47,7 @@ func validateFrequencyLogic(sl validator.StructLevel, req ChoreReq) {
 			sl.ReportError(req.FrequencyMetadata, "Unit", "unit", "required_with_interval", "")
 		}
 		// Interval requires a frequency value
-		if req.Frequency == nil {
+		if req.Frequency == nil || *req.Frequency < 1 {
 			sl.ReportError(req.Frequency, "Frequency", "frequency", "required_with_interval", "")
 		}
 
@@ -41,6 +55,14 @@ func validateFrequencyLogic(sl validator.StructLevel, req ChoreReq) {
 		// Day of the week requires at least one specified day in the array
 		if !hasMetadata || len(req.FrequencyMetadata.Days) == 0 {
 			sl.ReportError(req.FrequencyMetadata, "Days", "days", "required_with_day_of_week", "")
+		} else {
+			validDays := map[string]bool{"sunday": true, "monday": true, "tuesday": true, "wednesday": true, "thursday": true, "friday": true, "saturday": true}
+			for _, day := range req.FrequencyMetadata.Days {
+				if day == nil || !validDays[strings.ToLower(*day)] {
+					sl.ReportError(req.FrequencyMetadata.Days, "Days", "days", "valid_weekdays", "")
+					break
+				}
+			}
 		}
 		// Only validate occurrences if a specific monthly or quarterly week pattern is requested
 		if hasMetadata && req.FrequencyMetadata.WeekPattern != nil {
@@ -57,6 +79,17 @@ func validateFrequencyLogic(sl validator.StructLevel, req ChoreReq) {
 		// Day of the month requires at least one specified month in the array
 		if !hasMetadata || len(req.FrequencyMetadata.Months) == 0 {
 			sl.ReportError(req.FrequencyMetadata, "Months", "months", "required_with_day_of_month", "")
+		} else {
+			validMonths := map[string]bool{}
+			for month := time.January; month <= time.December; month++ {
+				validMonths[strings.ToLower(month.String())] = true
+			}
+			for _, month := range req.FrequencyMetadata.Months {
+				if month == nil || !validMonths[strings.ToLower(*month)] {
+					sl.ReportError(req.FrequencyMetadata.Months, "Months", "months", "valid_months", "")
+					break
+				}
+			}
 		}
 		// The struct tag handles min=1, but the upper bound of 31 requires struct-level checking
 		if req.Frequency == nil || *req.Frequency > 31 {

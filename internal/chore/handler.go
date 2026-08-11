@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -841,6 +842,20 @@ func (h *Handler) EditChore(c *gin.Context) {
 	}
 
 	setEditChoreDefaults(&choreReq, oldChore)
+	if dueDate != nil && scheduleDefinitionsDiffer(oldChore, &choreReq) {
+		candidate := &chModel.Chore{
+			FrequencyType:       choreReq.FrequencyType,
+			Frequency:           *choreReq.Frequency,
+			FrequencyMetadataV2: choreReq.FrequencyMetadata,
+			IsRolling:           choreReq.IsRolling,
+		}
+		recomputed, err := InitialDueDate(c.Request.Context(), candidate, *dueDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		dueDate = recomputed
+	}
 
 	updatedChore := &chModel.Chore{ // TODO: Assignees are missing
 		ID:                     choreReq.ID,
@@ -1001,6 +1016,13 @@ func dueDatesDiffer(oldDueDate, newDueDate *time.Time) bool {
 		return oldDueDate != newDueDate
 	}
 	return !oldDueDate.Equal(*newDueDate)
+}
+
+func scheduleDefinitionsDiffer(oldChore *chModel.Chore, req *ChoreReq) bool {
+	return oldChore.FrequencyType != req.FrequencyType ||
+		oldChore.Frequency != *req.Frequency ||
+		oldChore.IsRolling != req.IsRolling ||
+		!reflect.DeepEqual(oldChore.FrequencyMetadataV2, req.FrequencyMetadata)
 }
 
 func (h *Handler) deleteChoreFiles(ctx *gin.Context, choreID int) {

@@ -9,18 +9,22 @@ import (
 	"time"
 
 	chModel "donetick.com/core/internal/chore/model"
-	"donetick.com/core/logging"
+	"donetick.com/core/internal/utils"
 )
 
 // InitialDueDate anchors a newly-created chore to an application start date.
 // Calendar-pattern chores use the same scheduler as completion rescheduling;
 // simple recurring and one-time chores begin on the selected start date.
 func InitialDueDate(ctx context.Context, chore *chModel.Chore, start time.Time) (*time.Time, error) {
-	start = start.UTC()
-	if chore.FrequencyMetadataV2 != nil && chore.FrequencyMetadataV2.Time != "" {
-		if configured, err := time.Parse(time.RFC3339, chore.FrequencyMetadataV2.Time); err == nil {
-			start = time.Date(start.Year(), start.Month(), start.Day(), configured.Hour(), configured.Minute(), configured.Second(), 0, time.UTC)
-		}
+	loc, err := recurrenceLocation(chore)
+	if err != nil {
+		return nil, err
+	}
+	start = start.In(loc)
+	if configured, ok, err := recurrenceClock(chore, loc); err != nil {
+		return nil, err
+	} else if ok {
+		start = time.Date(start.Year(), start.Month(), start.Day(), configured.Hour(), configured.Minute(), configured.Second(), 0, loc)
 	}
 	switch chore.FrequencyType {
 	case chModel.FrequencyTypeDayOfTheWeek, chModel.FrequencyTypeDayOfTheMonth:
@@ -28,7 +32,8 @@ func InitialDueDate(ctx context.Context, chore *chModel.Chore, start time.Time) 
 		chore.NextDueDate = &base
 		return scheduleNextDueDate(ctx, chore, base)
 	default:
-		return &start, nil
+		utc := start.UTC()
+		return &utc, nil
 	}
 }
 
@@ -37,34 +42,31 @@ func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDat
 		return nil, nil
 	}
 
+	loc, err := recurrenceLocation(chore)
+	if err != nil {
+		return nil, err
+	}
+
 	var baseDate time.Time
 	if chore.NextDueDate != nil {
-		baseDate = chore.NextDueDate.UTC()
+		baseDate = chore.NextDueDate.In(loc)
 	} else {
-		baseDate = completedDate.UTC()
+		baseDate = completedDate.In(loc)
 	}
 	if chore.IsRolling {
-		baseDate = completedDate.UTC()
+		baseDate = completedDate.In(loc)
 	}
 
-	// Handle time-based frequencies, ensure time is in the future
+	// Calendar recurrences preserve the configured wall-clock time in their IANA
+	// timezone. Absolute due timestamps are converted back to UTC before storage.
 	if chore.FrequencyType == "day_of_the_month" || chore.FrequencyType == "days_of_the_week" || chore.FrequencyType == "interval" {
-		t, err := time.Parse(time.RFC3339, chore.FrequencyMetadataV2.Time)
+		t, ok, err := recurrenceClock(chore, loc)
 		if err != nil {
-			log := logging.FromContext(ctx)
-			log.Error("error parsing time in frequency metadata", "error", err, "chore_id", chore.ID)
-			log.Warn("falling back to current time for next due date calculation")
-
-			// fallback to use the next due date time if available:
-			if chore.NextDueDate != nil {
-				t = chore.NextDueDate.UTC()
-			} else {
-				t = time.Now().UTC()
-			}
-
+			return nil, err
 		}
-		t = t.UTC()
-		baseDate = time.Date(baseDate.Year(), baseDate.Month(), baseDate.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.UTC)
+		if ok {
+			baseDate = time.Date(baseDate.Year(), baseDate.Month(), baseDate.Day(), t.Hour(), t.Minute(), t.Second(), 0, loc)
+		}
 	}
 
 	switch chore.FrequencyType {
@@ -73,14 +75,17 @@ func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDat
 	case "weekly":
 		baseDate = baseDate.AddDate(0, 0, 7)
 	case "monthly":
-		baseDate = baseDate.AddDate(0, 1, 0)
+		baseDate = addMonthsClamped(baseDate, 1)
 	case "yearly":
-		baseDate = baseDate.AddDate(1, 0, 0)
+		baseDate = addYearsClamped(baseDate, 1)
 	case "adaptive":
 		// TODO: Implement a more sophisticated adaptive logic
 		diff := completedDate.UTC().Sub(chore.NextDueDate.UTC())
 		baseDate = completedDate.UTC().Add(diff)
 	case "interval":
+		if chore.FrequencyMetadataV2 == nil || chore.FrequencyMetadataV2.Unit == nil || chore.Frequency <= 0 {
+			return nil, fmt.Errorf("interval requires a positive frequency and unit")
+		}
 		switch *chore.FrequencyMetadataV2.Unit {
 		case "hours":
 			baseDate = baseDate.Add(time.Duration(chore.Frequency) * time.Hour)
@@ -89,9 +94,9 @@ func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDat
 		case "weeks":
 			baseDate = baseDate.AddDate(0, 0, chore.Frequency*7)
 		case "months":
-			baseDate = baseDate.AddDate(0, chore.Frequency, 0)
+			baseDate = addMonthsClamped(baseDate, chore.Frequency)
 		case "years":
-			baseDate = baseDate.AddDate(chore.Frequency, 0, 0)
+			baseDate = addYearsClamped(baseDate, chore.Frequency)
 		default:
 			return nil, fmt.Errorf("invalid frequency unit: %s", *chore.FrequencyMetadataV2.Unit)
 		}
@@ -105,28 +110,14 @@ func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDat
 
 		// Default to every_week if no pattern specified
 		if weekPattern == nil || *weekPattern == "" || *weekPattern == "every_week" {
-			// Get timezone for calculations - prefer chore timezone, fallback to UTC
-			var loc *time.Location
-			var err error
-			if chore.FrequencyMetadataV2.Timezone != "" {
-				loc, err = time.LoadLocation(chore.FrequencyMetadataV2.Timezone)
-				if err != nil {
-					log := logging.FromContext(ctx)
-					log.Error("error loading timezone from frequency metadata", "error", err, "timezone", chore.FrequencyMetadataV2.Timezone, "chore_id", chore.ID)
-					loc = time.UTC // fallback to UTC
-				}
-			} else {
-				loc = time.UTC
-			}
-
-			// Convert baseDate to the target timezone for weekday calculations
-			baseDateInTimezone := baseDate.In(loc)
-
 			// Find the next valid day of the week in the target timezone
 			for i := 1; i <= 7; i++ {
-				nextDueDateInTimezone := baseDateInTimezone.AddDate(0, 0, i)
+				nextDueDateInTimezone := baseDate.AddDate(0, 0, i)
 				nextDay := strings.ToLower(nextDueDateInTimezone.Weekday().String())
 				for _, day := range chore.FrequencyMetadataV2.Days {
+					if day == nil {
+						continue
+					}
 					if strings.ToLower(*day) == nextDay {
 						// Convert back to UTC for storage
 						nextDueDateUTC := nextDueDateInTimezone.UTC()
@@ -162,7 +153,7 @@ func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDat
 		// if task due every 15 of jan, and you completed it on the 13 of jan( before the due date ) if we schedule from due date
 		// we will go back to 15 of jan. so we need to pick the highest between the two dates specifically for day of the month
 		if chore.IsRolling && chore.NextDueDate != nil {
-			secondAfterDueDate := chore.NextDueDate.UTC().Add(time.Second)
+			secondAfterDueDate := chore.NextDueDate.In(loc).Add(time.Second)
 			if completedDate.Before(secondAfterDueDate) {
 				baseDate = secondAfterDueDate
 			}
@@ -191,15 +182,18 @@ func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDat
 			}
 
 			// Ensure the target day exists in the month (e.g., Feb 30th is invalid)
-			lastDayOfMonth := time.Date(nextDueDate.Year(), time.Month(nextMonth+1), 0, 0, 0, 0, 0, time.UTC).Day()
+			lastDayOfMonth := daysInMonth(nextDueDate.Year(), time.Month(nextMonth), loc)
 			targetDay := chore.Frequency
 			if targetDay > lastDayOfMonth {
 				targetDay = lastDayOfMonth
 			}
 
-			nextDueDate = time.Date(nextDueDate.Year(), time.Month(nextMonth), targetDay, nextDueDate.Hour(), nextDueDate.Minute(), 0, 0, time.UTC)
+			nextDueDate = time.Date(nextDueDate.Year(), time.Month(nextMonth), targetDay, nextDueDate.Hour(), nextDueDate.Minute(), 0, 0, loc)
 
 			for _, month := range chore.FrequencyMetadataV2.Months {
+				if month == nil {
+					continue
+				}
 				if strings.EqualFold(*month, time.Month(nextMonth).String()) {
 					return &nextDueDate, nil
 				}
@@ -210,7 +204,60 @@ func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDat
 		return nil, fmt.Errorf("invalid frequency type: %s", chore.FrequencyType)
 	}
 
-	return &baseDate, nil
+	utc := baseDate.UTC()
+	return &utc, nil
+}
+
+func recurrenceLocation(chore *chModel.Chore) (*time.Location, error) {
+	if chore.FrequencyMetadataV2 == nil || chore.FrequencyMetadataV2.Timezone == "" {
+		return time.UTC, nil
+	}
+	if !utils.IsValidTimezone(chore.FrequencyMetadataV2.Timezone) {
+		// Legacy rows predate IANA validation. Keep them schedulable in UTC;
+		// current API writes reject the same value before persistence.
+		return time.UTC, nil
+	}
+	loc, err := time.LoadLocation(chore.FrequencyMetadataV2.Timezone)
+	if err != nil {
+		return nil, fmt.Errorf("invalid recurrence timezone %q", chore.FrequencyMetadataV2.Timezone)
+	}
+	return loc, nil
+}
+
+func recurrenceClock(chore *chModel.Chore, loc *time.Location) (time.Time, bool, error) {
+	if chore.FrequencyMetadataV2 == nil || chore.FrequencyMetadataV2.Time == "" {
+		return time.Time{}, false, nil
+	}
+	t, err := time.Parse(time.RFC3339, chore.FrequencyMetadataV2.Time)
+	if err != nil {
+		if chore.NextDueDate != nil {
+			return chore.NextDueDate.In(loc), true, nil
+		}
+		return time.Time{}, false, fmt.Errorf("invalid recurrence time: use RFC3339")
+	}
+	return t.In(loc), true, nil
+}
+
+func daysInMonth(year int, month time.Month, loc *time.Location) int {
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, loc).Day()
+}
+
+func addMonthsClamped(t time.Time, months int) time.Time {
+	first := time.Date(t.Year(), t.Month(), 1, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location()).AddDate(0, months, 0)
+	day := t.Day()
+	if last := daysInMonth(first.Year(), first.Month(), first.Location()); day > last {
+		day = last
+	}
+	return time.Date(first.Year(), first.Month(), day, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+}
+
+func addYearsClamped(t time.Time, years int) time.Time {
+	year := t.Year() + years
+	day := t.Day()
+	if last := daysInMonth(year, t.Month(), t.Location()); day > last {
+		day = last
+	}
+	return time.Date(year, t.Month(), day, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
 }
 
 // getOccurrences returns the occurrences from metadata, supporting both new and legacy formats
@@ -219,6 +266,9 @@ func getOccurrences(metadata *chModel.FrequencyMetadata) []string {
 	if len(metadata.Occurrences) > 0 {
 		occurrences := make([]string, len(metadata.Occurrences))
 		for i, occ := range metadata.Occurrences {
+			if occ == nil {
+				continue
+			}
 			if *occ == -1 {
 				occurrences[i] = "last"
 			} else {
@@ -246,6 +296,9 @@ func findNextDueDateForOccurrencePattern(baseDate time.Time, days []*string, occ
 	// Convert days to a map for faster lookup
 	dayMap := make(map[string]bool)
 	for _, day := range days {
+		if day == nil {
+			continue
+		}
 		dayMap[strings.ToLower(*day)] = true
 	}
 
