@@ -26,6 +26,7 @@ import (
 	mModel "donetick.com/core/internal/meter/model"
 	mRepo "donetick.com/core/internal/meter/repo"
 	"donetick.com/core/internal/notifier"
+	nModel "donetick.com/core/internal/notifier/model"
 	nRepo "donetick.com/core/internal/notifier/repo"
 	nps "donetick.com/core/internal/notifier/service"
 	fcmService "donetick.com/core/internal/notifier/service/fcm"
@@ -51,6 +52,7 @@ type Handler struct {
 	notifier        *notifier.Notifier
 	nPlanner        *nps.NotificationPlanner
 	nRepo           *nRepo.NotificationRepository
+	inbox           *nps.InboxService
 	tRepo           *tRepo.ThingRepository
 	meterRepo       *mRepo.Repository
 	lRepo           *lRepo.LabelRepository
@@ -72,6 +74,7 @@ func NewHandler(cr *chRepo.ChoreRepository, circleRepo *cRepo.CircleRepository, 
 	dr *dRepo.DeviceRepository,
 	stoRepo *storageRepo.StorageRepository,
 	signer storage.URLSigner,
+	inbox *nps.InboxService,
 	rts *realtime.RealTimeService) *Handler {
 	return &Handler{
 		choreRepo:       cr,
@@ -81,6 +84,7 @@ func NewHandler(cr *chRepo.ChoreRepository, circleRepo *cRepo.CircleRepository, 
 		notifier:        nt,
 		nPlanner:        np,
 		nRepo:           nRepo,
+		inbox:           inbox,
 		tRepo:           tRepo,
 		meterRepo:       meterRepo,
 		lRepo:           lRepo,
@@ -2384,6 +2388,14 @@ func (h *Handler) CompleteChore(c *gin.Context) {
 			})
 			return
 		}
+		for _, member := range circleUsers {
+			if member.IsActive && member.UserID != completedBy && (member.Role == circle.UserRoleAdmin || member.Role == circle.UserRoleManager) {
+				entityID := chore.ID
+				if h.inbox != nil {
+					_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: actualUser.CircleID, UserID: member.UserID, Type: "task_approval_required", Severity: "warning", Title: "Task completion needs approval", Message: chore.Name, EntityType: "chore", EntityID: &entityID, DedupKey: fmt.Sprintf("task_approval_required:%d:%d:%s", chore.ID, member.UserID, completedDate.UTC().Format(time.RFC3339Nano))})
+				}
+			}
+		}
 
 		updatedChore, err := h.choreRepo.GetChore(c, id, effectiveUser.ID, actualUser.CircleID)
 		if err != nil {
@@ -3621,6 +3633,10 @@ func (h *Handler) ApproveChore(c *gin.Context) {
 		})
 		return
 	}
+	entityID := chore.ID
+	if h.inbox != nil {
+		_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: currentUser.CircleID, UserID: completedBy, Type: "task_approved", Severity: "success", Title: "Task completion approved", Message: chore.Name, EntityType: "chore", EntityID: &entityID, DedupKey: fmt.Sprintf("task_approved:%d:%d:%d", chore.ID, completedBy, pendingHistory.ID)})
+	}
 
 	updatedChore, err := h.choreRepo.GetChore(c, id, currentUser.ID, currentUser.CircleID)
 	if err != nil {
@@ -3752,6 +3768,16 @@ func (h *Handler) RejectChore(c *gin.Context) {
 		})
 		return
 	}
+	allHistory, historyErr := h.choreRepo.GetChoreHistory(c, chore.ID)
+	var rejectedHistory *chModel.ChoreHistory
+	if historyErr == nil {
+		for _, entry := range allHistory {
+			if entry.Status == chModel.ChoreHistoryStatusPendingApproval {
+				rejectedHistory = entry
+				break
+			}
+		}
+	}
 
 	// Reject the chore
 	var note *string
@@ -3770,6 +3796,12 @@ func (h *Handler) RejectChore(c *gin.Context) {
 			"error": "Error rejecting chore",
 		})
 		return
+	}
+	if rejectedHistory != nil {
+		entityID := chore.ID
+		if h.inbox != nil {
+			_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: currentUser.CircleID, UserID: rejectedHistory.CompletedBy, Type: "task_rejected", Severity: "danger", Title: "Task completion rejected", Message: chore.Name, EntityType: "chore", EntityID: &entityID, DedupKey: fmt.Sprintf("task_rejected:%d:%d:%d", chore.ID, rejectedHistory.CompletedBy, rejectedHistory.ID)})
+		}
 	}
 
 	updatedChore, err := h.choreRepo.GetChore(c, id, currentUser.ID, currentUser.CircleID)

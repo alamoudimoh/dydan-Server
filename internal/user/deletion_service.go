@@ -107,6 +107,7 @@ func (s *DeletionService) deleteUserAccount(ctx context.Context, userID int, tra
 			{"password_reset_tokens", s.countPasswordResetTokens},
 			{"user_notification_targets", s.countNotificationTargets},
 			{"notifications", s.countNotifications},
+			{"inbox_notifications", s.countInboxNotifications},
 			{"time_sessions", s.countTimeSessions},
 			{"chore_history", s.countChoreHistory},
 			{"chore_assignees", s.countChoreAssignees},
@@ -183,6 +184,7 @@ func (s *DeletionService) deleteUserAccount(ctx context.Context, userID int, tra
 		{"password_reset_tokens", s.deletePasswordResetTokens},
 		{"user_notification_targets", s.deleteNotificationTargets},
 		{"notifications", s.deleteNotifications},
+		{"inbox_notifications", s.deleteInboxNotifications},
 		{"time_sessions", s.deleteTimeSessions},
 		{"chore_history", s.deleteChoreHistory},
 		{"chore_assignees", s.deleteChoreAssignees},
@@ -339,6 +341,10 @@ func (s *DeletionService) deleteNotifications(tx *gorm.DB, userID int) (int, err
 	return s.safeDelete(tx, "DELETE FROM notifications WHERE user_id = ?", userID)
 }
 
+func (s *DeletionService) deleteInboxNotifications(tx *gorm.DB, userID int) (int, error) {
+	return s.safeDelete(tx, "DELETE FROM inbox_notifications WHERE user_id = ?", userID)
+}
+
 func (s *DeletionService) deleteTimeSessions(tx *gorm.DB, userID int) (int, error) {
 	return s.safeDelete(tx, "DELETE FROM time_sessions WHERE chore_id IN (SELECT id FROM chores WHERE created_by = ?) OR updated_by = ?", userID, userID)
 }
@@ -442,6 +448,10 @@ func (s *DeletionService) countNotificationTargets(tx *gorm.DB, userID int) (int
 
 func (s *DeletionService) countNotifications(tx *gorm.DB, userID int) (int, error) {
 	return s.safeCount(tx, "SELECT COUNT(*) FROM notifications WHERE user_id = ?", userID)
+}
+
+func (s *DeletionService) countInboxNotifications(tx *gorm.DB, userID int) (int, error) {
+	return s.safeCount(tx, "SELECT COUNT(*) FROM inbox_notifications WHERE user_id = ?", userID)
 }
 
 func (s *DeletionService) countTimeSessions(tx *gorm.DB, userID int) (int, error) {

@@ -108,7 +108,10 @@ func main() {
 		fx.Provide(device.NewHandler),
 
 		fx.Provide(nRepo.NewNotificationRepository),
+		fx.Provide(nRepo.NewInboxRepository),
+		fx.Provide(notifier.NewInboxHandler),
 		fx.Provide(nps.NewNotificationPlanner),
+		fx.Provide(nps.NewInboxService),
 
 		// add notifier
 		fx.Provide(pushover.NewPushover),
@@ -224,6 +227,7 @@ func main() {
 			docs.Routes,
 			resource.Routes,
 			reward.Routes,
+			notifier.InboxRoutes,
 			// backup.Routes,
 			payment.Routes,
 			payment.Webhooks,

@@ -20,6 +20,21 @@ type Notification struct {
 	CreatedAt    time.Time            `json:"created_at" gorm:"column:created_at"`
 	RawEvent     JSONB                `json:"raw_event" gorm:"column:raw_event;type:jsonb"`
 }
+
+type InboxNotification struct {
+	ID         int        `json:"id" gorm:"primaryKey"`
+	CircleID   int        `json:"circleId" gorm:"column:circle_id;not null;index:idx_inbox_recipient_created,priority:2"`
+	UserID     int        `json:"userId" gorm:"column:user_id;not null;index:idx_inbox_recipient_created,priority:1;index:idx_inbox_unread,priority:1"`
+	Type       string     `json:"type" gorm:"column:type;not null"`
+	Severity   string     `json:"severity" gorm:"column:severity;not null"`
+	Title      string     `json:"title" gorm:"column:title;not null"`
+	Message    string     `json:"message" gorm:"column:message"`
+	EntityType string     `json:"entityType" gorm:"column:entity_type"`
+	EntityID   *int       `json:"entityId,omitempty" gorm:"column:entity_id"`
+	DedupKey   string     `json:"-" gorm:"column:dedup_key;not null;uniqueIndex"`
+	ReadAt     *time.Time `json:"readAt,omitempty" gorm:"column:read_at;index:idx_inbox_unread,priority:2"`
+	CreatedAt  time.Time  `json:"createdAt" gorm:"column:created_at;not null;index:idx_inbox_recipient_created,priority:3,sort:desc"`
+}
 type NotificationDetails struct {
 	Notification
 	WebhookURL *string `json:"webhook_url" gorm:"column:webhook_url;<-:null"` // read-only, will only be used if webhook enabled

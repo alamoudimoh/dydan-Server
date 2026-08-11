@@ -23,7 +23,7 @@ func rewardContext(method, path, body string, userID, circleID int) (*gin.Contex
 func TestHandlerAuthorizationAndRequesterIdentity(t *testing.T) {
 	repo, db := testRepo(t)
 	seed(t, db)
-	h := NewHandler(repo, cRepo.NewCircleRepository(db))
+	h := NewHandler(repo, cRepo.NewCircleRepository(db), nil)
 	rw := Reward{CircleID: 10, Name: "Dinner", CostPoints: 100, IsActive: true, CreatedBy: 1}
 	repo.Create(t.Context(), &rw)
 	c, w := rewardContext(http.MethodPost, "/rewards", `{"name":"Forbidden","costPoints":1}`, 2, 10)

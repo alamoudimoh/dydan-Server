@@ -9,6 +9,7 @@ import (
 	chRepo "donetick.com/core/internal/chore/repo"
 	"donetick.com/core/internal/events"
 	nRepo "donetick.com/core/internal/notifier/repo"
+	nService "donetick.com/core/internal/notifier/service"
 	uRepo "donetick.com/core/internal/user/repo"
 	"donetick.com/core/logging"
 )
@@ -26,16 +27,18 @@ type Scheduler struct {
 	notifier         *Notifier
 	eventsProducer   *events.EventsProducer
 	notificationRepo *nRepo.NotificationRepository
+	inbox            *nService.InboxService
 	SchedulerJobs    config.SchedulerConfig
 }
 
-func NewScheduler(cfg *config.Config, ur *uRepo.UserRepository, cr *chRepo.ChoreRepository, n *Notifier, nr *nRepo.NotificationRepository, ep *events.EventsProducer) *Scheduler {
+func NewScheduler(cfg *config.Config, ur *uRepo.UserRepository, cr *chRepo.ChoreRepository, n *Notifier, nr *nRepo.NotificationRepository, inbox *nService.InboxService, ep *events.EventsProducer) *Scheduler {
 	return &Scheduler{
 		choreRepo:        cr,
 		userRepo:         ur,
 		stopChan:         make(chan bool),
 		notifier:         n,
 		notificationRepo: nr,
+		inbox:            inbox,
 		eventsProducer:   ep,
 		SchedulerJobs:    cfg.SchedulerJobs,
 	}
@@ -61,6 +64,9 @@ func (s *Scheduler) cleanupSentNotifications(c context.Context) (time.Duration, 
 func (s *Scheduler) loadAndSendNotificationJob(c context.Context) (time.Duration, error) {
 	log := logging.FromContext(c)
 	startTime := time.Now().UTC()
+	if err := s.inbox.GenerateScheduled(c, startTime); err != nil {
+		log.Error("Error generating in-app notifications", "error", err)
+	}
 	getAllPendingNotifications, err := s.notificationRepo.GetPendingNotification(c, time.Minute*900)
 	log.Debug("Getting pending notifications", " count ", len(getAllPendingNotifications))
 

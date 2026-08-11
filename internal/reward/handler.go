@@ -9,16 +9,19 @@ import (
 	"donetick.com/core/internal/auth"
 	cModel "donetick.com/core/internal/circle/model"
 	cRepo "donetick.com/core/internal/circle/repo"
+	nModel "donetick.com/core/internal/notifier/model"
+	nService "donetick.com/core/internal/notifier/service"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	repo    *Repository
 	circles *cRepo.CircleRepository
+	inbox   *nService.InboxService
 }
 
-func NewHandler(repo *Repository, circles *cRepo.CircleRepository) *Handler {
-	return &Handler{repo: repo, circles: circles}
+func NewHandler(repo *Repository, circles *cRepo.CircleRepository, inbox *nService.InboxService) *Handler {
+	return &Handler{repo: repo, circles: circles, inbox: inbox}
 }
 func current(c *gin.Context) (int, int, bool) {
 	u, ok := auth.CurrentUser(c)
@@ -157,6 +160,16 @@ func (h *Handler) request(c *gin.Context) {
 		writeErr(c, e)
 		return
 	}
+	if h.inbox != nil {
+		if members, err := h.circles.GetCircleUsers(c, cid); err == nil {
+			for _, member := range members {
+				if member.IsActive && member.Role == cModel.UserRoleAdmin {
+					id := r.ID
+					_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: cid, UserID: member.UserID, Type: "reward_request_pending", Severity: "warning", Title: "New reward request", Message: r.RewardNameSnapshot + " · " + strconv.Itoa(r.CostPointsSnapshot) + " pts", EntityType: "reward_request", EntityID: &id, DedupKey: "reward_request_pending:" + strconv.Itoa(r.ID) + ":" + strconv.Itoa(member.UserID)})
+				}
+			}
+		}
+	}
 	c.JSON(201, gin.H{"res": r})
 }
 func (h *Handler) my(c *gin.Context) {
@@ -210,6 +223,14 @@ func (h *Handler) resolve(c *gin.Context, status RequestStatus) {
 	if e != nil {
 		writeErr(c, e)
 		return
+	}
+	typeName, severity, title := "reward_request_rejected", "danger", r.RewardNameSnapshot+" request rejected"
+	if status == RequestStatusApproved {
+		typeName, severity, title = "reward_request_approved", "success", r.RewardNameSnapshot+" approved"
+	}
+	entityID := r.ID
+	if h.inbox != nil {
+		_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: cid, UserID: r.UserID, Type: typeName, Severity: severity, Title: title, Message: strconv.Itoa(r.CostPointsSnapshot) + " pts", EntityType: "reward_request", EntityID: &entityID, DedupKey: typeName + ":" + strconv.Itoa(r.ID) + ":" + strconv.Itoa(r.UserID)})
 	}
 	c.JSON(200, gin.H{"res": r})
 }
