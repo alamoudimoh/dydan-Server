@@ -36,7 +36,7 @@ func TestMeterAPIRejectsCrossCircleReadUpdateAndHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	repository := mRepo.NewRepository(db)
-	handler := NewHandler(repository)
+	handler := NewHandler(repository, nil)
 	now := time.Now().UTC()
 	meter := &mModel.Meter{CircleID: 1, CreatedBy: 1, Name: "Circle 1 Odometer", Unit: mModel.UnitKilometers, CurrentReading: 80000, CreatedAt: now, UpdatedAt: now}
 	if err := repository.Create(t.Context(), meter, 1); err != nil {

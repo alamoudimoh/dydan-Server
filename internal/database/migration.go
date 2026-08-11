@@ -63,6 +63,7 @@ func Migration(db *gorm.DB) error {
 		mModel.Meter{},
 		mModel.Reading{},
 		mModel.ChoreSchedule{},
+		mModel.UpdateReminder{},
 		stModel.SubTask{},
 		storageModel.StorageFile{},
 		storageModel.StorageUsage{},

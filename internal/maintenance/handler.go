@@ -267,8 +267,14 @@ func (h *Handler) Detail(c *gin.Context) {
 
 func (h *Handler) buildDetail(c *gin.Context, asset tModel.Thing, circleID int) (assetDetail, error) {
 	d := assetDetail{Thing: asset, Meters: []mModel.Meter{}, Maintenance: []maintenanceItem{}, History: []serviceHistory{}, Status: "all_good"}
-	if err := h.db.WithContext(c).Where("thing_id = ? AND circle_id = ?", asset.ID, circleID).Order("name").Find(&d.Meters).Error; err != nil {
+	allMeters, err := mRepo.NewRepository(h.db).List(c, circleID)
+	if err != nil {
 		return d, err
+	}
+	for _, meter := range allMeters {
+		if meter.ThingID != nil && *meter.ThingID == asset.ID {
+			d.Meters = append(d.Meters, meter)
+		}
 	}
 	var chores []chModel.Chore
 	if err := h.db.WithContext(c).Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").Where("tc.thing_id = ? AND chores.circle_id = ? AND chores.is_active = ?", asset.ID, circleID, true).Preload("MeterSchedule").Find(&chores).Error; err != nil {
@@ -296,6 +302,10 @@ func (h *Handler) buildDetail(c *gin.Context, asset tModel.Thing, circleID int) 
 		if item.DueReason != "" {
 			item.Status = "due"
 			d.Status = "attention"
+		} else if item.MeterSchedule != nil && item.MeterSchedule.ApproachingByMeter {
+			item.Status = "approaching"
+			d.Status = "approaching"
+			hasUpcoming = true
 		} else {
 			hasUpcoming = true
 		}
@@ -344,14 +354,15 @@ func (h *Handler) Center(c *gin.Context) {
 	}
 	details := make([]assetDetail, 0, len(assets))
 	due := []maintenanceItem{}
+	approaching := []maintenanceItem{}
 	upcoming := []maintenanceItem{}
 	assetIndex := make(map[int]int, len(assets))
 	for _, asset := range assets {
 		assetIndex[asset.ID] = len(details)
 		details = append(details, assetDetail{Thing: asset, Meters: []mModel.Meter{}, Maintenance: []maintenanceItem{}, History: []serviceHistory{}, Status: "all_good"})
 	}
-	var meters []mModel.Meter
-	if err := h.db.WithContext(c).Where("circle_id = ?", circleID).Order("name").Find(&meters).Error; err != nil {
+	meters, err := mRepo.NewRepository(h.db).List(c, circleID)
+	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve maintenance"})
 		return
 	}
@@ -413,6 +424,12 @@ func (h *Handler) Center(c *gin.Context) {
 			item.Status = "due"
 			details[index].Status = "attention"
 			due = append(due, item)
+		} else if item.MeterSchedule != nil && item.MeterSchedule.ApproachingByMeter {
+			item.Status = "approaching"
+			if details[index].Status != "attention" {
+				details[index].Status = "approaching"
+			}
+			approaching = append(approaching, item)
 		} else {
 			if details[index].Status == "all_good" {
 				details[index].Status = "upcoming"
@@ -440,7 +457,7 @@ func (h *Handler) Center(c *gin.Context) {
 		}
 		return a.Before(*b)
 	})
-	c.JSON(200, gin.H{"res": gin.H{"due": due, "upcoming": upcoming, "assets": details}})
+	c.JSON(200, gin.H{"res": gin.H{"due": due, "approaching": approaching, "upcoming": upcoming, "assets": details}})
 }
 
 func Routes(router *gin.Engine, h *Handler, middleware *auth.MultiAuthMiddleware) {

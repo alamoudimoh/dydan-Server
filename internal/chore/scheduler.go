@@ -208,6 +208,12 @@ func scheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDat
 	return &utc, nil
 }
 
+// ScheduleNextDueDate exposes the authoritative recurrence calculation to
+// specialized recurring chore workflows.
+func ScheduleNextDueDate(ctx context.Context, chore *chModel.Chore, completedDate time.Time) (*time.Time, error) {
+	return scheduleNextDueDate(ctx, chore, completedDate)
+}
+
 func recurrenceLocation(chore *chModel.Chore) (*time.Location, error) {
 	if chore.FrequencyMetadataV2 == nil || chore.FrequencyMetadataV2.Timezone == "" {
 		return time.UTC, nil

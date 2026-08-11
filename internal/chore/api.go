@@ -287,6 +287,10 @@ func (h *API) CompleteChore(c *gin.Context) {
 		})
 		return
 	}
+	if chore.MeterUpdateReminder != nil {
+		c.JSON(409, gin.H{"error": "A meter reading is required to complete this update task"})
+		return
+	}
 
 	// user need to be assigned to the chore to complete it
 	circleUsers, err := h.circleRepo.GetCircleUsers(c, currentUser.CircleID)

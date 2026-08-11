@@ -68,6 +68,7 @@ type Chore struct {
 	UpdatedBy              int                        `json:"updatedBy" gorm:"column:updated_by"`                                                     // Who last updated the chore
 	ThingChore             *tModel.ThingChore         `json:"thingChore" gorm:"foreignkey:chore_id;references:id;<-:false"`                           // ThingChore relationship
 	MeterSchedule          *mModel.ChoreSchedule      `json:"meterSchedule,omitempty" gorm:"foreignKey:ChoreID;references:ID"`
+	MeterUpdateReminder    *mModel.UpdateReminder     `json:"meterUpdateReminder,omitempty" gorm:"foreignKey:ChoreID;references:ID"`
 	Status                 Status                     `json:"status" gorm:"column:status"`                                 //
 	Priority               int                        `json:"priority" gorm:"column:priority"`                             //
 	CompletionWindow       *int                       `json:"completionWindow,omitempty" gorm:"column:completion_window"`  // Number seconds before the chore is due that it can be completed
@@ -197,6 +198,7 @@ type ChoreDetail struct {
 	SyncVersion         int64                      `json:"syncVersion" gorm:"column:sync_version"`
 	Attachments         []storageModel.StorageFile `json:"attachments,omitempty" gorm:"-"`
 	MeterSchedule       *mModel.ChoreSchedule      `json:"meterSchedule,omitempty" gorm:"-"`
+	MeterUpdateReminder *mModel.UpdateReminder     `json:"meterUpdateReminder,omitempty" gorm:"-"`
 }
 
 type ChoreLabels struct {

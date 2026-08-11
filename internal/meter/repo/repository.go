@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -27,14 +28,64 @@ func (r *Repository) Create(ctx context.Context, meter *mModel.Meter, actorID in
 
 func (r *Repository) Get(ctx context.Context, id, circleID int) (*mModel.Meter, error) {
 	var meter mModel.Meter
-	err := r.db.WithContext(ctx).Where("id = ? AND circle_id = ?", id, circleID).First(&meter).Error
+	query := r.db.WithContext(ctx)
+	if r.db.Migrator().HasTable(&mModel.UpdateReminder{}) {
+		query = query.Preload("UpdateReminder")
+	}
+	err := query.Where("id = ? AND circle_id = ?", id, circleID).First(&meter).Error
+	r.populateReminder(ctx, &meter)
 	return &meter, err
 }
 
 func (r *Repository) List(ctx context.Context, circleID int) ([]mModel.Meter, error) {
 	var meters []mModel.Meter
-	err := r.db.WithContext(ctx).Where("circle_id = ?", circleID).Order("name").Find(&meters).Error
+	query := r.db.WithContext(ctx)
+	if r.db.Migrator().HasTable(&mModel.UpdateReminder{}) {
+		query = query.Preload("UpdateReminder")
+	}
+	err := query.Where("circle_id = ?", circleID).Order("name").Find(&meters).Error
+	for i := range meters {
+		r.populateReminder(ctx, &meters[i])
+	}
 	return meters, err
+}
+
+func (r *Repository) populateReminder(ctx context.Context, meter *mModel.Meter) {
+	if meter.UpdateReminder == nil {
+		return
+	}
+	var row struct {
+		NextDueDate     *time.Time
+		IsActive        bool
+		FrequencyType   string
+		Frequency       int
+		FrequencyMetaV2 []byte
+		AssignedTo      *int
+	}
+	if r.db.WithContext(ctx).Table("chores").Select("next_due_date, is_active, frequency_type, frequency, frequency_meta_v2, assigned_to").Where("id = ? AND circle_id = ?", meter.UpdateReminder.ChoreID, meter.CircleID).Scan(&row).Error != nil || !row.IsActive {
+		meter.UpdateReminder = nil
+		return
+	}
+	meter.UpdateReminder.NextUpdateDue = row.NextDueDate
+	meter.UpdateReminder.FrequencyType = row.FrequencyType
+	meter.UpdateReminder.Frequency = row.Frequency
+	meter.UpdateReminder.AssignedTo = row.AssignedTo
+	if len(row.FrequencyMetaV2) > 0 {
+		var metadata interface{}
+		if json.Unmarshal(row.FrequencyMetaV2, &metadata) == nil {
+			meter.UpdateReminder.FrequencyMetadata = metadata
+		}
+	}
+	meter.UpdateReminder.UpdateStatus = "fresh"
+	if row.NextDueDate != nil {
+		now := time.Now().UTC()
+		if !row.NextDueDate.After(now) {
+			meter.UpdateReminder.UpdateStatus = "update_due"
+		}
+		if now.After(row.NextDueDate.Add(24 * time.Hour)) {
+			meter.UpdateReminder.UpdateStatus = "overdue"
+		}
+	}
 }
 
 func (r *Repository) UpdateMetadata(ctx context.Context, id, circleID int, name string, unit mModel.Unit) error {
@@ -100,7 +151,7 @@ func (r *Repository) UpsertSchedule(ctx context.Context, choreID, circleID int, 
 	if err := r.db.WithContext(ctx).Where("chore_id = ?", choreID).First(&existing).Error; err == nil && existing.MeterID == meter.ID {
 		baseline = existing.Baseline
 	}
-	s := mModel.ChoreSchedule{ChoreID: choreID, MeterID: meter.ID, Interval: req.Interval, Baseline: baseline, CalendarDueDate: chore.NextDueDate}
+	s := mModel.ChoreSchedule{ChoreID: choreID, MeterID: meter.ID, Interval: req.Interval, WarnBefore: req.WarnBefore, Baseline: baseline, CalendarDueDate: chore.NextDueDate}
 	return r.db.WithContext(ctx).Save(&s).Error
 }
 
@@ -169,14 +220,21 @@ func PopulateScheduleAt(schedule *mModel.ChoreSchedule, meter mModel.Meter, now 
 		schedule.Progress = 100
 	}
 	schedule.DueByMeter = meter.CurrentReading >= schedule.Target
+	schedule.ApproachingByMeter = !schedule.DueByMeter && schedule.WarnBefore > 0 && schedule.Target-meter.CurrentReading <= schedule.WarnBefore
 	schedule.DueByTime = schedule.CalendarDueDate != nil && !schedule.CalendarDueDate.After(now.UTC())
 	schedule.DueReason = ""
+	schedule.Status = "upcoming"
 	switch {
 	case schedule.DueByMeter && schedule.DueByTime:
 		schedule.DueReason = "both"
+		schedule.Status = "due"
 	case schedule.DueByMeter:
 		schedule.DueReason = "meter"
+		schedule.Status = "due"
 	case schedule.DueByTime:
 		schedule.DueReason = "time"
+		schedule.Status = "due"
+	case schedule.ApproachingByMeter:
+		schedule.Status = "approaching"
 	}
 }

@@ -2,26 +2,75 @@ package meter
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"donetick.com/core/internal/auth"
+	choreDomain "donetick.com/core/internal/chore"
+	chModel "donetick.com/core/internal/chore/model"
+	chRepo "donetick.com/core/internal/chore/repo"
 	mModel "donetick.com/core/internal/meter/model"
 	mRepo "donetick.com/core/internal/meter/repo"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-type Handler struct{ repo *mRepo.Repository }
+type Handler struct {
+	repo      *mRepo.Repository
+	choreRepo *chRepo.ChoreRepository
+}
 
-func NewHandler(repo *mRepo.Repository) *Handler { return &Handler{repo: repo} }
+func NewHandler(repo *mRepo.Repository, choreRepo *chRepo.ChoreRepository) *Handler {
+	return &Handler{repo: repo, choreRepo: choreRepo}
+}
+
+type reminderRequest struct {
+	Enabled           bool                       `json:"enabled"`
+	FrequencyType     chModel.FrequencyType      `json:"frequencyType"`
+	Frequency         int                        `json:"frequency"`
+	FrequencyMetadata *chModel.FrequencyMetadata `json:"frequencyMetadata"`
+	NextDueDate       *time.Time                 `json:"nextDueDate"`
+	AssignedTo        *int                       `json:"assignedTo"`
+}
 
 type meterRequest struct {
-	Name           string      `json:"name" binding:"required"`
-	Unit           mModel.Unit `json:"unit" binding:"required"`
-	InitialReading int64       `json:"initialReading"`
+	Name           string           `json:"name" binding:"required"`
+	Unit           mModel.Unit      `json:"unit" binding:"required"`
+	InitialReading int64            `json:"initialReading"`
+	Reminder       *reminderRequest `json:"reminder"`
+}
+
+type completeReminderRequest struct {
+	Reading     int64      `json:"reading"`
+	ExpectedDue *time.Time `json:"expectedDue"`
+}
+
+func (h *Handler) configureReminder(c *gin.Context, meter *mModel.Meter, req *reminderRequest, actorID, circleID int) error {
+	if req == nil {
+		return nil
+	}
+	assigned := actorID
+	if req.AssignedTo != nil {
+		assigned = *req.AssignedTo
+	}
+	spec := chRepo.MeterReminderSpec{Enabled: req.Enabled, FrequencyType: req.FrequencyType, Frequency: req.Frequency, FrequencyMetadata: req.FrequencyMetadata, NextDueDate: req.NextDueDate, AssignedTo: assigned}
+	if req.Enabled {
+		if req.Frequency < 1 || req.FrequencyType == "" || req.FrequencyType == chModel.FrequencyTypeOnce {
+			return errors.New("a recurring update frequency is required")
+		}
+		if spec.NextDueDate == nil {
+			chore := &chModel.Chore{FrequencyType: req.FrequencyType, Frequency: req.Frequency, FrequencyMetadataV2: req.FrequencyMetadata}
+			due, err := choreDomain.InitialDueDate(c, chore, time.Now().UTC())
+			if err != nil {
+				return err
+			}
+			spec.NextDueDate = due
+		}
+	}
+	return h.choreRepo.ConfigureMeterReminder(c, meter.ID, circleID, actorID, spec)
 }
 
 type readingRequest struct {
@@ -64,6 +113,10 @@ func (h *Handler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create meter"})
 		return
 	}
+	if err := h.configureReminder(c, meter, req.Reminder, actorID, circleID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{"res": meter})
 }
 
@@ -81,7 +134,7 @@ func (h *Handler) List(c *gin.Context) {
 }
 
 func (h *Handler) Update(c *gin.Context) {
-	_, circleID, ok := current(c)
+	actorID, circleID, ok := current(c)
 	if !ok {
 		return
 	}
@@ -99,7 +152,68 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 	meter, _ := h.repo.Get(c, id, circleID)
+	if err := h.configureReminder(c, meter, req.Reminder, actorID, circleID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"res": meter})
+}
+
+func (h *Handler) CompleteReminder(c *gin.Context) {
+	actorID, circleID, ok := current(c)
+	if !ok {
+		return
+	}
+	id, ok := meterID(c)
+	if !ok {
+		return
+	}
+	var req completeReminderRequest
+	if c.ShouldBindJSON(&req) != nil || req.Reading < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reading"})
+		return
+	}
+	meter, err := h.repo.Get(c, id, circleID)
+	if err != nil {
+		writeRepoError(c, err)
+		return
+	}
+	var reminder mModel.UpdateReminder
+	if meter.UpdateReminder != nil {
+		reminder = *meter.UpdateReminder
+	} else {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Meter update reminder not found"})
+		return
+	}
+	chore := &chModel.Chore{ID: reminder.ChoreID, FrequencyType: ""}
+	// Fetching through the circle-scoped repository also provides recurrence metadata.
+	full, err := h.choreRepo.GetChore(c, reminder.ChoreID, actorID, circleID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Meter update task not found"})
+		return
+	}
+	chore = full
+	next, err := choreDomain.ScheduleNextDueDate(c, chore, time.Now().UTC())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err = h.choreRepo.CompleteMeterReminder(c, id, circleID, actorID, req.Reading, req.ExpectedDue, next)
+	if errors.Is(err, mRepo.ErrDecreasingReading) {
+		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Reading cannot be lower than the current reading of %d %s.", meter.CurrentReading, meter.Unit)})
+		return
+	}
+	if errors.Is(err, chRepo.ErrMeterReminderAlreadyCompleted) {
+		updated, _ := h.repo.Get(c, id, circleID)
+		c.JSON(http.StatusOK, gin.H{"res": updated, "idempotent": true})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	updated, _ := h.repo.Get(c, id, circleID)
+	c.JSON(http.StatusOK, gin.H{"res": updated})
 }
 
 func (h *Handler) AddReading(c *gin.Context) {
@@ -169,5 +283,6 @@ func Routes(router *gin.Engine, h *Handler, middleware *auth.MultiAuthMiddleware
 	r.POST("", h.Create)
 	r.PUT("/:id", h.Update)
 	r.POST("/:id/readings", h.AddReading)
+	r.POST("/:id/reminder/complete", h.CompleteReminder)
 	r.GET("/:id/readings", h.History)
 }

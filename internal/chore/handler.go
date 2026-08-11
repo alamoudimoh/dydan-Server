@@ -2276,6 +2276,10 @@ func (h *Handler) CompleteChore(c *gin.Context) {
 		})
 		return
 	}
+	if chore.MeterUpdateReminder != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "A meter reading is required to complete this update task"})
+		return
+	}
 	if !validateActionVersion(c, "complete", chore, req.ActionOptions) {
 		return
 	}

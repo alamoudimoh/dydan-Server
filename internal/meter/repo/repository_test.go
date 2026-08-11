@@ -81,6 +81,31 @@ func TestMeterEngineDeterministicThresholdsAndHybridReasons(t *testing.T) {
 	}
 }
 
+func TestApproachingWarningExactBoundaries(t *testing.T) {
+	now := time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC)
+	meter := mModel.Meter{CurrentReading: 98999, Unit: mModel.UnitKilometers}
+	schedule := mModel.ChoreSchedule{Baseline: 90000, Interval: 10000, WarnBefore: 1000}
+	PopulateScheduleAt(&schedule, meter, now)
+	if schedule.Status != "upcoming" || schedule.ApproachingByMeter {
+		t.Fatalf("one outside warning should be upcoming: %#v", schedule)
+	}
+	meter.CurrentReading = 99000
+	PopulateScheduleAt(&schedule, meter, now)
+	if schedule.Status != "approaching" || schedule.Remaining != 1000 {
+		t.Fatalf("exact warning boundary: %#v", schedule)
+	}
+	meter.CurrentReading = 99999
+	PopulateScheduleAt(&schedule, meter, now)
+	if schedule.Status != "approaching" || schedule.Remaining != 1 {
+		t.Fatalf("one before target: %#v", schedule)
+	}
+	meter.CurrentReading = 100000
+	PopulateScheduleAt(&schedule, meter, now)
+	if schedule.Status != "due" || schedule.DueReason != "meter" {
+		t.Fatalf("exact target: %#v", schedule)
+	}
+}
+
 func TestMeterEngineHistoryRebaseAndNoRepeatedSideEffects(t *testing.T) {
 	repo, db := testRepository(t)
 	ctx := context.Background()

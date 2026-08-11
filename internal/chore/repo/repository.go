@@ -38,6 +38,144 @@ type CreateSpec struct {
 	Meter        *mModel.ChoreScheduleRequest
 }
 
+type MeterReminderSpec struct {
+	Enabled           bool
+	FrequencyType     chModel.FrequencyType
+	Frequency         int
+	FrequencyMetadata *chModel.FrequencyMetadata
+	NextDueDate       *time.Time
+	AssignedTo        int
+}
+
+var ErrMeterReminderAlreadyCompleted = errors.New("meter update reminder occurrence already completed")
+
+func (r *ChoreRepository) ConfigureMeterReminder(ctx context.Context, meterID, circleID, actorID int, spec MeterReminderSpec) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var meter mModel.Meter
+		if err := tx.Where("id = ? AND circle_id = ?", meterID, circleID).First(&meter).Error; err != nil {
+			return err
+		}
+		var reminder mModel.UpdateReminder
+		findErr := tx.Where("meter_id = ?", meterID).First(&reminder).Error
+		if !spec.Enabled {
+			if errors.Is(findErr, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			if findErr != nil {
+				return findErr
+			}
+			return tx.Model(&chModel.Chore{}).Where("id = ? AND circle_id = ?", reminder.ChoreID, circleID).Updates(map[string]interface{}{"is_active": false, "updated_at": time.Now().UTC()}).Error
+		}
+		var members int64
+		if err := tx.Table("user_circles").Where("circle_id = ? AND user_id = ?", circleID, spec.AssignedTo).Count(&members).Error; err != nil || members == 0 {
+			return errors.New("assignee is not in meter circle")
+		}
+		assetName := ""
+		if meter.ThingID != nil {
+			_ = tx.Table("things").Select("name").Where("id = ? AND circle_id = ?", *meter.ThingID, circleID).Scan(&assetName).Error
+		}
+		name := "Update " + meter.Name
+		if assetName != "" {
+			name = "Update " + assetName + " " + meter.Name
+		}
+		description := fmt.Sprintf("Current: %d %s", meter.CurrentReading, meter.Unit)
+		points := 0
+		if errors.Is(findErr, gorm.ErrRecordNotFound) {
+			chore := chModel.Chore{Name: name, Description: &description, CircleID: circleID, CreatedBy: actorID, UpdatedBy: actorID, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(), IsActive: true, FrequencyType: spec.FrequencyType, Frequency: spec.Frequency, FrequencyMetadataV2: spec.FrequencyMetadata, NextDueDate: spec.NextDueDate, AssignedTo: &spec.AssignedTo, AssignStrategy: chModel.AssignmentStrategyKeepLastAssigned, Points: &points}
+			version, err := r.nextSyncVersionWithDB(ctx, tx, circleID)
+			if err != nil {
+				return err
+			}
+			chore.SyncVersion = version
+			if err = tx.Create(&chore).Error; err != nil {
+				return err
+			}
+			if err = tx.Create(&chModel.ChoreAssignees{ChoreID: chore.ID, UserID: spec.AssignedTo}).Error; err != nil {
+				return err
+			}
+			return tx.Create(&mModel.UpdateReminder{MeterID: meterID, ChoreID: chore.ID}).Error
+		}
+		if findErr != nil {
+			return findErr
+		}
+		version, err := r.nextSyncVersionWithDB(ctx, tx, circleID)
+		if err != nil {
+			return err
+		}
+		if err = tx.Model(&chModel.Chore{}).Where("id = ? AND circle_id = ?", reminder.ChoreID, circleID).Updates(map[string]interface{}{"name": name, "description": description, "frequency_type": spec.FrequencyType, "frequency": spec.Frequency, "frequency_meta_v2": spec.FrequencyMetadata, "next_due_date": spec.NextDueDate, "assigned_to": spec.AssignedTo, "is_active": true, "points": 0, "require_approval": false, "updated_by": actorID, "updated_at": time.Now().UTC(), "sync_version": version}).Error; err != nil {
+			return err
+		}
+		if err = tx.Where("chore_id = ?", reminder.ChoreID).Delete(&chModel.ChoreAssignees{}).Error; err != nil {
+			return err
+		}
+		return tx.Create(&chModel.ChoreAssignees{ChoreID: reminder.ChoreID, UserID: spec.AssignedTo}).Error
+	})
+}
+
+func (r *ChoreRepository) CompleteMeterReminder(ctx context.Context, meterID, circleID, userID int, value int64, expectedDue, nextDue *time.Time) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var reminder mModel.UpdateReminder
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Joins("JOIN meters ON meters.id = meter_update_reminders.meter_id").Where("meter_update_reminders.meter_id = ? AND meters.circle_id = ?", meterID, circleID).First(&reminder).Error; err != nil {
+			return err
+		}
+		var chore chModel.Chore
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND circle_id = ? AND is_active = ?", reminder.ChoreID, circleID, true).First(&chore).Error; err != nil {
+			return err
+		}
+		var assigned int64
+		if err := tx.Model(&chModel.ChoreAssignees{}).Where("chore_id = ? AND user_id = ?", chore.ID, userID).Count(&assigned).Error; err != nil || assigned == 0 {
+			return errors.New("user is not assigned to meter update task")
+		}
+		if expectedDue != nil && (chore.NextDueDate == nil || !chore.NextDueDate.Equal(expectedDue.UTC())) {
+			return ErrMeterReminderAlreadyCompleted
+		}
+		var meter mModel.Meter
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND circle_id = ?", meterID, circleID).First(&meter).Error; err != nil {
+			return err
+		}
+		if value < meter.CurrentReading {
+			return mRepo.ErrDecreasingReading
+		}
+		now := time.Now().UTC()
+		if value != meter.CurrentReading {
+			previous := meter.CurrentReading
+			if err := tx.Model(&meter).Updates(map[string]interface{}{"current_reading": value, "updated_at": now}).Error; err != nil {
+				return err
+			}
+			if err := tx.Create(&mModel.Reading{MeterID: meterID, Reading: value, PreviousReading: &previous, Kind: mModel.ReadingKindReading, RecordedBy: userID, RecordedAt: now}).Error; err != nil {
+				return err
+			}
+		}
+		version, err := r.nextSyncVersionWithDB(ctx, tx, circleID)
+		if err != nil {
+			return err
+		}
+		if err = tx.Model(&chore).Updates(map[string]interface{}{"next_due_date": nextDue, "status": chModel.ChoreStatusNoStatus, "sync_version": version, "updated_at": now}).Error; err != nil {
+			return err
+		}
+		if err = tx.Create(&chModel.ChoreHistory{ChoreID: chore.ID, PerformedAt: &now, CompletedBy: userID, AssignedTo: chore.AssignedTo, DueDate: chore.NextDueDate, Status: chModel.ChoreHistoryStatusCompleted, MeterID: &meterID, MeterReading: &value, SyncVersion: version}).Error; err != nil {
+			return err
+		}
+		if err = tx.Model(&mModel.UpdateReminder{}).Where("meter_id = ?", meterID).Update("last_checked_at", now).Error; err != nil {
+			return err
+		}
+		var ids []int
+		if err = tx.Table("chores").Select("chores.id").Joins("JOIN chore_meter_schedules cms ON cms.chore_id = chores.id").Where("chores.circle_id = ? AND chores.is_active = ? AND cms.meter_id = ? AND cms.baseline + cms.interval <= ? AND (chores.next_due_date IS NULL OR chores.next_due_date > ?)", circleID, true, meterID, value, now).Scan(&ids).Error; err != nil {
+			return err
+		}
+		for _, id := range ids {
+			v, e := r.nextSyncVersionWithDB(ctx, tx, circleID)
+			if e != nil {
+				return e
+			}
+			if e = tx.Model(&chModel.Chore{}).Where("id = ?", id).Updates(map[string]interface{}{"next_due_date": now, "updated_at": now, "sync_version": v}).Error; e != nil {
+				return e
+			}
+		}
+		return nil
+	})
+}
+
 // CreateChoreSet creates an all-or-nothing set of independent ordinary chores.
 func (r *ChoreRepository) CreateChoreSet(ctx context.Context, specs []CreateSpec, actorID int) ([]int, error) {
 	ids := make([]int, 0, len(specs))
@@ -95,7 +233,7 @@ func (r *ChoreRepository) CreateChoreSetInTransaction(ctx context.Context, tx *g
 			if err := tx.WithContext(ctx).Where("id = ? AND circle_id = ?", spec.Meter.MeterID, circleID).First(&meter).Error; err != nil {
 				return nil, err
 			}
-			schedule := mModel.ChoreSchedule{ChoreID: spec.Chore.ID, MeterID: meter.ID, Interval: spec.Meter.Interval, Baseline: meter.CurrentReading, CalendarDueDate: spec.Chore.NextDueDate}
+			schedule := mModel.ChoreSchedule{ChoreID: spec.Chore.ID, MeterID: meter.ID, Interval: spec.Meter.Interval, WarnBefore: spec.Meter.WarnBefore, Baseline: meter.CurrentReading, CalendarDueDate: spec.Chore.NextDueDate}
 			if err := tx.WithContext(ctx).Create(&schedule).Error; err != nil {
 				return nil, err
 			}
@@ -361,6 +499,9 @@ func (r *ChoreRepository) GetChore(c context.Context, choreID int, userID int, c
 	if r.db.Migrator().HasTable(&mModel.ChoreSchedule{}) {
 		query = query.Preload("MeterSchedule")
 	}
+	if r.db.Migrator().HasTable(&mModel.UpdateReminder{}) {
+		query = query.Preload("MeterUpdateReminder")
+	}
 	if err := query.First(&chore).Error; err != nil {
 		return nil, err
 	}
@@ -394,6 +535,9 @@ func (r *ChoreRepository) GetChores(c context.Context, circleID int, userID int,
 		Group("chores.id")
 	if r.db.Migrator().HasTable(&mModel.ChoreSchedule{}) {
 		query = query.Preload("MeterSchedule")
+	}
+	if r.db.Migrator().HasTable(&mModel.UpdateReminder{}) {
+		query = query.Preload("MeterUpdateReminder")
 	}
 
 	if includeSubtasks {
@@ -1134,6 +1278,18 @@ func (r *ChoreRepository) GetChoreDetailByID(c context.Context, choreID int, cir
 				mRepo.PopulateSchedule(&schedule, meter)
 				choreDetail.MeterSchedule = &schedule
 			}
+		}
+	}
+	if r.db.Migrator().HasTable(&mModel.UpdateReminder{}) {
+		var reminder mModel.UpdateReminder
+		if r.db.WithContext(c).Where("chore_id = ?", choreID).First(&reminder).Error == nil {
+			var meter mModel.Meter
+			if r.db.WithContext(c).Where("id = ? AND circle_id = ?", reminder.MeterID, circleID).First(&meter).Error == nil {
+				reminder.CurrentReading = meter.CurrentReading
+				reminder.Unit = meter.Unit
+				reminder.MeterName = meter.Name
+			}
+			choreDetail.MeterUpdateReminder = &reminder
 		}
 	}
 	return &choreDetail, nil
