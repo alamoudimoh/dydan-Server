@@ -87,6 +87,36 @@ func TestDaysOfWeekProgressionAndBoundaries(t *testing.T) {
 	requireLocal(t, initial, zone, "2026-08-10 19:00 +03")
 }
 
+func TestDaysOfWeekSingleConsecutiveAndWeekWrap(t *testing.T) {
+	zone := "UTC"
+	loc := time.UTC
+	for _, tc := range []struct {
+		name string
+		days []string
+		due  string
+		want string
+	}{
+		{"consecutive days", []string{"monday", "tuesday"}, "2026-08-10 19:00", "2026-08-11 19:00 UTC"},
+		{"single day", []string{"monday"}, "2026-08-10 19:00", "2026-08-17 19:00 UTC"},
+		{"week wrap", []string{"monday", "saturday"}, "2026-08-15 19:00", "2026-08-17 19:00 UTC"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			due, _ := time.ParseInLocation("2006-01-02 15:04", tc.due, loc)
+			meta := metadataAt(t, zone, tc.due)
+			for _, day := range tc.days {
+				day := day
+				meta.Days = append(meta.Days, &day)
+			}
+			chore := &chModel.Chore{FrequencyType: chModel.FrequencyTypeDayOfTheWeek, NextDueDate: &due, FrequencyMetadataV2: meta}
+			got, err := scheduleNextDueDate(context.Background(), chore, due)
+			if err != nil {
+				t.Fatal(err)
+			}
+			requireLocal(t, got, zone, tc.want)
+		})
+	}
+}
+
 func TestMonthlyAndYearlyClampInvalidCalendarDays(t *testing.T) {
 	tests := []struct {
 		name, due, want string
@@ -96,6 +126,7 @@ func TestMonthlyAndYearlyClampInvalidCalendarDays(t *testing.T) {
 		{"leap January 31", "2024-01-31 20:00", "2024-02-29 20:00 UTC", chModel.FrequencyTypeMonthly},
 		{"March 31", "2025-03-31 20:00", "2025-04-30 20:00 UTC", chModel.FrequencyTypeMonthly},
 		{"leap birthday", "2024-02-29 08:00", "2025-02-28 08:00 UTC", chModel.FrequencyTypeYearly},
+		{"ordinary yearly", "2025-08-11 08:00", "2026-08-11 08:00 UTC", chModel.FrequencyTypeYearly},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -107,6 +138,40 @@ func TestMonthlyAndYearlyClampInvalidCalendarDays(t *testing.T) {
 			}
 			requireLocal(t, got, "UTC", tc.want)
 		})
+	}
+}
+
+func TestMonthlyOrdinaryDays(t *testing.T) {
+	for _, day := range []int{1, 5, 15, 28, 29, 30, 31} {
+		t.Run(time.Date(2026, time.January, day, 0, 0, 0, 0, time.UTC).Format("day-02"), func(t *testing.T) {
+			due := time.Date(2026, time.January, day, 20, 0, 0, 0, time.UTC)
+			chore := &chModel.Chore{FrequencyType: chModel.FrequencyTypeMonthly, NextDueDate: &due, FrequencyMetadataV2: metadataAt(t, "UTC", due.Format("2006-01-02 15:04"))}
+			got, err := scheduleNextDueDate(context.Background(), chore, due)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantDay := day
+			if wantDay > 28 {
+				wantDay = 28
+			}
+			requireLocal(t, got, "UTC", time.Date(2026, time.February, wantDay, 20, 0, 0, 0, time.UTC).Format("2006-01-02 15:04 MST"))
+		})
+	}
+}
+
+func TestDayOfMonthClampsPerSelectedMonth(t *testing.T) {
+	due := time.Date(2026, time.January, 31, 20, 0, 0, 0, time.UTC)
+	meta := metadataAt(t, "UTC", "2026-01-31 20:00")
+	meta.Months = []*string{jsonPtr("february"), jsonPtr("april"), jsonPtr("may")}
+	chore := &chModel.Chore{FrequencyType: chModel.FrequencyTypeDayOfTheMonth, Frequency: 31, NextDueDate: &due, FrequencyMetadataV2: meta}
+	for _, want := range []string{"2026-02-28 20:00 UTC", "2026-04-30 20:00 UTC", "2026-05-31 20:00 UTC"} {
+		got, err := scheduleNextDueDate(context.Background(), chore, due)
+		if err != nil {
+			t.Fatal(err)
+		}
+		requireLocal(t, got, "UTC", want)
+		due = *got
+		chore.NextDueDate = got
 	}
 }
 
