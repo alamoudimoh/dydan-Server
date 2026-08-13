@@ -29,6 +29,7 @@ import (
 	"donetick.com/core/internal/meter"
 	mRepo "donetick.com/core/internal/meter/repo"
 	"donetick.com/core/internal/mfa"
+	"donetick.com/core/internal/progress"
 	"donetick.com/core/internal/project"
 	pjRepo "donetick.com/core/internal/project/repo"
 
@@ -159,6 +160,7 @@ func main() {
 		// Projects:
 		fx.Provide(pjRepo.NewProjectRepository),
 		fx.Provide(project.NewHandler),
+		fx.Provide(progress.NewHandler),
 
 		// Filters:
 		fx.Provide(fRepo.NewFilterRepository),
@@ -220,6 +222,7 @@ func main() {
 			routine.Routes,
 			label.Routes,
 			project.Routes,
+			progress.Routes,
 			filter.Routes,
 
 			storage.Routes,

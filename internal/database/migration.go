@@ -16,6 +16,7 @@ import (
 	mModel "donetick.com/core/internal/meter/model"
 	nModel "donetick.com/core/internal/notifier/model"
 	pModel "donetick.com/core/internal/points"
+	progressModel "donetick.com/core/internal/progress"
 	projModel "donetick.com/core/internal/project/model"
 	rewardModel "donetick.com/core/internal/reward"
 	routineModel "donetick.com/core/internal/routine"
@@ -61,6 +62,7 @@ func Migration(db *gorm.DB) error {
 		pModel.PointsHistory{},
 		rewardModel.Reward{},
 		rewardModel.RewardRequest{},
+		progressModel.Goal{},
 		mModel.Meter{},
 		mModel.Reading{},
 		mModel.ChoreSchedule{},
