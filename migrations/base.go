@@ -2,11 +2,28 @@ package migrations
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"donetick.com/core/logging"
 	"gorm.io/gorm"
 )
+
+// hasExactColumn avoids GORM's string-table HasColumn ambiguity on SQLite,
+// where a column name can be mistaken for a same-named table elsewhere in the
+// schema. It is used only to gate legacy migrations on their source column.
+func hasExactColumn(db *gorm.DB, table, column string) bool {
+	types, err := db.Migrator().ColumnTypes(table)
+	if err != nil {
+		return false
+	}
+	for _, columnType := range types {
+		if strings.EqualFold(columnType.Name(), column) {
+			return true
+		}
+	}
+	return false
+}
 
 type Migration struct {
 	// DB Representation for migration table, mainly used for tracking the migration status.
@@ -61,6 +78,17 @@ func Run(ctx context.Context, db *gorm.DB) error {
 		if count > 0 {
 			skippedCount++
 			log.Debug("Skipping migration %s as it is already applied", migration.ID())
+			continue
+		}
+		// Fresh installations never had chores.labels. The released migration's
+		// GORM HasColumn probe is ambiguous on SQLite once the labels table exists,
+		// so mark it as a no-op only after an exact chores schema inspection.
+		if migration.ID() == "20241123_migrate_label_to_labels_v2" && !hasExactColumn(db, "chores", "labels") {
+			record := Migration{ID: migration.ID(), Description: migration.Description(), AppliedAt: time.Now().UTC()}
+			if err := db.Create(&record).Error; err != nil {
+				return err
+			}
+			skippedCount++
 			continue
 		}
 
