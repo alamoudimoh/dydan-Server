@@ -154,13 +154,13 @@ func (h *Handler) workload(c *gin.Context) {
 		}
 		base = base.Where("ch.category_id=?", id)
 	}
-	var tasks []taskRow
+	tasks := make([]taskRow, 0)
 	q := base.Select("ch.id,ch.name,ch.assigned_to,ch.category_id,ch.next_due_date AS due_date, CASE WHEN tc.chore_id IS NULL THEN false ELSE true END AS maintenance").Joins("LEFT JOIN thing_chores tc ON tc.chore_id=ch.id").Where("ch.next_due_date < ?", b.End).Order("ch.next_due_date, ch.id")
 	if err := q.Scan(&tasks).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Unable to load workload"})
 		return
 	}
-	var members []workloadRow
+	members := make([]workloadRow, 0)
 	if manager(role) {
 		_ = h.db.WithContext(c).Table("user_circles uc").Select("u.id AS user_id, COALESCE(NULLIF(u.display_name,''),u.username) AS name").Joins("JOIN users u ON u.id=uc.user_id").Where("uc.circle_id=? AND uc.is_active=?", cid, true).Order("uc.created_at,uc.user_id").Scan(&members).Error
 	} else {
@@ -171,7 +171,7 @@ func (h *Handler) workload(c *gin.Context) {
 		idx[members[i].UserID] = i
 	}
 	unassigned, cats := summarizeWorkload(tasks, members, idx, today, tomorrow, b)
-	var categories []categoryRow
+	categories := make([]categoryRow, 0, len(cats))
 	for _, v := range cats {
 		categories = append(categories, *v)
 	}
@@ -248,9 +248,9 @@ func (h *Handler) report(c *gin.Context) {
 	}
 	var completed int64
 	hist.Count(&completed)
-	var categories []countName
+	categories := make([]countName, 0)
 	hist.Select("ch.category_id AS id, COALESCE(l.name,'Uncategorized') AS name, COUNT(*) AS count").Joins("LEFT JOIN labels l ON l.id=ch.category_id").Group("ch.category_id,l.name").Order("count DESC").Scan(&categories)
-	var members []countName
+	members := make([]countName, 0)
 	if manager(role) {
 		hist.Select("h.completed_by AS id, COALESCE(NULLIF(u.display_name,''),u.username) AS name, COUNT(*) AS count").Joins("LEFT JOIN users u ON u.id=h.completed_by").Group("h.completed_by,u.display_name,u.username").Order("u.display_name,u.username").Scan(&members)
 	}
@@ -266,10 +266,10 @@ func (h *Handler) report(c *gin.Context) {
 		balances = balances.Where("user_id=?", uid)
 	}
 	balances.Select("COALESCE(SUM(points - points_redeemed - points_adjusted),0)").Scan(&available)
-	var rewards []struct {
+	rewards := make([]struct {
 		Status string `json:"status"`
 		Count  int    `json:"count"`
-	}
+	}, 0)
 	rewardQuery := h.db.WithContext(c).Table("reward_requests").Select("status,COUNT(*) AS count").Where("circle_id=? AND created_at>=? AND created_at<?", cid, b.Start, b.End)
 	if !manager(role) {
 		rewardQuery = rewardQuery.Where("user_id=?", uid)

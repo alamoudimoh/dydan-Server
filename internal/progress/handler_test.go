@@ -1,13 +1,21 @@
 package progress
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	chModel "donetick.com/core/internal/chore/model"
+	cModel "donetick.com/core/internal/circle/model"
+	cRepo "donetick.com/core/internal/circle/repo"
+	lModel "donetick.com/core/internal/label/model"
 	pModel "donetick.com/core/internal/points"
+	tModel "donetick.com/core/internal/thing/model"
+	uModel "donetick.com/core/internal/user/model"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -23,6 +31,68 @@ func testHandler(t *testing.T) (*Handler, *gorm.DB) {
 		t.Fatal(err)
 	}
 	return &Handler{db: db}, db
+}
+
+func TestWorkloadContractReturnsArraysAndPreservesPrivateTaskVisibility(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&chModel.Chore{}, &chModel.ChoreAssignees{}, &cModel.UserCircle{}, &lModel.Label{}, &tModel.ThingChore{}, &uModel.User{}); err != nil {
+		t.Fatal(err)
+	}
+	clock := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
+	h := &Handler{db: db, circles: cRepo.NewCircleRepository(db), now: func() time.Time { return clock }}
+	users := []uModel.User{
+		{ID: 1, Username: "manager", CircleID: 10, Timezone: "UTC"},
+		{ID: 2, Username: "member", CircleID: 10, Timezone: "UTC"},
+	}
+	memberships := []cModel.UserCircle{
+		{UserID: 1, CircleID: 10, Role: cModel.UserRoleAdmin, IsActive: true},
+		{UserID: 2, CircleID: 10, Role: cModel.UserRoleMember, IsActive: true},
+	}
+	if err := db.Create(&users).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&memberships).Error; err != nil {
+		t.Fatal(err)
+	}
+	due := clock.Add(24 * time.Hour)
+	memberID := 2
+	chores := []chModel.Chore{
+		{ID: 1, Name: "Shared unassigned", CircleID: 10, CreatedBy: 1, IsActive: true, NextDueDate: &due},
+		{ID: 2, Name: "Private detail", CircleID: 10, CreatedBy: 2, AssignedTo: &memberID, IsPrivate: true, IsActive: true, NextDueDate: &due},
+	}
+	if err := db.Create(&chores).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	request := func(user uModel.User) (int, map[string]json.RawMessage, string) {
+		t.Helper()
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/progress/workload?range=week", nil)
+		c.Set("id", &uModel.UserDetails{User: user})
+		h.workload(c)
+		var payload map[string]json.RawMessage
+		if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		return w.Code, payload, w.Body.String()
+	}
+
+	code, managerPayload, managerBody := request(users[0])
+	if code != http.StatusOK || string(managerPayload["tasks"])[0] != '[' || string(managerPayload["members"])[0] != '[' || string(managerPayload["categories"])[0] != '[' {
+		t.Fatalf("workload collections must always be arrays: %s", managerBody)
+	}
+	if !strings.Contains(managerBody, "Shared unassigned") || strings.Contains(managerBody, "Private detail") || !strings.Contains(managerBody, `"unassigned":1`) {
+		t.Fatalf("manager workload violated privacy or unassigned contract: %s", managerBody)
+	}
+
+	code, memberPayload, memberBody := request(users[1])
+	if code != http.StatusOK || string(memberPayload["tasks"])[0] != '[' || !strings.Contains(memberBody, "Private detail") || strings.Contains(memberBody, "Shared unassigned") {
+		t.Fatalf("member workload visibility mismatch: %s", memberBody)
+	}
 }
 
 func streakRow(due, performed *time.Time, status chModel.ChoreHistoryStatus) struct {
