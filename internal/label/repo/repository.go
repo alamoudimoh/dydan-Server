@@ -28,7 +28,7 @@ func NewLabelRepository(db *gorm.DB, cfg *config.Config) *LabelRepository {
 
 func (r *LabelRepository) GetUserLabels(ctx context.Context, userID int, circleID int) ([]*lModel.Label, error) {
 	var labels []*lModel.Label
-	if err := r.db.WithContext(ctx).Where("created_by = ? OR circle_id = ? ", userID, circleID).Find(&labels).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("is_category = ? AND (created_by = ? OR circle_id = ?)", false, userID, circleID).Find(&labels).Error; err != nil {
 		return nil, err
 	}
 	return labels, nil
@@ -36,11 +36,11 @@ func (r *LabelRepository) GetUserLabels(ctx context.Context, userID int, circleI
 
 func (r *LabelRepository) GetCircleCategories(ctx context.Context, circleID int, includeArchived bool) ([]*lModel.Label, error) {
 	var labels []*lModel.Label
-	query := r.db.WithContext(ctx).Where("circle_id = ?", circleID)
+	query := r.db.WithContext(ctx).Where("labels.circle_id = ? AND labels.is_category = ?", circleID, true)
 	if !includeArchived {
-		query = query.Where("archived_at IS NULL")
+		query = query.Where("labels.archived_at IS NULL")
 	}
-	if err := query.Order("LOWER(name) ASC, id ASC").Find(&labels).Error; err != nil {
+	if err := query.Order("LOWER(labels.name) ASC, labels.id ASC").Find(&labels).Error; err != nil {
 		return nil, err
 	}
 	return labels, nil
@@ -48,18 +48,19 @@ func (r *LabelRepository) GetCircleCategories(ctx context.Context, circleID int,
 
 func (r *LabelRepository) IsActiveCategoryInCircle(ctx context.Context, id, circleID int) bool {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND archived_at IS NULL", id, circleID).Count(&count).Error
+	err := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND is_category = ? AND archived_at IS NULL", id, circleID, true).Count(&count).Error
 	return err == nil && count == 1
 }
 
 func (r *LabelRepository) CreateCategory(ctx context.Context, label *lModel.Label) error {
+	label.IsCategory = true
 	label.Name = strings.TrimSpace(label.Name)
 	if label.Name == "" || len([]rune(label.Name)) > 80 {
 		return errors.New("category name must be between 1 and 80 characters")
 	}
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var count int64
-		if err := tx.Model(&lModel.Label{}).Where("circle_id = ? AND LOWER(name) = LOWER(?)", label.CircleID, label.Name).Count(&count).Error; err != nil {
+		if err := tx.Model(&lModel.Label{}).Where("circle_id = ? AND is_category = ? AND LOWER(name) = LOWER(?)", label.CircleID, true, label.Name).Count(&count).Error; err != nil {
 			return err
 		}
 		if count > 0 {
@@ -76,13 +77,13 @@ func (r *LabelRepository) UpdateCategory(ctx context.Context, circleID int, labe
 	}
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var count int64
-		if err := tx.Model(&lModel.Label{}).Where("circle_id = ? AND id <> ? AND LOWER(name) = LOWER(?)", circleID, label.ID, label.Name).Count(&count).Error; err != nil {
+		if err := tx.Model(&lModel.Label{}).Where("circle_id = ? AND is_category = ? AND id <> ? AND LOWER(name) = LOWER(?)", circleID, true, label.ID, label.Name).Count(&count).Error; err != nil {
 			return err
 		}
 		if count > 0 {
 			return ErrDuplicateCategory
 		}
-		result := tx.Model(&lModel.Label{}).Where("id = ? AND circle_id = ?", label.ID, circleID).Update("name", label.Name)
+		result := tx.Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND is_category = ?", label.ID, circleID, true).Update("name", label.Name)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -99,7 +100,7 @@ func (r *LabelRepository) SetCategoryArchived(ctx context.Context, circleID, id 
 		now := time.Now().UTC()
 		value = &now
 	}
-	result := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id = ? AND circle_id = ?", id, circleID).Update("archived_at", value)
+	result := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND is_category = ?", id, circleID, true).Update("archived_at", value)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -118,7 +119,7 @@ func (r *LabelRepository) CreateLabels(ctx context.Context, labels []*lModel.Lab
 
 func (r *LabelRepository) GetLabelsByIDs(ctx context.Context, ids []int) ([]*lModel.Label, error) {
 	var labels []*lModel.Label
-	if err := r.db.WithContext(ctx).Where("id IN (?)", ids).Find(&labels).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id IN (?) AND is_category = ?", ids, false).Find(&labels).Error; err != nil {
 		return nil, err
 	}
 	return labels, nil
@@ -132,7 +133,7 @@ func (r *LabelRepository) isLabelsAssignableByUser(ctx context.Context, userID i
 
 	log := logging.FromContext(ctx)
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id IN (?) AND (created_by = ?  OR circle_id = ?) ", labelIDs, userID, circleID).Count(&count).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id IN (?) AND is_category = ? AND (created_by = ? OR circle_id = ?)", labelIDs, false, userID, circleID).Count(&count).Error; err != nil {
 		log.Error(err)
 		return false
 	}

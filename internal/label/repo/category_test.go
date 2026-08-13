@@ -3,6 +3,7 @@ package chore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"donetick.com/core/config"
@@ -13,7 +14,7 @@ import (
 
 func categoryRepo(t *testing.T) *LabelRepository {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,5 +59,30 @@ func TestCategoryCircleScopeDuplicateAndArchive(t *testing.T) {
 	all, err := repo.GetCircleCategories(ctx, circleOne, true)
 	if err != nil || len(all) != 1 || all[0].ArchivedAt == nil {
 		t.Fatalf("archived category not preserved: %+v, %v", all, err)
+	}
+}
+
+func TestCategoriesNeverIncludeLegacyLabelsOrChoreNames(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleID := 303
+	for id, name := range []string{"01_test", "02_test"} {
+		if err := repo.db.Create(&lModel.Label{
+			ID: id + 1, Name: name, Color: "#26a69a", CircleID: &circleID, CreatedBy: 1,
+		}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	car := &lModel.Label{Name: "car", CircleID: &circleID, CreatedBy: 1}
+	if err := repo.CreateCategory(ctx, car); err != nil {
+		t.Fatal(err)
+	}
+
+	categories, err := repo.GetCircleCategories(ctx, circleID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(categories) != 1 || categories[0].ID != car.ID || categories[0].Name != "car" {
+		t.Fatalf("categories were contaminated by legacy labels: %+v", categories)
 	}
 }
