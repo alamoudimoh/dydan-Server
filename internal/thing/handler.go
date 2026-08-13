@@ -26,10 +26,20 @@ type Handler struct {
 }
 
 type ThingRequest struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name" binding:"required"`
-	Type  string `json:"type" binding:"required"`
-	State string `json:"state"`
+	ID         int    `json:"id"`
+	Name       string `json:"name" binding:"required"`
+	Type       string `json:"type" binding:"required"`
+	State      string `json:"state"`
+	CategoryID *int   `json:"categoryId" binding:"omitempty,gt=0"`
+}
+
+func (h *Handler) validCategory(c *gin.Context, categoryID *int, circleID int) bool {
+	if categoryID == nil {
+		return true
+	}
+	var count int64
+	h.tRepo.DB().Table("labels").Where("id = ? AND circle_id = ? AND archived_at IS NULL", *categoryID, circleID).Count(&count)
+	return count == 1
 }
 
 func NewHandler(cr *chRepo.ChoreRepository, circleRepo *cRepo.CircleRepository,
@@ -72,12 +82,17 @@ func (h *Handler) CreateThing(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
+	if !h.validCategory(c, req.CategoryID, currentUser.CircleID) {
+		c.JSON(400, gin.H{"error": "Invalid Category"})
+		return
+	}
 	thing := &tModel.Thing{
-		Name:     req.Name,
-		UserID:   currentUser.ID,
-		CircleID: currentUser.CircleID,
-		Type:     req.Type,
-		State:    req.State,
+		Name:       req.Name,
+		UserID:     currentUser.ID,
+		CircleID:   currentUser.CircleID,
+		Type:       req.Type,
+		State:      req.State,
+		CategoryID: req.CategoryID,
 	}
 	if !isValidThingState(thing) {
 		c.JSON(400, gin.H{"error": "Invalid state"})
@@ -214,6 +229,10 @@ func (h *Handler) UpdateThing(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
+	if !h.validCategory(c, req.CategoryID, currentUser.CircleID) {
+		c.JSON(400, gin.H{"error": "Invalid Category"})
+		return
+	}
 
 	thing, err := h.tRepo.GetThingByID(c, req.ID)
 
@@ -227,6 +246,7 @@ func (h *Handler) UpdateThing(c *gin.Context) {
 	}
 	thing.Name = req.Name
 	thing.Type = req.Type
+	thing.CategoryID = req.CategoryID
 	if req.State != "" {
 		thing.State = req.State
 		if !isValidThingState(thing) {

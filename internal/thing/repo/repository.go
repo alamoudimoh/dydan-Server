@@ -14,6 +14,8 @@ type ThingRepository struct {
 	dbType string
 }
 
+func (r *ThingRepository) DB() *gorm.DB { return r.db }
+
 func NewThingRepository(db *gorm.DB, cfg *config.Config) *ThingRepository {
 	return &ThingRepository{db: db, dbType: cfg.Database.Type}
 }
@@ -47,7 +49,7 @@ func (r *ThingRepository) UpdateThingState(c context.Context, thing *tModel.Thin
 }
 func (r *ThingRepository) GetThingByID(c context.Context, thingID int) (*tModel.Thing, error) {
 	var thing tModel.Thing
-	if err := r.db.WithContext(c).Model(&tModel.Thing{}).Preload("ThingChores").First(&thing, thingID).Error; err != nil {
+	if err := r.db.WithContext(c).Model(&tModel.Thing{}).Preload("ThingChores").Preload("CategoryRef").First(&thing, thingID).Error; err != nil {
 		return nil, err
 	}
 	return &thing, nil
@@ -84,7 +86,7 @@ func (r *ThingRepository) GetThingHistoryWithOffset(c context.Context, thingID i
 
 func (r *ThingRepository) GetUserThings(c context.Context, userID int) ([]*tModel.Thing, error) {
 	var things []*tModel.Thing
-	if err := r.db.WithContext(c).Model(&tModel.Thing{}).Where("user_id = ?", userID).Find(&things).Error; err != nil {
+	if err := r.db.WithContext(c).Model(&tModel.Thing{}).Preload("CategoryRef").Where("user_id = ?", userID).Find(&things).Error; err != nil {
 		return nil, err
 	}
 	return things, nil

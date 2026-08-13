@@ -7,6 +7,7 @@ import (
 	"time"
 
 	chModel "donetick.com/core/internal/chore/model"
+	lModel "donetick.com/core/internal/label/model"
 )
 
 // CalendarOccurrence is a read-only view of authoritative scheduled work.
@@ -26,6 +27,7 @@ type CalendarOccurrence struct {
 	Status              chModel.Status        `json:"status"`
 	MeterSchedule       interface{}           `json:"meterSchedule,omitempty"`
 	MeterUpdateReminder interface{}           `json:"meterUpdateReminder,omitempty"`
+	Category            *lModel.Label         `json:"category,omitempty"`
 }
 
 type CalendarProjection struct {
@@ -96,5 +98,6 @@ func calendarOccurrence(chore *chModel.Chore, due time.Time, projected, actionab
 		DueAt: due, Actionable: actionable, Projected: projected, Overdue: actionable && due.Before(now),
 		FrequencyType: chore.FrequencyType, Points: chore.Points, RequireApproval: chore.RequireApproval,
 		Status: chore.Status, MeterSchedule: chore.MeterSchedule, MeterUpdateReminder: chore.MeterUpdateReminder,
+		Category: chore.Category,
 	}
 }

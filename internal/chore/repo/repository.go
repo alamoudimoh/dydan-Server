@@ -71,8 +71,14 @@ func (r *ChoreRepository) ConfigureMeterReminder(ctx context.Context, meterID, c
 			return errors.New("assignee is not in meter circle")
 		}
 		assetName := ""
+		var assetCategoryID *int
 		if meter.ThingID != nil {
-			_ = tx.Table("things").Select("name").Where("id = ? AND circle_id = ?", *meter.ThingID, circleID).Scan(&assetName).Error
+			var asset struct {
+				Name       string
+				CategoryID *int
+			}
+			_ = tx.Table("things").Select("name, category_id").Where("id = ? AND circle_id = ?", *meter.ThingID, circleID).Scan(&asset).Error
+			assetName, assetCategoryID = asset.Name, asset.CategoryID
 		}
 		name := "Update " + meter.Name
 		if assetName != "" {
@@ -81,7 +87,7 @@ func (r *ChoreRepository) ConfigureMeterReminder(ctx context.Context, meterID, c
 		description := fmt.Sprintf("Current: %d %s", meter.CurrentReading, meter.Unit)
 		points := 0
 		if errors.Is(findErr, gorm.ErrRecordNotFound) {
-			chore := chModel.Chore{Name: name, Description: &description, CircleID: circleID, CreatedBy: actorID, UpdatedBy: actorID, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(), IsActive: true, FrequencyType: spec.FrequencyType, Frequency: spec.Frequency, FrequencyMetadataV2: spec.FrequencyMetadata, NextDueDate: spec.NextDueDate, AssignedTo: &spec.AssignedTo, AssignStrategy: chModel.AssignmentStrategyKeepLastAssigned, Points: &points}
+			chore := chModel.Chore{Name: name, Description: &description, CircleID: circleID, CreatedBy: actorID, UpdatedBy: actorID, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(), IsActive: true, FrequencyType: spec.FrequencyType, Frequency: spec.Frequency, FrequencyMetadataV2: spec.FrequencyMetadata, NextDueDate: spec.NextDueDate, AssignedTo: &spec.AssignedTo, AssignStrategy: chModel.AssignmentStrategyKeepLastAssigned, Points: &points, CategoryID: assetCategoryID}
 			version, err := r.nextSyncVersionWithDB(ctx, tx, circleID)
 			if err != nil {
 				return err
@@ -493,6 +499,7 @@ func (r *ChoreRepository) GetChore(c context.Context, choreID int, userID int, c
 		Preload("Assignees").
 		Preload("ThingChore").
 		Preload("LabelsV2").
+		Preload("Category").
 		Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id AND chore_assignees.user_id = ?", userID).
 		Where("chores.id = ? AND chores.circle_id = ? AND ((chores.is_private = false) OR (chores.is_private = true AND (chores.created_by = ? OR chore_assignees.user_id = ?)))", choreID, circleID, userID, userID)
 
@@ -529,6 +536,7 @@ func (r *ChoreRepository) GetChores(c context.Context, circleID int, userID int,
 	query := r.db.WithContext(c).
 		Preload("Assignees").
 		Preload("LabelsV2").
+		Preload("Category").
 		Joins("left join chore_assignees on chores.id = chore_assignees.chore_id").
 		Where("chores.circle_id = ?", circleID).
 		Where(privacyPredicate(userID)).
@@ -574,6 +582,7 @@ func (r *ChoreRepository) GetPersonalChores(c context.Context, circleID int, use
 	query := r.db.WithContext(c).
 		Preload("Assignees").
 		Preload("LabelsV2").
+		Preload("Category").
 		Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id").
 		Where("chores.circle_id = ? AND chores.is_active = ?", circleID, true).
 		Where("chores.assigned_to = ? OR chore_assignees.user_id = ?", userID, userID).
@@ -599,6 +608,7 @@ func (r *ChoreRepository) GetArchivedChores(c context.Context, circleID int, use
 	if err := r.db.WithContext(c).
 		Preload("Assignees").
 		Preload("LabelsV2").
+		Preload("Category").
 		Joins("left join chore_assignees on chores.id = chore_assignees.chore_id").
 		Where("chores.circle_id = ?", circleID).
 		Where(privacyPredicate(userID)).

@@ -505,7 +505,14 @@ func (h *Handler) Apply(c *gin.Context) {
 		if selection > 0 {
 			assetID = &selection
 		}
-		choreModel := &chModel.Chore{Name: item.Name, Description: item.Description, FrequencyType: item.FrequencyType, Frequency: item.Frequency, FrequencyMetadataV2: item.FrequencyMetadata, IsRolling: item.IsRolling, AssignedTo: item.AssignedTo, AssignStrategy: item.AssignStrategy, IsActive: true, Notification: item.Notification, NotificationMetadataV2: item.NotificationMetadata, CircleID: cid, CreatedBy: uid, UpdatedBy: uid, CreatedAt: reservation.AppliedAt, UpdatedAt: reservation.AppliedAt, Points: item.Points, CompletionWindow: item.CompletionWindow, Priority: item.Priority, RequireApproval: item.RequireApproval, IsPrivate: item.IsPrivate, ProjectID: item.ProjectID}
+		categoryID := item.CategoryID
+		if categoryID == nil && assetID != nil {
+			var asset tModel.Thing
+			if h.db.WithContext(c).Select("category_id").First(&asset, *assetID).Error == nil {
+				categoryID = asset.CategoryID
+			}
+		}
+		choreModel := &chModel.Chore{Name: item.Name, Description: item.Description, FrequencyType: item.FrequencyType, Frequency: item.Frequency, FrequencyMetadataV2: item.FrequencyMetadata, IsRolling: item.IsRolling, AssignedTo: item.AssignedTo, AssignStrategy: item.AssignStrategy, IsActive: true, Notification: item.Notification, NotificationMetadataV2: item.NotificationMetadata, CircleID: cid, CreatedBy: uid, UpdatedBy: uid, CreatedAt: reservation.AppliedAt, UpdatedAt: reservation.AppliedAt, Points: item.Points, CompletionWindow: item.CompletionWindow, Priority: item.Priority, RequireApproval: item.RequireApproval, IsPrivate: item.IsPrivate, ProjectID: item.ProjectID, CategoryID: categoryID}
 		due, err := chore.InitialDueDate(c, choreModel, start)
 		if err != nil {
 			c.JSON(400, gin.H{"error": err.Error(), "itemId": item.ID})
@@ -548,6 +555,13 @@ func (h *Handler) Apply(c *gin.Context) {
 }
 
 func (h *Handler) validateReferences(c *gin.Context, circleID int, item *Item, selectedAsset *int) error {
+	if item.CategoryID != nil {
+		var count int64
+		h.db.WithContext(c).Table("labels").Where("id = ? AND circle_id = ? AND archived_at IS NULL", *item.CategoryID, circleID).Count(&count)
+		if count != 1 {
+			return errors.New("category is archived or does not belong to this Circle")
+		}
+	}
 	var members int64
 	for _, userID := range item.AssigneeIDs {
 		if h.db.WithContext(c).Model(&cModel.UserCircle{}).Where("circle_id = ? AND user_id = ? AND is_active = ?", circleID, userID, true).Count(&members); members != 1 {
@@ -627,7 +641,7 @@ func (h *Handler) SaveChore(c *gin.Context) {
 		c.JSON(404, gin.H{"error": "Task not found"})
 		return
 	}
-	item := Item{PackID: pack.ID, Position: len(pack.Items), Name: source.Name, Description: source.Description, FrequencyType: source.FrequencyType, Frequency: source.Frequency, FrequencyMetadata: source.FrequencyMetadataV2, IsRolling: source.IsRolling, AssignedTo: source.AssignedTo, AssignStrategy: source.AssignStrategy, Points: source.Points, RequireApproval: source.RequireApproval, IsPrivate: source.IsPrivate, Priority: source.Priority, CompletionWindow: source.CompletionWindow, ProjectID: source.ProjectID, Notification: source.Notification, NotificationMetadata: source.NotificationMetadataV2}
+	item := Item{PackID: pack.ID, Position: len(pack.Items), Name: source.Name, Description: source.Description, FrequencyType: source.FrequencyType, Frequency: source.Frequency, FrequencyMetadata: source.FrequencyMetadataV2, IsRolling: source.IsRolling, AssignedTo: source.AssignedTo, AssignStrategy: source.AssignStrategy, Points: source.Points, RequireApproval: source.RequireApproval, IsPrivate: source.IsPrivate, Priority: source.Priority, CompletionWindow: source.CompletionWindow, ProjectID: source.ProjectID, Notification: source.Notification, NotificationMetadata: source.NotificationMetadataV2, CategoryID: source.CategoryID}
 	for _, assignee := range source.Assignees {
 		item.AssigneeIDs = append(item.AssigneeIDs, assignee.UserID)
 	}

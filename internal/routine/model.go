@@ -39,6 +39,7 @@ type Item struct {
 	Priority             int                           `json:"priority"`
 	CompletionWindow     *int                          `json:"completionWindow,omitempty"`
 	LabelIDs             []int                         `json:"labelIds" gorm:"column:label_ids;serializer:json;type:text"`
+	CategoryID           *int                          `json:"categoryId,omitempty" gorm:"column:category_id;index"`
 	SubTaskNames         []string                      `json:"subTaskNames" gorm:"column:subtask_names;serializer:json;type:text"`
 	ProjectID            *int                          `json:"projectId,omitempty"`
 	AssetID              *int                          `json:"assetId,omitempty"`

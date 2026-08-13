@@ -380,6 +380,7 @@ type ChoreReq struct {
 	Notification         bool                          `json:"notification"`
 	NotificationMetadata *chModel.NotificationMetadata `json:"notificationMetadata"`
 	LabelsV2             *[]lModel.LabelReq            `json:"labelsV2" binding:"omitempty,unique=LabelID,dive"`
+	CategoryID           *int                          `json:"categoryId" binding:"omitempty,gt=0"`
 	UpdatedAt            *time.Time                    `json:"updatedAt"`
 	Priority             *int                          `json:"priority" binding:"omitempty"`
 	CompletionWindow     *int                          `json:"completionWindow" binding:"omitempty"`
@@ -523,6 +524,15 @@ func (h *Handler) CreateChore(c *gin.Context) {
 	if validateMeterSchedule(choreReq, h, c, currentUser.CircleID) {
 		return
 	}
+	if choreReq.CategoryID == nil && choreReq.ThingTrigger != nil {
+		if thing, err := h.tRepo.GetThingByID(c, choreReq.ThingTrigger.ID); err == nil && thing.CircleID == currentUser.CircleID {
+			choreReq.CategoryID = thing.CategoryID
+		}
+	}
+	if choreReq.CategoryID != nil && !h.lRepo.IsActiveCategoryInCircle(c, *choreReq.CategoryID, currentUser.CircleID) {
+		c.JSON(400, gin.H{"error": "Category is invalid, archived, or belongs to another Circle"})
+		return
+	}
 
 	circleUsers, err := h.circleRepo.GetCircleUsers(c, currentUser.CircleID)
 	if err != nil {
@@ -611,6 +621,7 @@ func (h *Handler) CreateChore(c *gin.Context) {
 		RequireApproval:        choreReq.RequireApproval,
 		IsPrivate:              *choreReq.IsPrivate,
 		ProjectID:              choreReq.ProjectID,
+		CategoryID:             choreReq.CategoryID,
 		// SubTasks removed to prevent duplicate creation - handled by UpdateSubtask call below
 		// it's need custom logic to handle subtask creation as we send negative ids sometimes when we creating parent child releationship
 		// when the subtask is not yet created
@@ -849,6 +860,11 @@ func (h *Handler) EditChore(c *gin.Context) {
 		})
 		return
 	}
+	categoryChanged := (oldChore.CategoryID == nil) != (choreReq.CategoryID == nil) || (oldChore.CategoryID != nil && choreReq.CategoryID != nil && *oldChore.CategoryID != *choreReq.CategoryID)
+	if categoryChanged && choreReq.CategoryID != nil && !h.lRepo.IsActiveCategoryInCircle(c, *choreReq.CategoryID, currentUser.CircleID) {
+		c.JSON(400, gin.H{"error": "Category is invalid, archived, or belongs to another Circle"})
+		return
+	}
 
 	// Create a map to store the existing labels for quick lookup
 	oldLabelsMap := make(map[int]struct{})
@@ -938,6 +954,7 @@ func (h *Handler) EditChore(c *gin.Context) {
 		RequireApproval:        choreReq.RequireApproval,
 		IsPrivate:              *choreReq.IsPrivate,
 		ProjectID:              choreReq.ProjectID,
+		CategoryID:             choreReq.CategoryID,
 		Status:                 oldChore.Status,
 	}
 

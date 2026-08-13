@@ -48,19 +48,21 @@ const (
 
 type Chore struct {
 	ID                     int                        `json:"id" gorm:"primary_key"`
-	Name                   string                     `json:"name" gorm:"column:name"`                                                                // Chore description
-	FrequencyType          FrequencyType              `json:"frequencyType" gorm:"column:frequency_type"`                                             // "daily", "weekly", "monthly", "yearly", "adaptive",or "custom"
-	Frequency              int                        `json:"frequency" gorm:"column:frequency"`                                                      // Number of days, weeks, months, or years between chores
-	FrequencyMetadataV2    *FrequencyMetadata         `json:"frequencyMetadata" gorm:"column:frequency_meta_v2;type:json"`                            // Additional frequency information for v2 (if used)
-	NextDueDate            *time.Time                 `json:"nextDueDate" gorm:"column:next_due_date;index"`                                          // When the chore is due
-	IsRolling              bool                       `json:"isRolling" gorm:"column:is_rolling"`                                                     // Whether the chore is rolling
-	AssignedTo             *int                       `json:"assignedTo" gorm:"column:assigned_to"`                                                   // Who the chore is assigned to
-	Assignees              []ChoreAssignees           `json:"assignees" gorm:"foreignkey:ChoreID;references:ID"`                                      // Assignees of the chore
-	AssignStrategy         AssignmentStrategy         `json:"assignStrategy" gorm:"column:assign_strategy"`                                           // How the chore is assigned
-	IsActive               bool                       `json:"isActive" gorm:"column:is_active"`                                                       // Whether the chore is active
-	Notification           bool                       `json:"notification" gorm:"column:notification"`                                                // Whether the chore has notification
-	NotificationMetadataV2 *NotificationMetadata      `json:"notificationMetadata" gorm:"column:notification_meta_v2;type:json"`                      // Additional notification information
-	LabelsV2               *[]lModel.Label            `json:"labelsV2" gorm:"many2many:chore_labels"`                                                 // Labels for the chore
+	Name                   string                     `json:"name" gorm:"column:name"`                                           // Chore description
+	FrequencyType          FrequencyType              `json:"frequencyType" gorm:"column:frequency_type"`                        // "daily", "weekly", "monthly", "yearly", "adaptive",or "custom"
+	Frequency              int                        `json:"frequency" gorm:"column:frequency"`                                 // Number of days, weeks, months, or years between chores
+	FrequencyMetadataV2    *FrequencyMetadata         `json:"frequencyMetadata" gorm:"column:frequency_meta_v2;type:json"`       // Additional frequency information for v2 (if used)
+	NextDueDate            *time.Time                 `json:"nextDueDate" gorm:"column:next_due_date;index"`                     // When the chore is due
+	IsRolling              bool                       `json:"isRolling" gorm:"column:is_rolling"`                                // Whether the chore is rolling
+	AssignedTo             *int                       `json:"assignedTo" gorm:"column:assigned_to"`                              // Who the chore is assigned to
+	Assignees              []ChoreAssignees           `json:"assignees" gorm:"foreignkey:ChoreID;references:ID"`                 // Assignees of the chore
+	AssignStrategy         AssignmentStrategy         `json:"assignStrategy" gorm:"column:assign_strategy"`                      // How the chore is assigned
+	IsActive               bool                       `json:"isActive" gorm:"column:is_active"`                                  // Whether the chore is active
+	Notification           bool                       `json:"notification" gorm:"column:notification"`                           // Whether the chore has notification
+	NotificationMetadataV2 *NotificationMetadata      `json:"notificationMetadata" gorm:"column:notification_meta_v2;type:json"` // Additional notification information
+	LabelsV2               *[]lModel.Label            `json:"labelsV2" gorm:"many2many:chore_labels"`                            // Labels for the chore
+	CategoryID             *int                       `json:"categoryId,omitempty" gorm:"column:category_id;index"`
+	Category               *lModel.Label              `json:"category,omitempty" gorm:"foreignKey:CategoryID;references:ID"`
 	CircleID               int                        `json:"circleId" gorm:"column:circle_id;index;index:idx_chores_circle_sync_version,priority:1"` // The circle this chore is in
 	CreatedAt              time.Time                  `json:"createdAt" gorm:"column:created_at"`                                                     // When the chore was created
 	UpdatedAt              time.Time                  `json:"updatedAt" gorm:"column:updated_at"`                                                     // When the chore was last updated

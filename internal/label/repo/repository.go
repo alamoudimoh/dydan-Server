@@ -3,6 +3,8 @@ package chore
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	config "donetick.com/core/config"
 	chModel "donetick.com/core/internal/chore/model"
@@ -12,6 +14,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var ErrDuplicateCategory = errors.New("a category with this name already exists")
+var ErrCategoryNotFound = errors.New("category not found in circle")
 
 type LabelRepository struct {
 	db *gorm.DB
@@ -27,6 +32,81 @@ func (r *LabelRepository) GetUserLabels(ctx context.Context, userID int, circleI
 		return nil, err
 	}
 	return labels, nil
+}
+
+func (r *LabelRepository) GetCircleCategories(ctx context.Context, circleID int, includeArchived bool) ([]*lModel.Label, error) {
+	var labels []*lModel.Label
+	query := r.db.WithContext(ctx).Where("circle_id = ?", circleID)
+	if !includeArchived {
+		query = query.Where("archived_at IS NULL")
+	}
+	if err := query.Order("LOWER(name) ASC, id ASC").Find(&labels).Error; err != nil {
+		return nil, err
+	}
+	return labels, nil
+}
+
+func (r *LabelRepository) IsActiveCategoryInCircle(ctx context.Context, id, circleID int) bool {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND archived_at IS NULL", id, circleID).Count(&count).Error
+	return err == nil && count == 1
+}
+
+func (r *LabelRepository) CreateCategory(ctx context.Context, label *lModel.Label) error {
+	label.Name = strings.TrimSpace(label.Name)
+	if label.Name == "" || len([]rune(label.Name)) > 80 {
+		return errors.New("category name must be between 1 and 80 characters")
+	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&lModel.Label{}).Where("circle_id = ? AND LOWER(name) = LOWER(?)", label.CircleID, label.Name).Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return ErrDuplicateCategory
+		}
+		return tx.Create(label).Error
+	})
+}
+
+func (r *LabelRepository) UpdateCategory(ctx context.Context, circleID int, label *lModel.Label) error {
+	label.Name = strings.TrimSpace(label.Name)
+	if label.Name == "" || len([]rune(label.Name)) > 80 {
+		return errors.New("category name must be between 1 and 80 characters")
+	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&lModel.Label{}).Where("circle_id = ? AND id <> ? AND LOWER(name) = LOWER(?)", circleID, label.ID, label.Name).Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return ErrDuplicateCategory
+		}
+		result := tx.Model(&lModel.Label{}).Where("id = ? AND circle_id = ?", label.ID, circleID).Update("name", label.Name)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return ErrCategoryNotFound
+		}
+		return nil
+	})
+}
+
+func (r *LabelRepository) SetCategoryArchived(ctx context.Context, circleID, id int, archived bool) error {
+	var value *time.Time
+	if archived {
+		now := time.Now().UTC()
+		value = &now
+	}
+	result := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id = ? AND circle_id = ?", id, circleID).Update("archived_at", value)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return ErrCategoryNotFound
+	}
+	return nil
 }
 
 func (r *LabelRepository) CreateLabels(ctx context.Context, labels []*lModel.Label) error {

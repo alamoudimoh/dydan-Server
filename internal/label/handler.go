@@ -1,6 +1,8 @@
 package label
 
 import (
+	"errors"
+	"net/http"
 	"strconv"
 
 	auth "donetick.com/core/internal/auth"
@@ -88,6 +90,95 @@ func (h *Handler) createLabel(c *gin.Context) {
 	})
 }
 
+func (h *Handler) getCategories(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	labels, err := h.lRepo.GetCircleCategories(c, currentUser.CircleID, c.Query("includeArchived") == "true")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Error getting categories"})
+		return
+	}
+	c.JSON(200, gin.H{"res": labels})
+}
+
+func categoryError(c *gin.Context, err error) {
+	if errors.Is(err, lRepo.ErrDuplicateCategory) {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+	if errors.Is(err, lRepo.ErrCategoryNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+}
+
+func (h *Handler) createCategory(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+	var req LabelReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+	label := &lModel.Label{Name: req.Name, Color: req.Color, CreatedBy: currentUser.ID, CircleID: &currentUser.CircleID}
+	if err := h.lRepo.CreateCategory(c, label); err != nil {
+		categoryError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"res": label})
+}
+
+func (h *Handler) updateCategory(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+	var req UpdateLabelReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+	label := &lModel.Label{ID: req.ID, Name: req.Name}
+	if err := h.lRepo.UpdateCategory(c, currentUser.CircleID, label); err != nil {
+		categoryError(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"res": label})
+}
+
+func (h *Handler) archiveCategory(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Invalid category ID"})
+		return
+	}
+	var req struct {
+		Archived bool `json:"archived"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := h.lRepo.SetCategoryArchived(c, currentUser.CircleID, id, req.Archived); err != nil {
+		categoryError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h *Handler) updateLabel(c *gin.Context) {
 	currentUser, ok := auth.CurrentUser(c)
 	if !ok {
@@ -173,6 +264,14 @@ func Routes(r *gin.Engine, h *Handler, auth *jwt.GinJWTMiddleware) {
 		labelRoutes.POST("", h.createLabel)
 		labelRoutes.PUT("", h.updateLabel)
 		labelRoutes.DELETE("/:id", h.deleteLabel)
+	}
+	categoryRoutes := r.Group("api/v1/categories")
+	categoryRoutes.Use(auth.MiddlewareFunc())
+	{
+		categoryRoutes.GET("", h.getCategories)
+		categoryRoutes.POST("", h.createCategory)
+		categoryRoutes.PUT("", h.updateCategory)
+		categoryRoutes.PATCH("/:id/archive", h.archiveCategory)
 	}
 
 }
