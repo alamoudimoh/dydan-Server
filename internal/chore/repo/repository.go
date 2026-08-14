@@ -12,6 +12,7 @@ import (
 	cModel "donetick.com/core/internal/circle/model"
 	mModel "donetick.com/core/internal/meter/model"
 	mRepo "donetick.com/core/internal/meter/repo"
+	pModel "donetick.com/core/internal/points"
 	storageModel "donetick.com/core/internal/storage/model"
 	stModel "donetick.com/core/internal/subtask/model"
 	syncModel "donetick.com/core/internal/sync/model"
@@ -25,6 +26,8 @@ type ChoreRepository struct {
 	db     *gorm.DB
 	dbType string
 }
+
+var ErrCompletionAlreadyApplied = errors.New("completion operation already applied")
 
 // CreateSpec describes the complete persistent side of normal chore creation.
 // It is shared by single-chore and bulk domain workflows so related records are
@@ -492,6 +495,31 @@ func (r *ChoreRepository) CreateChore(c context.Context, chore *chModel.Chore) (
 	return chore.ID, nil
 }
 
+// CreateChoreIdempotent returns the existing chore for a repeated create key.
+// The unique index is the final arbiter for concurrent requests; the lookup is
+// also useful for ordinary retries after a response was lost.
+func (r *ChoreRepository) CreateChoreIdempotent(c context.Context, chore *chModel.Chore) (int, bool, error) {
+	if chore.CreateKey == nil || *chore.CreateKey == "" {
+		id, err := r.CreateChore(c, chore)
+		return id, true, err
+	}
+	var existing chModel.Chore
+	lookup := r.db.WithContext(c).Where("circle_id = ? AND created_by = ? AND create_key = ?", chore.CircleID, chore.CreatedBy, *chore.CreateKey)
+	if err := lookup.First(&existing).Error; err == nil {
+		return existing.ID, false, nil
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, false, err
+	}
+	id, err := r.CreateChore(c, chore)
+	if err == nil {
+		return id, true, nil
+	}
+	if findErr := lookup.First(&existing).Error; findErr == nil {
+		return existing.ID, false, nil
+	}
+	return 0, false, err
+}
+
 func (r *ChoreRepository) GetChore(c context.Context, choreID int, userID int, circleID int) (*chModel.Chore, error) {
 	var chore chModel.Chore
 	query := r.db.WithContext(c).Model(&chModel.Chore{}).
@@ -695,7 +723,7 @@ func (r *ChoreRepository) SoftDelete(c context.Context, id int, userID int, circ
 	}).Error
 }
 
-func (r *ChoreRepository) SetChorePendingApproval(c context.Context, chore *chModel.Chore, note *string, userID int, completedDate *time.Time) error {
+func (r *ChoreRepository) SetChorePendingApproval(c context.Context, chore *chModel.Chore, note *string, userID int, completedDate *time.Time, operationID *string) error {
 	nextVersion, err := r.nextSyncVersion(c, chore.CircleID)
 	if err != nil {
 		return err
@@ -731,6 +759,7 @@ func (r *ChoreRepository) SetChorePendingApproval(c context.Context, chore *chMo
 		}
 
 		ch.SyncVersion = nextVersion
+		ch.OperationID = operationID
 		if err := tx.Save(ch).Error; err != nil {
 			return err
 		}
@@ -757,6 +786,11 @@ func (r *ChoreRepository) SetChorePendingApproval(c context.Context, chore *chMo
 
 		return nil
 	})
+	if err != nil && operationID != nil {
+		if _, findErr := r.GetCompletionByOperation(c, chore.ID, chore.CircleID, *operationID); findErr == nil {
+			return ErrCompletionAlreadyApplied
+		}
+	}
 	return err
 }
 
@@ -868,7 +902,7 @@ func (r *ChoreRepository) RejectChore(c context.Context, choreID int, circleID i
 	})
 }
 
-func (r *ChoreRepository) CompleteChore(c context.Context, chore *chModel.Chore, note *string, userID int, dueDate *time.Time, completedDate *time.Time, nextAssignedTo *int, applyPoints bool) error {
+func (r *ChoreRepository) CompleteChore(c context.Context, chore *chModel.Chore, note *string, userID int, dueDate *time.Time, completedDate *time.Time, nextAssignedTo *int, applyPoints bool, operationID *string) error {
 	nextVersion, err := r.nextSyncVersion(c, chore.CircleID)
 	if err != nil {
 		return err
@@ -947,6 +981,7 @@ func (r *ChoreRepository) CompleteChore(c context.Context, chore *chModel.Chore,
 			}
 		}
 		ch.SyncVersion = nextVersion
+		ch.OperationID = operationID
 		// Perform the update operation once, using the prepared updates map.
 		if err := tx.Model(&chModel.Chore{}).Where("id = ?", chore.ID).Updates(choreUpdates).Error; err != nil {
 			return err
@@ -969,7 +1004,24 @@ func (r *ChoreRepository) CompleteChore(c context.Context, chore *chModel.Chore,
 
 		return nil
 	})
+	if err != nil && operationID != nil {
+		if _, findErr := r.GetCompletionByOperation(c, chore.ID, chore.CircleID, *operationID); findErr == nil {
+			return ErrCompletionAlreadyApplied
+		}
+	}
 	return err
+}
+
+func (r *ChoreRepository) GetCompletionByOperation(c context.Context, choreID, circleID int, operationID string) (*chModel.ChoreHistory, error) {
+	var history chModel.ChoreHistory
+	err := r.db.WithContext(c).Table("chore_histories").Select("chore_histories.*").
+		Joins("JOIN chores ON chores.id = chore_histories.chore_id").
+		Where("chore_histories.chore_id = ? AND chores.circle_id = ? AND chore_histories.operation_id = ?", choreID, circleID, operationID).
+		Scan(&history).Error
+	if err == nil && history.ID == 0 {
+		err = gorm.ErrRecordNotFound
+	}
+	return &history, err
 }
 
 func (r *ChoreRepository) SkipChore(c context.Context, chore *chModel.Chore, userID int, dueDate *time.Time, nextAssignedTo *int, skippedAt *time.Time) error {
@@ -1147,28 +1199,46 @@ func (r *ChoreRepository) UpdateLatestChoreHistory(c context.Context, choreID in
 	return nil
 }
 
-func (r *ChoreRepository) DeleteChoreHistory(c context.Context, historyID int, circleID int) error {
-	// create transaction and delete all the chore timer associated with the chore history then delete the chore history
+func (r *ChoreRepository) VoidChoreHistory(c context.Context, historyID, circleID, actorID int, reason string) error {
 	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
-		// Allocate next sync version within the transaction for atomicity
+		query := tx.WithContext(c)
+		if r.dbType == "postgres" {
+			query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		var history chModel.ChoreHistory
+		if err := query.Table("chore_histories").Select("chore_histories.*").Joins("JOIN chores ON chores.id = chore_histories.chore_id").
+			Where("chore_histories.id = ? AND chores.circle_id = ?", historyID, circleID).
+			Scan(&history).Error; err != nil {
+			return err
+		}
+		if history.ID == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		if history.Status == chModel.ChoreHistoryStatusVoided {
+			return nil
+		}
 		nextVersion, err := r.nextSyncVersionWithDB(c, tx, circleID)
 		if err != nil {
 			return err
 		}
-
-		if err := tx.WithContext(c).Where("chore_history_id = ?", historyID).Delete(&chModel.TimeSession{}).Error; err != nil {
-			return fmt.Errorf("failed to delete chore time sessions: %w", err)
+		now := time.Now().UTC()
+		if history.Status == chModel.ChoreHistoryStatusCompleted && history.Points != nil && *history.Points > 0 {
+			var membership cModel.UserCircle
+			if err := tx.Where("circle_id = ? AND user_id = ?", circleID, history.CompletedBy).First(&membership).Error; err != nil {
+				return err
+			}
+			previous := membership.CurrentBalance()
+			resulting := previous - *history.Points
+			if err := tx.Model(&membership).Update("points", gorm.Expr("points - ?", *history.Points)).Error; err != nil {
+				return err
+			}
+			if err := tx.Create(&pModel.PointsHistory{Action: pModel.PointsHistoryActionRemove, CircleID: circleID, UserID: history.CompletedBy, Points: *history.Points, PreviousBalance: &previous, ResultingBalance: &resulting, CreatedAt: now, CreatedBy: actorID}).Error; err != nil {
+				return err
+			}
 		}
-		// Now delete the chore history
-		if err := tx.WithContext(c).Delete(&chModel.ChoreHistory{}, historyID).Error; err != nil {
-			return fmt.Errorf("failed to delete chore history: %w", err)
-		}
-		// Record tombstone so clients can remove it during sync
-		return tx.WithContext(c).Create(&syncModel.Tombstone{
-			CircleID:    circleID,
-			EntityType:  syncModel.EntityTypeChoreHistory,
-			EntityID:    historyID,
-			SyncVersion: nextVersion,
+		return tx.Model(&history).Updates(map[string]interface{}{
+			"status": chModel.ChoreHistoryStatusVoided, "voided_at": now,
+			"voided_by": actorID, "void_reason": reason, "sync_version": nextVersion,
 		}).Error
 	})
 }

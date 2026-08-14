@@ -36,7 +36,7 @@ func TestCompleteChoreRebasesFromActualReadingAndKeepsMeterOnlyActive(t *testing
 		t.Fatal(err)
 	}
 	repo := NewChoreRepository(db, &config.Config{Database: config.DatabaseConfig{Type: "sqlite"}})
-	if err := repo.CompleteChore(context.Background(), &chore, nil, 1, nil, &now, nil, false); err != nil {
+	if err := repo.CompleteChore(context.Background(), &chore, nil, 1, nil, &now, nil, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	var savedSchedule mModel.ChoreSchedule
@@ -78,7 +78,7 @@ func TestCompleteHybridChoreResetsTimeAndMeterWithoutResettingMeter(t *testing.T
 		t.Fatal(err)
 	}
 	repository := NewChoreRepository(db, &config.Config{Database: config.DatabaseConfig{Type: "sqlite"}})
-	if err := repository.CompleteChore(context.Background(), &chore, nil, 1, &nextCalendarDue, &completedAt, nil, false); err != nil {
+	if err := repository.CompleteChore(context.Background(), &chore, nil, 1, &nextCalendarDue, &completedAt, nil, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	var savedMeter mModel.Meter

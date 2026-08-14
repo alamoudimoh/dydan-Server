@@ -10,9 +10,13 @@ import (
 	uModel "donetick.com/core/internal/user/model"
 	"donetick.com/core/logging"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
-var ErrInsufficientPoints = errors.New("insufficient available points")
+var (
+	ErrInsufficientPoints = errors.New("insufficient available points")
+	ErrLastAdmin          = errors.New("circle must retain at least one active admin")
+)
 
 type ICircleRepository interface {
 	CreateCircle(circle *cModel.Circle) error
@@ -92,7 +96,32 @@ func (r *CircleRepository) DeleteUserFromCircle(c context.Context, circleID, use
 }
 
 func (r *CircleRepository) ChangeUserRole(c context.Context, circleID, userID int, role cModel.Role) error {
-	return r.db.WithContext(c).Model(&cModel.UserCircle{}).Where("circle_id = ? AND user_id = ?", circleID, userID).Update("role", role).Error
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		query := tx.WithContext(c)
+		if tx.Dialector.Name() == "postgres" {
+			query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		var membership cModel.UserCircle
+		if err := query.Where("circle_id = ? AND user_id = ?", circleID, userID).First(&membership).Error; err != nil {
+			return err
+		}
+		if membership.IsActive && membership.Role == cModel.UserRoleAdmin && string(role) != string(cModel.UserRoleAdmin) {
+			var admins []cModel.UserCircle
+			adminQuery := tx.WithContext(c)
+			if tx.Dialector.Name() == "postgres" {
+				adminQuery = adminQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+			}
+			if err := adminQuery.
+				Where("circle_id = ? AND is_active = ? AND role = ?", circleID, true, cModel.UserRoleAdmin).
+				Order("id").Find(&admins).Error; err != nil {
+				return err
+			}
+			if len(admins) <= 1 {
+				return ErrLastAdmin
+			}
+		}
+		return tx.WithContext(c).Model(&membership).Update("role", role).Error
+	})
 }
 
 func (r *CircleRepository) GetUserCircleRole(c context.Context, circleID, userID int) (cModel.Role, error) {
@@ -136,12 +165,32 @@ func (r *CircleRepository) GetUserOriginalCircle(c context.Context, userID int) 
 }
 
 func (r *CircleRepository) DeleteMemberByID(c context.Context, circleID, userID int) error {
-	return r.db.WithContext(c).Where("circle_id = ? AND user_id = ?", circleID, userID).Delete(&cModel.UserCircle{}).Error
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		query := tx.WithContext(c)
+		if tx.Dialector.Name() == "postgres" {
+			query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		var membership cModel.UserCircle
+		if err := query.Where("circle_id = ? AND user_id = ?", circleID, userID).First(&membership).Error; err != nil {
+			return err
+		}
+		if membership.IsActive && membership.Role == cModel.UserRoleAdmin {
+			var admins []cModel.UserCircle
+			if err := query.Where("circle_id = ? AND is_active = ? AND role = ?", circleID, true, cModel.UserRoleAdmin).
+				Order("id").Find(&admins).Error; err != nil {
+				return err
+			}
+			if len(admins) <= 1 {
+				return ErrLastAdmin
+			}
+		}
+		return tx.WithContext(c).Delete(&membership).Error
+	})
 }
 
 func (r *CircleRepository) GetCircleAdmins(c context.Context, circleID int) ([]*cModel.UserCircleDetail, error) {
 	var circleAdmins []*cModel.UserCircleDetail
-	if err := r.db.WithContext(c).Raw("SELECT * FROM user_circles LEFT JOIN users on users.id = user_circles.user_id WHERE user_circles.circle_id = ? AND user_circles.role = 'admin'", circleID).Scan(&circleAdmins).Error; err != nil {
+	if err := r.db.WithContext(c).Raw("SELECT * FROM user_circles LEFT JOIN users on users.id = user_circles.user_id WHERE user_circles.circle_id = ? AND user_circles.role = 'admin' AND user_circles.is_active = true", circleID).Scan(&circleAdmins).Error; err != nil {
 		return nil, err
 	}
 	return circleAdmins, nil

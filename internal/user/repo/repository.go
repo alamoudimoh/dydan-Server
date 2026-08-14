@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"donetick.com/core/config"
+	cModel "donetick.com/core/internal/circle/model"
 	nModel "donetick.com/core/internal/notifier/model"
 	storageModel "donetick.com/core/internal/storage/model"
 	uModel "donetick.com/core/internal/user/model"
@@ -74,6 +75,23 @@ func (r *UserRepository) GetAllUsersForSystemOnly(c context.Context) ([]*uModel.
 }
 func (r *UserRepository) CreateUser(c context.Context, user *uModel.User) (*uModel.User, error) {
 	if err := r.db.WithContext(c).Create(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// CreateChildWithMembership persists a managed account and its Circle
+// membership as one unit. A child without that membership cannot be used and
+// must never be left behind after a partial failure.
+func (r *UserRepository) CreateChildWithMembership(c context.Context, user *uModel.User, membership *cModel.UserCircle) (*uModel.User, error) {
+	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(user).Error; err != nil {
+			return err
+		}
+		membership.UserID = user.ID
+		return tx.Create(membership).Error
+	})
+	if err != nil {
 		return nil, err
 	}
 	return user, nil

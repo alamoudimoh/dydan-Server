@@ -622,11 +622,12 @@ func (h *Handler) CreateChore(c *gin.Context) {
 		IsPrivate:              *choreReq.IsPrivate,
 		ProjectID:              choreReq.ProjectID,
 		CategoryID:             choreReq.CategoryID,
+		CreateKey:              choreReq.DraftId,
 		// SubTasks removed to prevent duplicate creation - handled by UpdateSubtask call below
 		// it's need custom logic to handle subtask creation as we send negative ids sometimes when we creating parent child releationship
 		// when the subtask is not yet created
 	}
-	id, err := h.choreRepo.CreateChore(c, createdChore)
+	id, created, err := h.choreRepo.CreateChoreIdempotent(c, createdChore)
 	createdChore.ID = id
 
 	if err != nil {
@@ -634,6 +635,10 @@ func (h *Handler) CreateChore(c *gin.Context) {
 		c.JSON(500, gin.H{
 			"error": "Failed to create chore",
 		})
+		return
+	}
+	if !created {
+		c.JSON(http.StatusOK, gin.H{"res": id, "idempotentReplay": true})
 		return
 	}
 
@@ -2270,6 +2275,7 @@ type CompleteChoreReq struct { // TODO: Remove "Note" in future.
 	CompletedBy   *int           `json:"completedBy"`                    // The completed by only can be populated by the admin or super user.
 	CompletedDate *time.Time     `json:"completedTime"`                  // Completion date in RFC3339 format (defaults to now).
 	ActionOptions *ActionOptions `json:"actionOptions"`
+	OperationID   *string        `json:"operationId" binding:"omitempty,uuid"`
 }
 
 // endregion
@@ -2349,6 +2355,15 @@ func (h *Handler) CompleteChore(c *gin.Context) {
 			"error": "Failed to retrieve chore",
 		})
 		return
+	}
+	if req.OperationID != nil {
+		if _, err := h.choreRepo.GetCompletionByOperation(c, id, actualUser.CircleID, *req.OperationID); err == nil {
+			c.JSON(http.StatusOK, gin.H{"res": chore, "idempotentReplay": true})
+			return
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to verify completion operation"})
+			return
+		}
 	}
 	if chore.MeterUpdateReminder != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "A meter reading is required to complete this update task"})
@@ -2442,7 +2457,14 @@ func (h *Handler) CompleteChore(c *gin.Context) {
 	// Check if chore requires approval
 	if chore.RequireApproval {
 		// Set chore status to pending approval instead of completing
-		if err := h.choreRepo.SetChorePendingApproval(c, chore, note, completedBy, &completedDate); err != nil {
+		if err := h.choreRepo.SetChorePendingApproval(c, chore, note, completedBy, &completedDate, req.OperationID); err != nil {
+			if errors.Is(err, chRepo.ErrCompletionAlreadyApplied) {
+				updated, getErr := h.choreRepo.GetChore(c, id, effectiveUser.ID, actualUser.CircleID)
+				if getErr == nil {
+					c.JSON(http.StatusOK, gin.H{"res": updated, "idempotentReplay": true})
+					return
+				}
+			}
 			c.JSON(500, gin.H{
 				"error": "Error setting chore pending approval",
 			})
@@ -2492,7 +2514,14 @@ func (h *Handler) CompleteChore(c *gin.Context) {
 		return
 	}
 
-	if err := h.choreRepo.CompleteChore(c, chore, note, completedBy, nextDueDate, &completedDate, nextAssignedTo, true); err != nil {
+	if err := h.choreRepo.CompleteChore(c, chore, note, completedBy, nextDueDate, &completedDate, nextAssignedTo, true, req.OperationID); err != nil {
+		if errors.Is(err, chRepo.ErrCompletionAlreadyApplied) {
+			updated, getErr := h.choreRepo.GetChore(c, id, effectiveUser.ID, actualUser.CircleID)
+			if getErr == nil {
+				c.JSON(http.StatusOK, gin.H{"res": updated, "idempotentReplay": true})
+				return
+			}
+		}
 		c.JSON(500, gin.H{
 			"error": "Error completing chore",
 		})
@@ -2968,8 +2997,8 @@ func (h *Handler) GetChoresHistory(c *gin.Context) {
 
 // DeleteHistory godoc
 //
-//	@Summary		Delete chore history entry
-//	@Description	Deletes a specific chore history entry (creator only)
+//	@Summary		Void chore history entry
+//	@Description	Voids a specific chore history entry while retaining its audit record
 //	@Tags			chores
 //	@Accept			json
 //	@Produce		json
@@ -2977,11 +3006,11 @@ func (h *Handler) GetChoresHistory(c *gin.Context) {
 //	@Security		APIKeyAuth
 //	@Param			id			path		int					true	"Chore ID"
 //	@Param			history_id	path		int					true	"History ID"
-//	@Success		200			{object}	map[string]string	"message: History deleted successfully"
+//	@Success		200			{object}	map[string]string	"message: History voided successfully"
 //	@Failure		400			{object}	map[string]string	"error: Invalid Chore ID | Invalid History ID"
 //	@Failure		401			{object}	map[string]string	"error: Authentication failed"
-//	@Failure		403			{object}	map[string]string	"error: You are not allowed to delete this history"
-//	@Failure		500			{object}	map[string]string	"error: Failed to fetch chore history entry | Error deleting history"
+//	@Failure		403			{object}	map[string]string	"error: You are not allowed to void this history"
+//	@Failure		500			{object}	map[string]string	"error: Failed to fetch chore history entry | Error voiding history"
 //	@Router			/chores/{id}/history/{history_id} [delete]
 func (h *Handler) DeleteHistory(c *gin.Context) {
 
@@ -3045,15 +3074,19 @@ func (h *Handler) DeleteHistory(c *gin.Context) {
 		return
 	}
 
-	if err := h.choreRepo.DeleteChoreHistory(c, historyID, currentUser.CircleID); err != nil {
+	reason := strings.TrimSpace(c.Query("reason"))
+	if reason == "" {
+		reason = "Voided by an authorized user"
+	}
+	if err := h.choreRepo.VoidChoreHistory(c, historyID, currentUser.CircleID, currentUser.ID, reason); err != nil {
 		c.JSON(500, gin.H{
-			"error": "Error deleting history",
+			"error": "Error voiding history",
 		})
 		return
 	}
 
 	c.JSON(200, gin.H{
-		"message": "History deleted successfully",
+		"message": "History voided successfully",
 	})
 }
 

@@ -63,12 +63,13 @@ type Chore struct {
 	LabelsV2               *[]lModel.Label            `json:"labelsV2" gorm:"many2many:chore_labels"`                            // Labels for the chore
 	CategoryID             *int                       `json:"categoryId,omitempty" gorm:"column:category_id;index"`
 	Category               *lModel.Label              `json:"category,omitempty" gorm:"foreignKey:CategoryID;references:ID"`
-	CircleID               int                        `json:"circleId" gorm:"column:circle_id;index;index:idx_chores_circle_sync_version,priority:1"` // The circle this chore is in
-	CreatedAt              time.Time                  `json:"createdAt" gorm:"column:created_at"`                                                     // When the chore was created
-	UpdatedAt              time.Time                  `json:"updatedAt" gorm:"column:updated_at"`                                                     // When the chore was last updated
-	CreatedBy              int                        `json:"createdBy" gorm:"column:created_by"`                                                     // Who created the chore
-	UpdatedBy              int                        `json:"updatedBy" gorm:"column:updated_by"`                                                     // Who last updated the chore
-	ThingChore             *tModel.ThingChore         `json:"thingChore" gorm:"foreignkey:chore_id;references:id;<-:false"`                           // ThingChore relationship
+	CircleID               int                        `json:"circleId" gorm:"column:circle_id;index;index:idx_chores_circle_sync_version,priority:1;uniqueIndex:idx_chore_create_key,priority:1"` // The circle this chore is in
+	CreatedAt              time.Time                  `json:"createdAt" gorm:"column:created_at"`                                                                                                 // When the chore was created
+	UpdatedAt              time.Time                  `json:"updatedAt" gorm:"column:updated_at"`                                                                                                 // When the chore was last updated
+	CreatedBy              int                        `json:"createdBy" gorm:"column:created_by;uniqueIndex:idx_chore_create_key,priority:2"`                                                     // Who created the chore
+	CreateKey              *string                    `json:"-" gorm:"column:create_key;uniqueIndex:idx_chore_create_key,priority:3"`
+	UpdatedBy              int                        `json:"updatedBy" gorm:"column:updated_by"`                           // Who last updated the chore
+	ThingChore             *tModel.ThingChore         `json:"thingChore" gorm:"foreignkey:chore_id;references:id;<-:false"` // ThingChore relationship
 	MeterSchedule          *mModel.ChoreSchedule      `json:"meterSchedule,omitempty" gorm:"foreignKey:ChoreID;references:ID"`
 	MeterUpdateReminder    *mModel.UpdateReminder     `json:"meterUpdateReminder,omitempty" gorm:"foreignKey:ChoreID;references:ID"`
 	Status                 Status                     `json:"status" gorm:"column:status"`                                 //
@@ -115,6 +116,10 @@ type ChoreHistory struct {
 	MeterReading *int64             `json:"meterReading,omitempty" gorm:"column:meter_reading"`
 	Duration     *int               `json:"duration,omitempty" gorm:"<-:false;-:migration"` // Duration in seconds calculated from query (read-only, no DB column)
 	SyncVersion  int64              `json:"syncVersion" gorm:"column:sync_version;not null;default:0;index:idx_chore_history_sync_version"`
+	OperationID  *string            `json:"operationId,omitempty" gorm:"column:operation_id;uniqueIndex"`
+	VoidedAt     *time.Time         `json:"voidedAt,omitempty" gorm:"column:voided_at"`
+	VoidedBy     *int               `json:"voidedBy,omitempty" gorm:"column:voided_by"`
+	VoidReason   *string            `json:"voidReason,omitempty" gorm:"column:void_reason"`
 }
 
 type ChoreHistoryStatus int8
@@ -127,6 +132,7 @@ const (
 	ChoreHistoryStatusRejected        ChoreHistoryStatus = 4
 	ChoreHistoryStatusMissed          ChoreHistoryStatus = 5
 	ChoreHistoryStatusRescheduled     ChoreHistoryStatus = 6
+	ChoreHistoryStatusVoided          ChoreHistoryStatus = 7
 )
 
 type FrequencyMetadata struct {

@@ -1512,22 +1512,15 @@ func (h *Handler) createChildUser(c *gin.Context) {
 		return
 	}
 
-	createdUser, err := h.userRepo.CreateUser(c, childUser)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create child user"})
-		return
-	}
-
-	// Add child user to the same circle as parent
-	if err := h.circleRepo.AddUserToCircle(c, &cModel.UserCircle{
-		UserID:    createdUser.ID,
+	createdUser, err := h.userRepo.CreateChildWithMembership(c, childUser, &cModel.UserCircle{
 		CircleID:  currentUser.CircleID,
 		Role:      "member", // Child users are members, not admins
 		IsActive:  true,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
-	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add child user to circle"})
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create child user"})
 		return
 	}
 

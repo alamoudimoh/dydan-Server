@@ -336,6 +336,12 @@ func (h *Handler) DeleteCircleMember(c *gin.Context) {
 		})
 		return
 	}
+	if len(admins) == 1 && admins[0].UserID == memberIDToDeleted {
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "Promote another active member before removing the last circle admin",
+		})
+		return
+	}
 	orginalCircleID, err := h.circleRepo.GetUserOriginalCircle(c, memberIDToDeleted)
 	if handleUserLeavingCircle(h, c, &uModel.User{ID: memberIDToDeleted, CircleID: circleID}, orginalCircleID) != nil {
 		log.Error("Error handling user leaving circle:", err)
@@ -347,6 +353,12 @@ func (h *Handler) DeleteCircleMember(c *gin.Context) {
 
 	err = h.circleRepo.DeleteMemberByID(c, circleID, memberIDToDeleted)
 	if err != nil {
+		if errors.Is(err, cRepo.ErrLastAdmin) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "Promote another active member before removing the last circle admin",
+			})
+			return
+		}
 		log.Error("Error deleting circle member:", err)
 		c.JSON(500, gin.H{
 			"error": "Error deleting circle member",
@@ -872,6 +884,12 @@ func (h *Handler) ChangeMemberRole(c *gin.Context) {
 	}
 
 	err = h.circleRepo.ChangeUserRole(c, currentUser.CircleID, req.MemberID, req.Role)
+	if errors.Is(err, cRepo.ErrLastAdmin) {
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "A Circle must have at least one active admin. Promote another member before changing this role.",
+		})
+		return
+	}
 	if err != nil {
 		log.Error("Error changing member role:", err)
 		c.JSON(500, gin.H{
