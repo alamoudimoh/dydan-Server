@@ -42,6 +42,10 @@ func NewHandler(stripeDB pDB.StripeDB, subscriptionDB pDB.SubscriptionDB, stripe
 func (h *Handler) CreateSubscription(c *gin.Context) {
 	logger := logging.FromContext(c)
 	currentUser := auth.MustCurrentUser(c)
+	if !auth.HasPermission(auth.ResolveEffectiveRole(&currentUser.User, "member", true), auth.PermissionManageAccount) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to manage subscriptions"})
+		return
+	}
 	var customer *model.StripeCustomer
 	var err error
 	// TODO: DELETE THIS
@@ -94,6 +98,10 @@ func (h *Handler) CreateSubscription(c *gin.Context) {
 func (h *Handler) CancelSubscription(c *gin.Context) {
 	logger := logging.FromContext(c)
 	currentUser := auth.MustCurrentUser(c)
+	if !auth.HasPermission(auth.ResolveEffectiveRole(&currentUser.User, "member", true), auth.PermissionManageAccount) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to manage subscriptions"})
+		return
+	}
 
 	// Get subscription from unified table
 	sub, err := h.subscriptionDB.GetSubscriptionByUserID(c, currentUser.ID)

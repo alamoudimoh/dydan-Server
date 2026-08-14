@@ -34,6 +34,19 @@ type Handler struct {
 	singleCircleInstance bool
 }
 
+func hasCirclePermission(user *uModel.UserDetails, members []*cModel.UserCircleDetail, permission auth.Permission) bool {
+	if user == nil {
+		return false
+	}
+	for _, member := range members {
+		if member.UserID == user.ID {
+			role := auth.ResolveEffectiveRole(&user.User, cModel.Role(member.Role), member.IsActive)
+			return auth.HasPermission(role, permission)
+		}
+	}
+	return false
+}
+
 func NewHandler(cr *cRepo.CircleRepository, ur *uRepo.UserRepository, c *chRepo.ChoreRepository, pr *pRepo.PointsRepository,
 	signer storage.URLSigner, config *config.Config) *Handler {
 	return &Handler{
@@ -323,14 +336,7 @@ func (h *Handler) DeleteCircleMember(c *gin.Context) {
 		})
 		return
 	}
-	isAdmin := false
-	for _, admin := range admins {
-		if admin.UserID == currentUser.ID {
-			isAdmin = true
-			break
-		}
-	}
-	if !isAdmin {
+	if !hasCirclePermission(currentUser, admins, auth.PermissionManageCircle) {
 		c.JSON(403, gin.H{
 			"error": "You are not an admin of this circle",
 		})
@@ -440,15 +446,7 @@ func (h *Handler) GetPendingCircleMembers(c *gin.Context) {
 		return
 	}
 
-	// confirm that the current user is an admin:
-	isAdmin := false
-	for _, member := range currentMemebers {
-		if member.UserID == currentUser.ID && member.Role == "admin" {
-			isAdmin = true
-			break
-		}
-	}
-	if !isAdmin {
+	if !hasCirclePermission(currentUser, currentMemebers, auth.PermissionManageCircle) {
 		c.JSON(403, gin.H{
 			"error": "You are not an admin of this circle",
 		})
@@ -536,15 +534,7 @@ func (h *Handler) AcceptJoinRequest(c *gin.Context) {
 			return
 		}
 	}
-	// confirm that the current user is an admin:
-	isAdmin := false
-	for _, member := range currentMembers {
-		if member.UserID == currentUser.ID && member.Role == "admin" {
-			isAdmin = true
-			break
-		}
-	}
-	if !isAdmin {
+	if !hasCirclePermission(currentUser, currentMembers, auth.PermissionManageCircle) {
 		c.JSON(403, gin.H{
 			"error": "You are not an admin of this circle",
 		})
@@ -670,13 +660,9 @@ func (h *Handler) RedeemPoints(c *gin.Context) {
 		})
 		return
 	}
-	isAdmin := false
 	isValidMember := false
 	var member *cModel.UserCircleDetail
 	for _, user := range members {
-		if user.UserID == currentUser.ID && user.Role == "admin" {
-			isAdmin = true
-		}
 		if user.UserID == redeemReq.UserID {
 			isValidMember = true
 			member = user
@@ -684,7 +670,7 @@ func (h *Handler) RedeemPoints(c *gin.Context) {
 
 	}
 
-	if !isAdmin {
+	if !hasCirclePermission(currentUser, members, auth.PermissionManageCircle) {
 		log.Error("Error redeeming points: user is not an admin of this circle")
 		c.JSON(403, gin.H{
 			"error": "You are not an admin of this circle",
@@ -744,7 +730,7 @@ func (h *Handler) ResetPoints(c *gin.Context) {
 	for _, member := range members {
 		memberIDs[member.UserID] = true
 	}
-	if !canResetPoints(members, currentUser.ID) {
+	if !hasCirclePermission(currentUser, members, auth.PermissionManageCircle) {
 		c.JSON(403, gin.H{"error": "You are not an admin of this circle"})
 		return
 	}
@@ -763,15 +749,6 @@ func (h *Handler) ResetPoints(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"res": "Points reset successfully", "resetCount": count})
-}
-
-func canResetPoints(members []*cModel.UserCircleDetail, actorID int) bool {
-	for _, member := range members {
-		if member.UserID == actorID && member.Role == cModel.UserRoleAdmin {
-			return true
-		}
-	}
-	return false
 }
 
 func (h *Handler) GetPointsHistory(c *gin.Context) {
@@ -856,21 +833,13 @@ func (h *Handler) ChangeMemberRole(c *gin.Context) {
 		})
 		return
 	}
-	isAdmin := false
 	memberFound := false
-	adminCount := 0
 	for _, user := range users {
-		if user.Role == "admin" {
-			adminCount++
-			if user.UserID == currentUser.ID {
-				isAdmin = true
-			}
-		}
 		if user.UserID == req.MemberID {
 			memberFound = true
 		}
 	}
-	if !isAdmin {
+	if !hasCirclePermission(currentUser, users, auth.PermissionManageCircle) {
 		c.JSON(403, gin.H{
 			"error": "You are not an admin of this circle",
 		})

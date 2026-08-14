@@ -1738,6 +1738,23 @@ func passwordAuthDisabled() gin.HandlerFunc {
 	}
 }
 
+func (h *Handler) requirePermission(permission auth.Permission) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		currentUser, ok := auth.CurrentUser(c)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			return
+		}
+		circleRole, err := h.circleRepo.GetActiveUserCircleRole(c, currentUser.CircleID, currentUser.ID)
+		role := auth.ResolveEffectiveRole(&currentUser.User, circleRole, err == nil)
+		if err != nil || !auth.HasPermission(role, permission) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "You do not have permission to manage this setting"})
+			return
+		}
+		c.Next()
+	}
+}
+
 func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limiter *limiter.Limiter, cfg *config.Config) {
 
 	userRoutes := router.Group("api/v1/users")
@@ -1746,10 +1763,10 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.GET("/", h.GetAllUsers())
 		userRoutes.GET("/profile", h.GetUserProfile)
 		userRoutes.PUT("", h.UpdateUserDetails)
-		userRoutes.POST("/tokens", h.CreateLongLivedToken)
-		userRoutes.GET("/tokens", h.GetAllUserToken)
-		userRoutes.DELETE("/tokens/:id", h.DeleteUserToken)
-		userRoutes.PUT("/webhook", h.setWebhook)
+		userRoutes.POST("/tokens", h.requirePermission(auth.PermissionManageAccount), h.CreateLongLivedToken)
+		userRoutes.GET("/tokens", h.requirePermission(auth.PermissionManageAccount), h.GetAllUserToken)
+		userRoutes.DELETE("/tokens/:id", h.requirePermission(auth.PermissionManageAccount), h.DeleteUserToken)
+		userRoutes.PUT("/webhook", h.requirePermission(auth.PermissionManageCircle), h.setWebhook)
 		userRoutes.PUT("/targets", h.UpdateNotificationTarget)
 		userRoutes.PUT("change_password", h.updateUserPasswordLoggedInOnly)
 		userRoutes.POST("profile_photo", h.updateProfilePhoto)
@@ -1757,21 +1774,21 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.POST("/logout", h.logout) // Logout endpoint to clear cookies and expire refresh tokens
 
 		// MFA endpoints
-		userRoutes.GET("/mfa/status", h.getMFAStatus)
-		userRoutes.POST("/mfa/setup", h.setupMFA)
-		userRoutes.POST("/mfa/confirm", h.confirmMFA)
-		userRoutes.POST("/mfa/disable", h.disableMFA)
+		userRoutes.GET("/mfa/status", h.requirePermission(auth.PermissionManageAccount), h.getMFAStatus)
+		userRoutes.POST("/mfa/setup", h.requirePermission(auth.PermissionManageAccount), h.setupMFA)
+		userRoutes.POST("/mfa/confirm", h.requirePermission(auth.PermissionManageAccount), h.confirmMFA)
+		userRoutes.POST("/mfa/disable", h.requirePermission(auth.PermissionManageAccount), h.disableMFA)
 		// userRoutes.POST("/mfa/regenerate-backup-codes", h.regenerateBackupCodes)
 
 		// Account deletion endpoints
-		userRoutes.POST("/delete/check", h.checkAccountDeletion)
-		userRoutes.DELETE("/delete", h.deleteAccount)
+		userRoutes.POST("/delete/check", h.requirePermission(auth.PermissionManageAccount), h.checkAccountDeletion)
+		userRoutes.DELETE("/delete", h.requirePermission(auth.PermissionManageAccount), h.deleteAccount)
 
 		// Child user management endpoints
-		userRoutes.POST("/subaccounts", h.createChildUser)
-		userRoutes.GET("/subaccounts", h.getChildUsers)
-		userRoutes.PUT("/subaccounts/password", h.updateChildPassword)
-		userRoutes.DELETE("/subaccounts/:id", h.deleteChildUser)
+		userRoutes.POST("/subaccounts", h.requirePermission(auth.PermissionManageSubaccounts), h.createChildUser)
+		userRoutes.GET("/subaccounts", h.requirePermission(auth.PermissionManageSubaccounts), h.getChildUsers)
+		userRoutes.PUT("/subaccounts/password", h.requirePermission(auth.PermissionManageSubaccounts), h.updateChildPassword)
+		userRoutes.DELETE("/subaccounts/:id", h.requirePermission(auth.PermissionManageSubaccounts), h.deleteChildUser)
 	}
 
 	// Create new auth handler for enhanced token management
