@@ -18,6 +18,7 @@ import (
 	pModel "donetick.com/core/internal/points"
 	progressModel "donetick.com/core/internal/progress"
 	projModel "donetick.com/core/internal/project/model"
+	slModel "donetick.com/core/internal/shoppinglist/model"
 	rewardModel "donetick.com/core/internal/reward"
 	routineModel "donetick.com/core/internal/routine"
 	storageModel "donetick.com/core/internal/storage/model"
@@ -57,6 +58,8 @@ func Migration(db *gorm.DB) error {
 		lModel.Label{},
 		chModel.ChoreLabels{},
 		projModel.Project{},
+		slModel.ShoppingList{},
+		slModel.ShoppingListItem{},
 		filterModel.Filter{},
 		migrations.Migration{},
 		pModel.PointsHistory{},

@@ -47,6 +47,8 @@ import (
 	"donetick.com/core/internal/resource"
 	"donetick.com/core/internal/reward"
 	"donetick.com/core/internal/routine"
+	"donetick.com/core/internal/shoppinglist"
+	slRepo "donetick.com/core/internal/shoppinglist/repo"
 	"donetick.com/core/internal/storage"
 	storageRepo "donetick.com/core/internal/storage/repo"
 	spRepo "donetick.com/core/internal/subtask/repo"
@@ -160,6 +162,8 @@ func main() {
 		// Projects:
 		fx.Provide(pjRepo.NewProjectRepository),
 		fx.Provide(project.NewHandler),
+		fx.Provide(slRepo.NewRepository),
+		fx.Provide(shoppinglist.NewHandler),
 		fx.Provide(progress.NewHandler),
 
 		// Filters:
@@ -222,6 +226,7 @@ func main() {
 			routine.Routes,
 			label.Routes,
 			project.Routes,
+			shoppinglist.Routes,
 			progress.Routes,
 			filter.Routes,
 
