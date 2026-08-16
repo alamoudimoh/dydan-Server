@@ -34,7 +34,7 @@ func TestZeroConfigDefaultsAndPersistentSecret(t *testing.T) {
 	if first.Name != "daydan" || first.Database.Type != "sqlite" || !first.Database.Migration {
 		t.Fatalf("database defaults not populated: %#v", first.Database)
 	}
-	if first.Database.Path != filepath.Join(dataDir, "taskier.db") {
+	if first.Database.Path != filepath.Join(dataDir, "daydan.db") {
 		t.Fatalf("database path=%q", first.Database.Path)
 	}
 	if first.Server.Port != 2021 || !first.Server.ServeFrontend {
@@ -172,7 +172,7 @@ func TestUnavailableDataDirectoryFails(t *testing.T) {
 	}
 }
 
-func TestLegacySQLiteDatabaseIsReused(t *testing.T) {
+func TestLegacyDonetickDatabaseMigratesToDaydan(t *testing.T) {
 	clearConfigSelection(t)
 	dataDir := t.TempDir()
 	legacyPath := filepath.Join(dataDir, "donetick.db")
@@ -184,8 +184,12 @@ func TestLegacySQLiteDatabaseIsReused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Database.Path != legacyPath {
-		t.Fatalf("legacy database was not reused: got %q want %q", cfg.Database.Path, legacyPath)
+	daydanPath := filepath.Join(dataDir, "daydan.db")
+	if cfg.Database.Path != daydanPath {
+		t.Fatalf("database path=%q want %q", cfg.Database.Path, daydanPath)
+	}
+	if _, err := os.Stat(legacyPath); err != nil {
+		t.Fatal("legacy donetick.db was removed")
 	}
 }
 

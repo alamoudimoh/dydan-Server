@@ -89,7 +89,7 @@ docker compose up -d
 
 Persistent runtime state lives in `/data` inside the container:
 
-- `/data/taskier.db` — SQLite database
+- `/data/daydan.db` — SQLite database (legacy `taskier.db` / `donetick.db` are migrated automatically)
 - `/data/jwt-secret` — automatically generated session-signing secret
 - `/data/uploads` — local attachments
 

@@ -545,7 +545,11 @@ func initializePersistentRuntime(config *Config) error {
 			config.Database.Path = path
 		}
 		if config.Database.Path == "" {
-			config.Database.Path = defaultSQLitePath(dataDir, useLegacyWorkingDirectory)
+			path, err := resolveDefaultSQLitePath(dataDir, useLegacyWorkingDirectory)
+			if err != nil {
+				return fmt.Errorf("resolve SQLite path: %w", err)
+			}
+			config.Database.Path = path
 		}
 		if err := os.MkdirAll(filepath.Dir(config.Database.Path), 0o700); err != nil {
 			return fmt.Errorf("create SQLite directory: %w", err)
@@ -571,23 +575,6 @@ func initializePersistentRuntime(config *Config) error {
 	}
 	config.Jwt.Secret = secret
 	return validateJWTSecret(secret)
-}
-
-func defaultSQLitePath(dataDir string, useWorkingDirectory bool) string {
-	preferred := filepath.Join(dataDir, "taskier.db")
-	if _, err := os.Stat(preferred); err == nil {
-		return preferred
-	}
-	legacyPaths := []string{filepath.Join(dataDir, "donetick.db")}
-	if useWorkingDirectory {
-		legacyPaths = append(legacyPaths, "donetick.db")
-	}
-	for _, legacy := range legacyPaths {
-		if info, err := os.Stat(legacy); err == nil && !info.IsDir() {
-			return legacy
-		}
-	}
-	return preferred
 }
 
 func loadOrCreateSecret(path string) (string, error) {

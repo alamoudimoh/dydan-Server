@@ -71,7 +71,7 @@ wait_for_health "$port"
 assert_clean_migrations
 docker exec "$container" test ! -e /config/selfhosted.yaml
 
-test -s "$data_dir/taskier.db"
+test -s "$data_dir/daydan.db"
 test -s "$data_dir/jwt-secret"
 test "$(docker exec "$container" stat -c '%a' /data/jwt-secret)" = "600"
 secret_before=$(docker exec "$container" sha256sum /data/jwt-secret | cut -d' ' -f1)
@@ -90,7 +90,7 @@ assert_clean_migrations
 
 secret_after=$(docker exec "$container" sha256sum /data/jwt-secret | cut -d' ' -f1)
 test "$secret_before" = "$secret_after"
-test -s "$data_dir/taskier.db"
+test -s "$data_dir/daydan.db"
 test "$(curl --silent --output "$login_response" --write-out '%{http_code}' \
   --header 'Content-Type: application/json' \
   --data '{"username":"ci-family-user","password":"DayDanCIPass123!"}' \
