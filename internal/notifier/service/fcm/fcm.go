@@ -107,7 +107,7 @@ func (f *FCMNotifier) SendNotification(ctx context.Context, notification *nModel
 		Data: payload.Data,
 		Android: &messaging.AndroidConfig{
 			Notification: &messaging.AndroidNotification{
-				ChannelID: "donetick_notifications",
+				ChannelID: androidNotificationChannelID(),
 			},
 		},
 		APNS: &messaging.APNSConfig{
@@ -152,7 +152,7 @@ func (f *FCMNotifier) SendMulticast(ctx context.Context, tokens []string, payloa
 		Data: payload.Data,
 		Android: &messaging.AndroidConfig{
 			Notification: &messaging.AndroidNotification{
-				ChannelID: "donetick_notifications",
+				ChannelID: androidNotificationChannelID(),
 			},
 		},
 		APNS: &messaging.APNSConfig{
