@@ -10,8 +10,8 @@ donetick.db
 *.sqlite-wal
 *.sqlite-shm
 *.log
-/taskier-zero-config-*
-/taskier-container-*
+/daydan-zero-config-*
+/daydan-container-*
 node_modules/
 .vscode/launch.json
 *.exe

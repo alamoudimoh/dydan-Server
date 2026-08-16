@@ -96,6 +96,15 @@ Persistent runtime state lives in `/data` inside the container:
 The backend serves both the embedded frontend and `/api/...` from the same
 origin. On upgrades, keep the same data volume and restart the container.
 
+The default Compose volume is `daydan-data`. Existing Taskier deployments can
+reuse a `taskier-data` volume without copying data:
+
+```bash
+DAYDAN_DOCKER_VOLUME=taskier-data docker compose up -d
+```
+
+Legacy `TASKIER_DOCKER_VOLUME` is also accepted as a fallback override.
+
 Configuration remains optional. Canonical `DAYDAN_*` environment variables are
 preferred; legacy `DT_*`, `TASKIER_*`, and `DONETICK_*` variables remain
 compatible. Advanced users can set `DAYDAN_DATA_DIR`, `DAYDAN_CONFIG_FILE`, or
@@ -106,8 +115,8 @@ optional overrides.
 ### Using Docker
 
 ```bash
-docker build -t taskier .
-docker run -d --name taskier -p 2021:2021 -v taskier-data:/data taskier
+docker build -t daydan .
+docker run -d --name daydan -p 2021:2021 -v daydan-data:/data daydan
 ```
 
 ### Using the Binary

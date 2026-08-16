@@ -5,26 +5,69 @@ repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_dir"
 
 run_id="${GITHUB_RUN_ID:-local}-$$"
-image="taskier-ci:${run_id}"
-container="taskier-zero-config-${run_id}"
-data_dir=$(mktemp -d "${TMPDIR:-/tmp}/taskier-container-${run_id}.XXXXXX")
-compose_output=$(mktemp "${TMPDIR:-/tmp}/taskier-compose-${run_id}.XXXXXX")
-signup_response="${TMPDIR:-/tmp}/taskier-signup-response-${run_id}.json"
-login_response="${TMPDIR:-/tmp}/taskier-login-response-${run_id}.json"
+image="daydan-ci:${run_id}"
+container="daydan-zero-config-${run_id}"
+data_dir=$(mktemp -d "${TMPDIR:-/tmp}/daydan-container-${run_id}.XXXXXX")
+compose_output=$(mktemp "${TMPDIR:-/tmp}/daydan-compose-${run_id}.XXXXXX")
+signup_response="${TMPDIR:-/tmp}/daydan-signup-response-${run_id}.json"
+login_response="${TMPDIR:-/tmp}/daydan-login-response-${run_id}.json"
 
 cleanup() {
   docker rm -f "$container" >/dev/null 2>&1 || true
+  docker rm -f "${container}-legacy" >/dev/null 2>&1 || true
   docker image rm "$image" >/dev/null 2>&1 || true
   rm -rf -- "$data_dir"
   rm -f -- "$compose_output" "$signup_response" "$login_response"
 }
 trap cleanup EXIT
 
-docker compose config >"$compose_output"
-grep -Eq 'target: /data' "$compose_output"
-grep -Eq 'source: taskier-data' "$compose_output"
+assert_compose_config() {
+  docker compose config >"$compose_output"
+  grep -Eq '^  daydan:$' "$compose_output"
+  grep -Eq 'container_name: daydan' "$compose_output"
+  grep -Eq 'source: daydan-data' "$compose_output"
+  grep -Fq 'name: daydan-data' "$compose_output"
+  grep -Fq 'name: ${DAYDAN_DOCKER_VOLUME:-${TASKIER_DOCKER_VOLUME:-daydan-data}}' docker-compose.yaml
+  local override_output
+  override_output=$(TASKIER_DOCKER_VOLUME=taskier-data docker compose config)
+  grep -Eq 'name: taskier-data' <<<"$override_output"
+}
 
+assert_image_runtime() {
+  docker run --rm --entrypoint sh "$image" -c \
+    'test -x /daydan && test -L /donetick && test "$(readlink /donetick)" = "/daydan"'
+}
+
+assert_legacy_database_migration() {
+  local legacy_data_dir legacy_container
+  legacy_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/daydan-legacy-db-${run_id}.XXXXXX")
+  legacy_container="${container}-legacy"
+  printf 'legacy-sqlite-data' >"$legacy_data_dir/taskier.db"
+
+  docker run -d \
+    --name "$legacy_container" \
+    --volume "$legacy_data_dir:/data" \
+    "$image" >/dev/null
+
+  for _ in $(seq 1 60); do
+    if [[ -s "$legacy_data_dir/daydan.db" ]]; then
+      break
+    fi
+    sleep 1
+  done
+
+  test -s "$legacy_data_dir/taskier.db"
+  test -s "$legacy_data_dir/daydan.db"
+  cmp -s "$legacy_data_dir/taskier.db" "$legacy_data_dir/daydan.db"
+
+  docker rm -f "$legacy_container" >/dev/null
+  rm -rf -- "$legacy_data_dir"
+}
+
+assert_compose_config
 docker build --tag "$image" .
+assert_image_runtime
+assert_legacy_database_migration
 
 start_container() {
   docker run -d \
@@ -70,6 +113,8 @@ port=$(container_port)
 wait_for_health "$port"
 assert_clean_migrations
 docker exec "$container" test ! -e /config/selfhosted.yaml
+docker exec "$container" test -x /daydan
+docker exec "$container" test -L /donetick
 
 test -s "$data_dir/daydan.db"
 test -s "$data_dir/jwt-secret"

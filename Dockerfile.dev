@@ -16,7 +16,8 @@ RUN apk --no-cache add tzdata
 RUN apk --no-cache add ca-certificates libc6-compat
 
 # Copy the binary and config folder from the builder stage
-COPY --from=builder /usr/src/app/donetick /donetick
+COPY --from=builder /usr/src/app/donetick /daydan
+RUN ln -sf /daydan /donetick
 COPY --from=builder /usr/src/app/config /config
 
 # Set environment variables
@@ -26,4 +27,4 @@ ENV DT_ENV="selfhosted"
 EXPOSE 2021
 
 # Command to run the application
-CMD ["/donetick"]
+CMD ["/daydan"]

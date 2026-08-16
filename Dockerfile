@@ -30,7 +30,7 @@ RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
       -X donetick.com/core/config.Version=${VERSION} \
       -X donetick.com/core/config.Commit=${COMMIT} \
       -X donetick.com/core/config.BuildDate=${BUILD_DATE}" \
-      -buildvcs=false -o /donetick .
+      -buildvcs=false -o /daydan .
 
 # Stage 2: Create a smaller runtime image
 FROM alpine:latest
@@ -39,7 +39,8 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates libc6-compat tzdata
 
 # Copy the self-contained binary. The frontend is embedded at build time.
-COPY --from=builder /donetick /donetick
+COPY --from=builder /daydan /daydan
+RUN ln -sf /daydan /donetick
 
 # DayDan keeps its SQLite database, generated JWT secret, and local uploads
 # under one persistent directory. No configuration file is required.
@@ -53,4 +54,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost:2021/api/v1/health || exit 1
 
 # Command to run the application
-CMD ["/donetick"]
+CMD ["/daydan"]

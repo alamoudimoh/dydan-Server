@@ -1,15 +1,16 @@
 ---
 services:
-  taskier:
+  daydan:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: taskier
+    container_name: daydan
     restart: unless-stopped
     ports:
       - "2021:2021"
     volumes:
-      - taskier-data:/data
+      - daydan-data:/data
 
 volumes:
-  taskier-data:
+  daydan-data:
+    name: ${DAYDAN_DOCKER_VOLUME:-${TASKIER_DOCKER_VOLUME:-daydan-data}}
