@@ -81,7 +81,7 @@ type UserDeviceToken struct {
 type AuthProviderType int
 
 const (
-	AuthProviderDonetick AuthProviderType = iota
+	AuthProviderDayDan AuthProviderType = iota
 	AuthProviderOAuth2
 	AuthProviderGoogle
 	AuthProviderApple

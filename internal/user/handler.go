@@ -1132,7 +1132,7 @@ func (h *Handler) UpdateNotificationTarget(c *gin.Context) {
 func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
 	if h.isDayDanCloud {
 		// only enable this feature for self-hosted instances
-		c.JSON(http.StatusForbidden, gin.H{"error": "This action is not allowed on donetick.com"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "This action is not allowed on the hosted DayDan service"})
 		return
 	}
 	logger := logging.FromContext(c)
@@ -1448,7 +1448,7 @@ func (h *Handler) createChildUser(c *gin.Context) {
 		return
 	}
 
-	// Check current child user count to enforce limit (only for donetick.com)
+	// Check current child user count to enforce limit (only for hosted DayDan service)
 	if h.isDayDanCloud {
 		currentChildCount, err := h.userRepo.GetChildUserCount(c, currentUser.ID)
 		if err != nil {
@@ -1501,7 +1501,7 @@ func (h *Handler) createChildUser(c *gin.Context) {
 		CircleID:     currentUser.CircleID,
 		ParentUserID: &currentUser.ID,
 		UserType:     uModel.UserTypeChild,
-		Provider:     uModel.AuthProviderDonetick,
+		Provider:     uModel.AuthProviderDayDan,
 		CreatedAt:    time.Now().UTC(),
 		UpdatedAt:    time.Now().UTC(),
 	}
