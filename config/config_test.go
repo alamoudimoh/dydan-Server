@@ -282,3 +282,66 @@ func TestZeroConfigStartupWithoutConfigFiles(t *testing.T) {
 		t.Fatalf("port=%d", cfg.Server.Port)
 	}
 }
+
+func TestLegacyHostedCloudConfigKeysStillLoad(t *testing.T) {
+	clearConfigSelection(t)
+	tempDir := t.TempDir()
+	writeTestConfig(
+		t,
+		tempDir,
+		"daydan.yaml",
+		"is_done_tick_dot_com: true\n"+
+			"donetick_cloud:\n"+
+			"  google_client_id: legacy-google\n"+
+			"  apple_client_id: legacy-apple\n"+
+			"jwt:\n  secret: yaml-secret-that-is-at-least-thirty-two-characters\n",
+	)
+	t.Chdir(tempDir)
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.IsDayDanCloud {
+		t.Fatal("legacy is_done_tick_dot_com was not loaded")
+	}
+	if cfg.DayDanCloudConfig.GoogleClientID != "legacy-google" {
+		t.Fatalf("google_client_id=%q", cfg.DayDanCloudConfig.GoogleClientID)
+	}
+	if cfg.DayDanCloudConfig.AppleClientID != "legacy-apple" {
+		t.Fatalf("apple_client_id=%q", cfg.DayDanCloudConfig.AppleClientID)
+	}
+}
+
+func TestDayDanHostedCloudConfigAliasesOverrideLegacyKeys(t *testing.T) {
+	clearConfigSelection(t)
+	tempDir := t.TempDir()
+	writeTestConfig(
+		t,
+		tempDir,
+		"daydan.yaml",
+		"is_done_tick_dot_com: false\n"+
+			"is_daydan_cloud: true\n"+
+			"donetick_cloud:\n"+
+			"  google_client_id: legacy-google\n"+
+			"daydan_cloud:\n"+
+			"  google_client_id: alias-google\n"+
+			"  apple_client_id: alias-apple\n"+
+			"jwt:\n  secret: yaml-secret-that-is-at-least-thirty-two-characters\n",
+	)
+	t.Chdir(tempDir)
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.IsDayDanCloud {
+		t.Fatal("is_daydan_cloud alias was not applied")
+	}
+	if cfg.DayDanCloudConfig.GoogleClientID != "alias-google" {
+		t.Fatalf("google_client_id=%q", cfg.DayDanCloudConfig.GoogleClientID)
+	}
+	if cfg.DayDanCloudConfig.AppleClientID != "alias-apple" {
+		t.Fatalf("apple_client_id=%q", cfg.DayDanCloudConfig.AppleClientID)
+	}
+}

@@ -40,9 +40,9 @@ type Handler struct {
 	tokenService           *auth.TokenService
 	email                  email.Sender
 	identityProvider       *auth.IdentityProvider
-	isDonetickDotCom       bool
+	isDayDanCloud       bool
 	IsUserCreationDisabled bool
-	DonetickCloudConfig    config.DonetickCloudConfig
+	DayDanCloudConfig    config.DayDanCloudConfig
 	storage                storage.Storage
 	storageRepo            *storageRepo.StorageRepository
 	signer                 storage.URLSigner
@@ -69,9 +69,9 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		tokenService:           tokenService,
 		email:                  email,
 		identityProvider:       idp,
-		isDonetickDotCom:       config.IsDoneTickDotCom,
+		isDayDanCloud:       config.IsDayDanCloud,
 		IsUserCreationDisabled: config.IsUserCreationDisabled,
-		DonetickCloudConfig:    config.DonetickCloudConfig,
+		DayDanCloudConfig:    config.DayDanCloudConfig,
 		storage:                storage,
 		storageRepo:            storageRepo,
 		signer:                 signer,
@@ -296,7 +296,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			return
 		}
 		logger.Infow("account.handler.thirdPartyAuthCallback", "tokenInfo", tokenInfo)
-		if tokenInfo.Audience != h.DonetickCloudConfig.GoogleClientID && tokenInfo.Audience != h.DonetickCloudConfig.GoogleIOSClientID && tokenInfo.Audience != h.DonetickCloudConfig.GoogleAndroidClientID {
+		if tokenInfo.Audience != h.DayDanCloudConfig.GoogleClientID && tokenInfo.Audience != h.DayDanCloudConfig.GoogleIOSClientID && tokenInfo.Audience != h.DayDanCloudConfig.GoogleAndroidClientID {
 			logger.Errorw("account.handler.thirdPartyAuthCallback token audience mismatch", "audience", tokenInfo.Audience)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid token",
@@ -1130,7 +1130,7 @@ func (h *Handler) UpdateNotificationTarget(c *gin.Context) {
 }
 
 func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
-	if h.isDonetickDotCom {
+	if h.isDayDanCloud {
 		// only enable this feature for self-hosted instances
 		c.JSON(http.StatusForbidden, gin.H{"error": "This action is not allowed on donetick.com"})
 		return
@@ -1449,7 +1449,7 @@ func (h *Handler) createChildUser(c *gin.Context) {
 	}
 
 	// Check current child user count to enforce limit (only for donetick.com)
-	if h.isDonetickDotCom {
+	if h.isDayDanCloud {
 		currentChildCount, err := h.userRepo.GetChildUserCount(c, currentUser.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing subaccounts"})

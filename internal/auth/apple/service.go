@@ -51,7 +51,7 @@ type AppleClaims struct {
 
 func NewAppleService(config *config.Config) *AppleService {
 	return &AppleService{
-		clientID: config.DonetickCloudConfig.AppleClientID,
+		clientID: config.DayDanCloudConfig.AppleClientID,
 		keys:     make(map[string]*rsa.PublicKey),
 	}
 }

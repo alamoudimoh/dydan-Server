@@ -28,7 +28,7 @@ type Handler struct {
 	choreRepo            *chRepo.ChoreRepository
 	pointRepo            *pRepo.PointsRepository
 	signer               storage.URLSigner
-	isDonetickDotCom     bool
+	isDayDanCloud     bool
 	maxCircleMembers     int
 	plusMaxCircleMembers int
 	singleCircleInstance bool
@@ -55,7 +55,7 @@ func NewHandler(cr *cRepo.CircleRepository, ur *uRepo.UserRepository, c *chRepo.
 		choreRepo:            c,
 		pointRepo:            pr,
 		signer:               signer,
-		isDonetickDotCom:     config.IsDoneTickDotCom,
+		isDayDanCloud:     config.IsDayDanCloud,
 		maxCircleMembers:     config.FeatureLimits.MaxCircleMembers,
 		plusMaxCircleMembers: config.FeatureLimits.PlusCircleMaxMembers,
 		singleCircleInstance: config.SingleCircleInstance,
@@ -521,7 +521,7 @@ func (h *Handler) AcceptJoinRequest(c *gin.Context) {
 		})
 		return
 	}
-	if h.isDonetickDotCom {
+	if h.isDayDanCloud {
 		maxMembers := h.maxCircleMembers
 		if currentUser.IsPlusMember() {
 			maxMembers = h.plusMaxCircleMembers

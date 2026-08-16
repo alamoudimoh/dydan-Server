@@ -39,10 +39,10 @@ type Config struct {
 	RealTimeConfig         RealTimeConfig      `mapstructure:"realtime" yaml:"realtime"`
 	MFAConfig              MFAConfig           `mapstructure:"mfa" yaml:"mfa"`
 	Logging                LogConfig           `mapstructure:"logging" yaml:"logging"`
-	IsDoneTickDotCom       bool                `mapstructure:"is_done_tick_dot_com" yaml:"is_done_tick_dot_com"`
+	IsDayDanCloud          bool                `mapstructure:"is_done_tick_dot_com" yaml:"is_done_tick_dot_com"`
 	IsUserCreationDisabled bool                `mapstructure:"is_user_creation_disabled" yaml:"is_user_creation_disabled"`
 	MinVersion             string              `mapstructure:"min_version" yaml:"min_version"`
-	DonetickCloudConfig    DonetickCloudConfig `mapstructure:"donetick_cloud" yaml:"donetick_cloud"`
+	DayDanCloudConfig      DayDanCloudConfig   `mapstructure:"donetick_cloud" yaml:"donetick_cloud"`
 	FCM                    FCMConfig           `mapstructure:"fcm" yaml:"fcm"`
 	FeatureLimits          FeatureLimitsConfig `mapstructure:"feature_limits" yaml:"feature_limits"`
 	Storage                StorageConfig       `mapstructure:"storage" yaml:"storage"`
@@ -88,7 +88,7 @@ type StorageConfig struct {
 	// endpoints without matching TLS wildcard certs.
 	PathStyle bool `mapstructure:"path_style" yaml:"path_style"`
 }
-type DonetickCloudConfig struct {
+type DayDanCloudConfig struct {
 	GoogleClientID        string `mapstructure:"google_client_id" yaml:"google_client_id"`
 	GoogleAndroidClientID string `mapstructure:"google_android_client_id" yaml:"google_android_client_id"`
 	GoogleIOSClientID     string `mapstructure:"google_ios_client_id" yaml:"google_ios_client_id"`
@@ -424,6 +424,20 @@ func LoadConfig() *Config {
 	return cfg
 }
 
+func applyDayDanCloudConfigAliases(v *viper.Viper, config *Config) error {
+	if v.IsSet("is_daydan_cloud") {
+		config.IsDayDanCloud = v.GetBool("is_daydan_cloud")
+	}
+	if v.IsSet("daydan_cloud") {
+		var alias DayDanCloudConfig
+		if err := v.UnmarshalKey("daydan_cloud", &alias); err != nil {
+			return fmt.Errorf("decode daydan_cloud alias: %w", err)
+		}
+		config.DayDanCloudConfig = alias
+	}
+	return nil
+}
+
 func readOptionalConfigFile(v *viper.Viper) error {
 	configFile := firstEnvironment("TASKIER_CONFIG_FILE", "DT_CONFIG_FILE")
 	if configFile != "" {
@@ -496,6 +510,9 @@ func LoadConfigE() (*Config, error) {
 	err := v.Unmarshal(&config)
 	if err != nil {
 		return nil, fmt.Errorf("decode config: %w", err)
+	}
+	if err := applyDayDanCloudConfigAliases(v, &config); err != nil {
+		return nil, err
 	}
 
 	configEnvironmentOverrides(&config)
