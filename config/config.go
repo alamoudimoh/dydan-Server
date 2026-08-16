@@ -424,19 +424,52 @@ func LoadConfig() *Config {
 	return cfg
 }
 
+func readOptionalConfigFile(v *viper.Viper) error {
+	configFile := firstEnvironment("TASKIER_CONFIG_FILE", "DT_CONFIG_FILE")
+	if configFile != "" {
+		v.SetConfigFile(configFile)
+		if err := v.ReadInConfig(); err != nil {
+			return fmt.Errorf("read config: %w", err)
+		}
+		return nil
+	}
+
+	if profile := os.Getenv("DT_ENV"); profile != "" {
+		v.SetConfigName(profile)
+		if err := v.ReadInConfig(); err != nil {
+			var configNotFoundError viper.ConfigFileNotFoundError
+			if !errors.As(err, &configNotFoundError) {
+				return fmt.Errorf("read optional config: %w", err)
+			}
+		}
+		return nil
+	}
+
+	// Prefer daydan.{yaml,yml}; fall back to legacy taskier.{yaml,yml}.
+	if err := readNamedConfigFile(v, "daydan"); err != nil {
+		var configNotFoundError viper.ConfigFileNotFoundError
+		if !errors.As(err, &configNotFoundError) {
+			return fmt.Errorf("read daydan config: %w", err)
+		}
+		if err := readNamedConfigFile(v, "taskier"); err != nil {
+			if !errors.As(err, &configNotFoundError) {
+				return fmt.Errorf("read taskier config: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func readNamedConfigFile(v *viper.Viper, name string) error {
+	v.SetConfigName(name)
+	return v.ReadInConfig()
+}
+
 func LoadConfigE() (*Config, error) {
 	// https://github.com/spf13/viper/issues/1895#issuecomment-3316091229
 	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 	setDayDanDefaults(v)
 
-	configFile := firstEnvironment("TASKIER_CONFIG_FILE", "DT_CONFIG_FILE")
-	if configFile != "" {
-		v.SetConfigFile(configFile)
-	} else if profile := os.Getenv("DT_ENV"); profile != "" {
-		v.SetConfigName(profile)
-	} else {
-		v.SetConfigName("taskier")
-	}
 	v.SetEnvPrefix("DT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
@@ -445,12 +478,8 @@ func LoadConfigE() (*Config, error) {
 	v.AddConfigPath(".")
 	v.SetConfigType("yaml")
 
-	err := v.ReadInConfig()
-	if err != nil {
-		var configNotFoundError viper.ConfigFileNotFoundError
-		if !errors.As(err, &configNotFoundError) {
-			return nil, fmt.Errorf("read optional config: %w", err)
-		}
+	if err := readOptionalConfigFile(v); err != nil {
+		return nil, err
 	}
 	v.AutomaticEnv()
 	if value := os.Getenv("TASKIER_DATA_DIR"); value != "" {
@@ -464,7 +493,7 @@ func LoadConfigE() (*Config, error) {
 	}
 
 	var config Config
-	err = v.Unmarshal(&config)
+	err := v.Unmarshal(&config)
 	if err != nil {
 		return nil, fmt.Errorf("decode config: %w", err)
 	}

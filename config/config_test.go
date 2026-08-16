@@ -187,3 +187,98 @@ func TestLegacySQLiteDatabaseIsReused(t *testing.T) {
 		t.Fatalf("legacy database was not reused: got %q want %q", cfg.Database.Path, legacyPath)
 	}
 }
+
+func writeTestConfig(t *testing.T, dir, filename, contents string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, filename), []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+const testConfigJWT = "yaml-secret-that-is-at-least-thirty-two-characters"
+
+func testConfigYAML(name string) string {
+	return "name: " + name + "\njwt:\n  secret: " + testConfigJWT + "\n"
+}
+
+func TestDayDanConfigDetected(t *testing.T) {
+	clearConfigSelection(t)
+	tempDir := t.TempDir()
+	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
+	t.Chdir(tempDir)
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Name != "from-daydan-yaml" {
+		t.Fatalf("name=%q", cfg.Name)
+	}
+}
+
+func TestLegacyTaskierConfigDetectedWhenDayDanAbsent(t *testing.T) {
+	clearConfigSelection(t)
+	tempDir := t.TempDir()
+	writeTestConfig(t, tempDir, "taskier.yml", testConfigYAML("from-taskier-yml"))
+	t.Chdir(tempDir)
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Name != "from-taskier-yml" {
+		t.Fatalf("name=%q", cfg.Name)
+	}
+}
+
+func TestDayDanConfigWinsWhenBothExist(t *testing.T) {
+	clearConfigSelection(t)
+	tempDir := t.TempDir()
+	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
+	writeTestConfig(t, tempDir, "taskier.yaml", testConfigYAML("from-taskier-yaml"))
+	t.Chdir(tempDir)
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Name != "from-daydan-yaml" {
+		t.Fatalf("name=%q", cfg.Name)
+	}
+}
+
+func TestExplicitConfigPathPrecedence(t *testing.T) {
+	clearConfigSelection(t)
+	tempDir := t.TempDir()
+	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
+	explicitPath := filepath.Join(tempDir, "explicit.yaml")
+	writeTestConfig(t, tempDir, "explicit.yaml", testConfigYAML("from-explicit-yaml"))
+	t.Setenv("TASKIER_CONFIG_FILE", explicitPath)
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Name != "from-explicit-yaml" {
+		t.Fatalf("name=%q", cfg.Name)
+	}
+}
+
+func TestZeroConfigStartupWithoutConfigFiles(t *testing.T) {
+	clearConfigSelection(t)
+	tempDir := t.TempDir()
+	dataDir := filepath.Join(tempDir, "data")
+	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Chdir(tempDir)
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Name != "daydan" {
+		t.Fatalf("name=%q", cfg.Name)
+	}
+	if cfg.Server.Port != 2021 {
+		t.Fatalf("port=%d", cfg.Server.Port)
+	}
+}

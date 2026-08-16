@@ -1,5 +1,8 @@
 # DayDan does not require a configuration file. This file only demonstrates
 # optional advanced overrides; copy only the settings you actually need.
+#
+# Preferred config filenames: daydan.yaml or daydan.yml. Legacy taskier.yaml /
+# taskier.yml is still supported when no DayDan config is present.
 
 # data_dir: /data
 # is_user_creation_disabled: true
