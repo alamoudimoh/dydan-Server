@@ -11,14 +11,14 @@ import (
 
 func TestDefaultSQLiteMigrationAndRestartPreserveData(t *testing.T) {
 	dataDir := t.TempDir()
-	t.Setenv("DT_ENV", "")
-	t.Setenv("DT_CONFIG_FILE", "")
-	t.Setenv("TASKIER_CONFIG_FILE", "")
-	t.Setenv("DT_JWT_SECRET", "")
-	t.Setenv("TASKIER_JWT_SECRET", "")
-	t.Setenv("DT_SQLITE_PATH", "")
-	t.Setenv("TASKIER_SQLITE_PATH", "")
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	for _, name := range []string{
+		"DAYDAN_ENV", "DAYDAN_CONFIG_FILE", "DAYDAN_DATA_DIR", "DAYDAN_JWT_SECRET", "DAYDAN_SQLITE_PATH",
+		"DT_ENV", "DT_CONFIG_FILE", "TASKIER_CONFIG_FILE", "DT_JWT_SECRET",
+		"TASKIER_JWT_SECRET", "DT_SQLITE_PATH", "TASKIER_SQLITE_PATH",
+	} {
+		t.Setenv(name, "")
+	}
+	t.Setenv("DAYDAN_DATA_DIR", dataDir)
 
 	cfg, err := config.LoadConfigE()
 	if err != nil {

@@ -43,7 +43,7 @@ COPY --from=builder /donetick /donetick
 
 # DayDan keeps its SQLite database, generated JWT secret, and local uploads
 # under one persistent directory. No configuration file is required.
-ENV TASKIER_DATA_DIR="/data"
+ENV DAYDAN_DATA_DIR="/data"
 VOLUME ["/data"]
 
 # Expose the application port

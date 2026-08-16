@@ -2,7 +2,7 @@
 
 - Run `./scripts/verify.sh` before completing substantial backend changes. It
   includes the zero-config container smoke test. Set
-  `TASKIER_SKIP_CONTAINER_SMOKE=true` only when that check runs separately, as
+  `DAYDAN_SKIP_CONTAINER_SMOKE=true` only when that check runs separately, as
   it does in parallel CI jobs.
 - Never bypass failing required CI; fix regressions before declaring work complete.
 - Add a regression test for every reasonably testable bug fix and appropriate

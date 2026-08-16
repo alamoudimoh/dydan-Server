@@ -96,10 +96,11 @@ Persistent runtime state lives in `/data` inside the container:
 The backend serves both the embedded frontend and `/api/...` from the same
 origin. On upgrades, keep the same data volume and restart the container.
 
-Configuration remains optional. Existing `DT_*` environment variables and
-`DT_ENV=selfhosted` YAML profiles remain compatible. Advanced users can set
-`TASKIER_DATA_DIR`, `TASKIER_CONFIG_FILE`, or use the minimal example in
-`config/daydan.example.yaml` (legacy alias: `config/taskier.example.yaml`); PostgreSQL and external integrations remain
+Configuration remains optional. Canonical `DAYDAN_*` environment variables are
+preferred; legacy `DT_*`, `TASKIER_*`, and `DONETICK_*` variables remain
+compatible. Advanced users can set `DAYDAN_DATA_DIR`, `DAYDAN_CONFIG_FILE`, or
+use the minimal example in `config/daydan.example.yaml` (legacy alias:
+`config/taskier.example.yaml`); PostgreSQL and external integrations remain
 optional overrides.
 
 ### Using Docker

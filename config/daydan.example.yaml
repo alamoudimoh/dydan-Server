@@ -3,6 +3,9 @@
 #
 # Preferred runtime config filenames: daydan.yaml or daydan.yml.
 # Legacy taskier.yaml / taskier.yml remains supported when no DayDan config is present.
+#
+# Canonical environment overrides (legacy TASKIER_* / DT_* / DONETICK_* still work):
+#   DAYDAN_DATA_DIR, DAYDAN_CONFIG_FILE, DAYDAN_JWT_SECRET, DAYDAN_SQLITE_PATH
 
 # data_dir: /data
 # is_user_creation_disabled: true

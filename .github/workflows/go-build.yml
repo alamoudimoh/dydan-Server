@@ -28,7 +28,7 @@ jobs:
       - name: Restore dependencies
         run: go mod download
       - name: Verify server
-        run: TASKIER_SKIP_CONTAINER_SMOKE=true bash scripts/verify.sh
+        run: DAYDAN_SKIP_CONTAINER_SMOKE=true bash scripts/verify.sh
 
   zero-config-container:
     name: Zero-config container persistence

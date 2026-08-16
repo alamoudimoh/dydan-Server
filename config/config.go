@@ -330,24 +330,24 @@ func NewConfig() *Config {
 }
 
 func configEnvironmentOverrides(config *Config) {
-	if os.Getenv("DONETICK_TELEGRAM_TOKEN") != "" {
-		config.Telegram.Token = os.Getenv("DONETICK_TELEGRAM_TOKEN")
+	if token := envTelegramToken(); token != "" {
+		config.Telegram.Token = token
 	}
-	if os.Getenv("DONETICK_PUSHOVER_TOKEN") != "" {
-		config.Pushover.Token = os.Getenv("DONETICK_PUSHOVER_TOKEN")
+	if token := envPushoverToken(); token != "" {
+		config.Pushover.Token = token
 	}
-	if os.Getenv("DONETICK_DISABLE_SIGNUP") == "true" {
+	if environmentIsTrue("DAYDAN_DISABLE_SIGNUP", "DONETICK_DISABLE_SIGNUP") {
 		config.IsUserCreationDisabled = true
 	}
 
 	// Logging environment overrides
-	if os.Getenv("DONETICK_LOG_LEVEL") != "" {
-		config.Logging.Level = os.Getenv("DONETICK_LOG_LEVEL")
+	if level := envLogLevel(); level != "" {
+		config.Logging.Level = level
 	}
-	if os.Getenv("DONETICK_LOG_ENCODING") != "" {
-		config.Logging.Encoding = os.Getenv("DONETICK_LOG_ENCODING")
+	if encoding := envLogEncoding(); encoding != "" {
+		config.Logging.Encoding = encoding
 	}
-	if os.Getenv("DONETICK_LOG_DEVELOPMENT") == "true" {
+	if environmentIsTrue("DAYDAN_LOG_DEVELOPMENT", "DONETICK_LOG_DEVELOPMENT") {
 		config.Logging.Development = true
 	}
 }
@@ -407,15 +407,6 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("feature_limits.plus_max_subaccounts", cfg.FeatureLimits.PlusMaxSubaccounts)
 }
 
-func firstEnvironment(names ...string) string {
-	for _, name := range names {
-		if value := os.Getenv(name); value != "" {
-			return value
-		}
-	}
-	return ""
-}
-
 func LoadConfig() *Config {
 	cfg, err := LoadConfigE()
 	if err != nil {
@@ -439,7 +430,7 @@ func applyDayDanCloudConfigAliases(v *viper.Viper, config *Config) error {
 }
 
 func readOptionalConfigFile(v *viper.Viper) error {
-	configFile := firstEnvironment("TASKIER_CONFIG_FILE", "DT_CONFIG_FILE")
+	configFile := envConfigFile()
 	if configFile != "" {
 		v.SetConfigFile(configFile)
 		if err := v.ReadInConfig(); err != nil {
@@ -448,7 +439,7 @@ func readOptionalConfigFile(v *viper.Viper) error {
 		return nil
 	}
 
-	if profile := os.Getenv("DT_ENV"); profile != "" {
+	if profile := envProfile(); profile != "" {
 		v.SetConfigName(profile)
 		if err := v.ReadInConfig(); err != nil {
 			var configNotFoundError viper.ConfigFileNotFoundError
@@ -496,13 +487,13 @@ func LoadConfigE() (*Config, error) {
 		return nil, err
 	}
 	v.AutomaticEnv()
-	if value := os.Getenv("TASKIER_DATA_DIR"); value != "" {
+	if value := envDataDir(); value != "" {
 		v.Set("data_dir", value)
 	}
-	if value := os.Getenv("TASKIER_JWT_SECRET"); value != "" {
+	if value := envJWTSecret(); value != "" {
 		v.Set("jwt.secret", value)
 	}
-	if value := os.Getenv("TASKIER_SQLITE_PATH"); value != "" {
+	if value := envSQLitePath(); value != "" {
 		v.Set("database.path", value)
 	}
 
@@ -550,7 +541,7 @@ func initializePersistentRuntime(config *Config) error {
 		config.Database.Type = "sqlite"
 	}
 	if config.Database.Type == "sqlite" {
-		if path := firstEnvironment("TASKIER_SQLITE_PATH", "DT_SQLITE_PATH"); path != "" {
+		if path := envSQLitePath(); path != "" {
 			config.Database.Path = path
 		}
 		if config.Database.Path == "" {
@@ -563,7 +554,7 @@ func initializePersistentRuntime(config *Config) error {
 	if config.Storage.StorageType == "local" && config.Storage.BasePath == "" {
 		config.Storage.BasePath = filepath.Join(dataDir, "uploads")
 	}
-	if explicitSecret := firstEnvironment("TASKIER_JWT_SECRET", "DT_JWT_SECRET"); explicitSecret != "" {
+	if explicitSecret := envJWTSecret(); explicitSecret != "" {
 		config.Jwt.Secret = explicitSecret
 		return validateJWTSecret(config.Jwt.Secret)
 	}
