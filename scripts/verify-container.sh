@@ -79,7 +79,7 @@ secret_before=$(docker exec "$container" sha256sum /data/jwt-secret | cut -d' ' 
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:${port}/")" = "200"
 test "$(curl --silent --output "$signup_response" --write-out '%{http_code}' \
   --header 'Content-Type: application/json' \
-  --data '{"username":"ci-family-user","password":"TaskierCIPass123!","email":"ci-family@example.test","displayName":"CI Family User"}' \
+  --data '{"username":"ci-family-user","password":"DayDanCIPass123!","email":"ci-family@example.test","displayName":"CI Family User"}' \
   "http://127.0.0.1:${port}/api/v1/auth/")" = "201"
 
 docker rm -f "$container" >/dev/null
@@ -93,5 +93,5 @@ test "$secret_before" = "$secret_after"
 test -s "$data_dir/taskier.db"
 test "$(curl --silent --output "$login_response" --write-out '%{http_code}' \
   --header 'Content-Type: application/json' \
-  --data '{"username":"ci-family-user","password":"TaskierCIPass123!"}' \
+  --data '{"username":"ci-family-user","password":"DayDanCIPass123!"}' \
   "http://127.0.0.1:${port}/api/v1/auth/login")" = "200"

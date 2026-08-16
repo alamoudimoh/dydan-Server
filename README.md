@@ -99,7 +99,7 @@ origin. On upgrades, keep the same data volume and restart the container.
 Configuration remains optional. Existing `DT_*` environment variables and
 `DT_ENV=selfhosted` YAML profiles remain compatible. Advanced users can set
 `TASKIER_DATA_DIR`, `TASKIER_CONFIG_FILE`, or use the minimal example in
-`config/taskier.example.yaml`; PostgreSQL and external integrations remain
+`config/daydan.example.yaml` (legacy alias: `config/taskier.example.yaml`); PostgreSQL and external integrations remain
 optional overrides.
 
 ### Using Docker

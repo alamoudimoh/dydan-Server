@@ -1,3 +1,6 @@
+# LEGACY EXAMPLE FILENAME — prefer config/daydan.example.yaml for new setups.
+# taskier.example.yaml is retained for historical compatibility only.
+#
 # DayDan does not require a configuration file. This file only demonstrates
 # optional advanced overrides; copy only the settings you actually need.
 #

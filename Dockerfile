@@ -41,7 +41,7 @@ RUN apk --no-cache add ca-certificates libc6-compat tzdata
 # Copy the self-contained binary. The frontend is embedded at build time.
 COPY --from=builder /donetick /donetick
 
-# Taskier keeps its SQLite database, generated JWT secret, and local uploads
+# DayDan keeps its SQLite database, generated JWT secret, and local uploads
 # under one persistent directory. No configuration file is required.
 ENV TASKIER_DATA_DIR="/data"
 VOLUME ["/data"]
