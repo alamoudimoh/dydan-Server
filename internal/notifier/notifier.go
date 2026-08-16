@@ -3,14 +3,14 @@ package notifier
 import (
 	"context"
 
-	"donetick.com/core/internal/events"
-	nModel "donetick.com/core/internal/notifier/model"
-	"donetick.com/core/internal/notifier/service/discord"
-	"donetick.com/core/internal/notifier/service/fcm"
-	pushover "donetick.com/core/internal/notifier/service/pushover"
-	telegram "donetick.com/core/internal/notifier/service/telegram"
+	"github.com/alamoudimoh/daydan-server/internal/events"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/daydan-server/internal/notifier/service/discord"
+	"github.com/alamoudimoh/daydan-server/internal/notifier/service/fcm"
+	pushover "github.com/alamoudimoh/daydan-server/internal/notifier/service/pushover"
+	telegram "github.com/alamoudimoh/daydan-server/internal/notifier/service/telegram"
 
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/logging"
 )
 
 type Notifier struct {

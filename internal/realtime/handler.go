@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"donetick.com/core/config"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

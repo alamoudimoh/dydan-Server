@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"math/big"
 
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )

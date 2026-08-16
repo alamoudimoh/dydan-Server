@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	storageModel "donetick.com/core/internal/storage/model"
-	storageRepo "donetick.com/core/internal/storage/repo"
-	"donetick.com/core/logging"
+	storageModel "github.com/alamoudimoh/daydan-server/internal/storage/model"
+	storageRepo "github.com/alamoudimoh/daydan-server/internal/storage/repo"
+	"github.com/alamoudimoh/daydan-server/logging"
 )
 
 type DraftCleanupService struct {

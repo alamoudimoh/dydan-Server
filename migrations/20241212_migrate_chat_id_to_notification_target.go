@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	nModel "donetick.com/core/internal/notifier/model"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/logging"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"gorm.io/gorm"
 )
 

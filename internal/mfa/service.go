@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 )

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 )
 
 // SMTP2GoSender sends transactional email via the SMTP2Go HTTP API instead

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"donetick.com/core/config"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/migrations"
+	"github.com/alamoudimoh/daydan-server/config"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/migrations"
 )
 
 func TestDefaultSQLiteMigrationAndRestartPreserveData(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	config "donetick.com/core/config"
-	fModel "donetick.com/core/internal/filter/model"
-	"donetick.com/core/logging"
+	config "github.com/alamoudimoh/daydan-server/config"
+	fModel "github.com/alamoudimoh/daydan-server/internal/filter/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"gorm.io/gorm"
 )
 

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"donetick.com/core/config"
-	chModel "donetick.com/core/internal/chore/model"
-	chRepo "donetick.com/core/internal/chore/repo"
+	"github.com/alamoudimoh/daydan-server/config"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

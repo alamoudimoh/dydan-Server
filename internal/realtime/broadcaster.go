@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"time"
 
-	"donetick.com/core/config"
-	chModel "donetick.com/core/internal/chore/model"
-	uModel "donetick.com/core/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/config"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 )
 
 // EventBroadcaster handles broadcasting events to appropriate connections

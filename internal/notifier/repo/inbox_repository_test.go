@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	nModel "donetick.com/core/internal/notifier/model"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"time"
 
-	cModel "donetick.com/core/internal/circle/model"
-	lModel "donetick.com/core/internal/label/model"
-	mModel "donetick.com/core/internal/meter/model"
-	pModel "donetick.com/core/internal/project/model"
-	storageModel "donetick.com/core/internal/storage/model"
-	stModel "donetick.com/core/internal/subtask/model"
-	tModel "donetick.com/core/internal/thing/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
+	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
+	pModel "github.com/alamoudimoh/daydan-server/internal/project/model"
+	storageModel "github.com/alamoudimoh/daydan-server/internal/storage/model"
+	stModel "github.com/alamoudimoh/daydan-server/internal/subtask/model"
+	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
 )
 
 const MAX_TEMPLATES = 5

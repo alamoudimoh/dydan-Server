@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	slModel "donetick.com/core/internal/shoppinglist/model"
+	slModel "github.com/alamoudimoh/daydan-server/internal/shoppinglist/model"
 	"gorm.io/gorm"
 )
 

@@ -3,7 +3,7 @@ package docs
 import (
 	"strings"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"

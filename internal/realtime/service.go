@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"donetick.com/core/config"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"go.uber.org/zap"
 )
 

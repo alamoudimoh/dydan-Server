@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	uRepo "donetick.com/core/internal/user/repo"
-	"donetick.com/core/logging"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/daydan-server/logging"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 )

@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"donetick.com/core/config"
-	errorx "donetick.com/core/internal/error"
+	"github.com/alamoudimoh/daydan-server/config"
+	errorx "github.com/alamoudimoh/daydan-server/internal/error"
 
-	st "donetick.com/core/internal/storage/model"
-	uModel "donetick.com/core/internal/user/model"
+	st "github.com/alamoudimoh/daydan-server/internal/storage/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"gorm.io/gorm"
 )
 

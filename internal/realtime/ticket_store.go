@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	config "donetick.com/core/config"
-	"donetick.com/core/logging"
+	config "github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/daydan-server/logging"
 )
 
 const (

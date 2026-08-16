@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	pModel "donetick.com/core/external/payment/model"
+	pModel "github.com/alamoudimoh/daydan-server/external/payment/model"
 
 	// "forward.in/internal/metric"
 
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/logging"
 
 	"gorm.io/gorm"
 )

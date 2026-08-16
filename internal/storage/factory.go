@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 )
 
 // NewStorage returns a Storage implementation based on config.Storage.StorageType.

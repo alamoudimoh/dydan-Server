@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"donetick.com/core/config"
-	nModel "donetick.com/core/internal/notifier/model"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/gregdel/pushover"
 )
 

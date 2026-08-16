@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	"github.com/gin-gonic/gin"
 )
 

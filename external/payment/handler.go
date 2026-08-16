@@ -3,16 +3,16 @@ package payment
 import (
 	"net/http"
 
-	auth "donetick.com/core/internal/auth"
-	"donetick.com/core/logging"
+	auth "github.com/alamoudimoh/daydan-server/internal/auth"
+	"github.com/alamoudimoh/daydan-server/logging"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 
-	"donetick.com/core/external/payment/model"
-	pDB "donetick.com/core/external/payment/repo"
-	stripeService "donetick.com/core/external/payment/service"
+	"github.com/alamoudimoh/daydan-server/external/payment/model"
+	pDB "github.com/alamoudimoh/daydan-server/external/payment/repo"
+	stripeService "github.com/alamoudimoh/daydan-server/external/payment/service"
 )
 
 type Handler struct {

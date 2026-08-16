@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"donetick.com/core/config"
-	chModel "donetick.com/core/internal/chore/model"
-	cModel "donetick.com/core/internal/circle/model"
-	mModel "donetick.com/core/internal/meter/model"
-	mRepo "donetick.com/core/internal/meter/repo"
-	syncModel "donetick.com/core/internal/sync/model"
+	"github.com/alamoudimoh/daydan-server/config"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
+	mRepo "github.com/alamoudimoh/daydan-server/internal/meter/repo"
+	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

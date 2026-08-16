@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 )
 
 type LocalStorage struct {

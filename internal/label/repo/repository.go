@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	config "donetick.com/core/config"
-	chModel "donetick.com/core/internal/chore/model"
-	lModel "donetick.com/core/internal/label/model"
-	syncModel "donetick.com/core/internal/sync/model"
-	"donetick.com/core/logging"
+	config "github.com/alamoudimoh/daydan-server/config"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
+	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

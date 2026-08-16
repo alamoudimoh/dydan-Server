@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	errorx "donetick.com/core/internal/error"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/logging"
+	errorx "github.com/alamoudimoh/daydan-server/internal/error"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"gorm.io/gorm"
 )
 

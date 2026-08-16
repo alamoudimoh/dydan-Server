@@ -23,7 +23,7 @@ builds:
       - linux
       - darwin
     ldflags:
-      - "-X donetick.com/core/config.Version={{.Version}} -X donetick.com/core/config.Commit={{.Commit}} -X donetick.com/core/config.BuildDate={{.Date}}"
+      - "-X github.com/alamoudimoh/daydan-server/config.Version={{.Version}} -X github.com/alamoudimoh/daydan-server/config.Commit={{.Commit}} -X github.com/alamoudimoh/daydan-server/config.BuildDate={{.Date}}"
     targets:
       - linux_amd64_v1
       - darwin_arm64

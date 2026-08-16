@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"

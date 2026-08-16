@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 )
 
 const localSignedURLTTL = 7 * 24 * time.Hour

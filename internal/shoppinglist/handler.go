@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"donetick.com/core/internal/auth"
-	cModel "donetick.com/core/internal/circle/model"
-	cRepo "donetick.com/core/internal/circle/repo"
-	slModel "donetick.com/core/internal/shoppinglist/model"
-	slRepo "donetick.com/core/internal/shoppinglist/repo"
-	uModel "donetick.com/core/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/internal/auth"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
+	slModel "github.com/alamoudimoh/daydan-server/internal/shoppinglist/model"
+	slRepo "github.com/alamoudimoh/daydan-server/internal/shoppinglist/repo"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/gin-gonic/gin"
 )
 

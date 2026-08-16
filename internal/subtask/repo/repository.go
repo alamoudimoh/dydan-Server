@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	stModel "donetick.com/core/internal/subtask/model"
+	stModel "github.com/alamoudimoh/daydan-server/internal/subtask/model"
 	"gorm.io/gorm"
 )
 

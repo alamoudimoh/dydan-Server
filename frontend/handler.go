@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	"github.com/gin-gonic/gin"
 )
 

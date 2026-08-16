@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	uModel "donetick.com/core/internal/user/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 )
 
 type UserExtended struct {

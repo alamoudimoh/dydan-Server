@@ -9,9 +9,9 @@ import (
 	"firebase.google.com/go/v4/messaging"
 	"google.golang.org/api/option"
 
-	"donetick.com/core/config"
-	nModel "donetick.com/core/internal/notifier/model"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 )
 
 type FCMNotifier struct {

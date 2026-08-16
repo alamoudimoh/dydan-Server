@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	chModel "donetick.com/core/internal/chore/model"
-	mModel "donetick.com/core/internal/meter/model"
-	mRepo "donetick.com/core/internal/meter/repo"
-	nModel "donetick.com/core/internal/notifier/model"
-	nRepo "donetick.com/core/internal/notifier/repo"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
+	mRepo "github.com/alamoudimoh/daydan-server/internal/meter/repo"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
 	"gorm.io/gorm"
 )
 

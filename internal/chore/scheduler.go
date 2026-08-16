@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	chModel "donetick.com/core/internal/chore/model"
-	"donetick.com/core/internal/utils"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	"github.com/alamoudimoh/daydan-server/internal/utils"
 )
 
 // InitialDueDate anchors a newly-created chore to an application start date.

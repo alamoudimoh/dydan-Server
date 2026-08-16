@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 
-	"donetick.com/core/config"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/checkout/session"
 	"github.com/stripe/stripe-go/v76/customer"

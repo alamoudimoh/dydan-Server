@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	mModel "donetick.com/core/internal/meter/model"
-	syncModel "donetick.com/core/internal/sync/model"
+	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
+	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
 	"gorm.io/gorm"
 )
 

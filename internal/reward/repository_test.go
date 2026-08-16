@@ -6,10 +6,10 @@ import (
 	"sync"
 	"testing"
 
-	cModel "donetick.com/core/internal/circle/model"
-	cRepo "donetick.com/core/internal/circle/repo"
-	pModel "donetick.com/core/internal/points"
-	uModel "donetick.com/core/internal/user/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
+	pModel "github.com/alamoudimoh/daydan-server/internal/points"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

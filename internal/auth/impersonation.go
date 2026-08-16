@@ -3,11 +3,11 @@ package auth
 import (
 	"strconv"
 
-	cModel "donetick.com/core/internal/circle/model"
-	cRepo "donetick.com/core/internal/circle/repo"
-	uModel "donetick.com/core/internal/user/model"
-	uRepo "donetick.com/core/internal/user/repo"
-	"donetick.com/core/logging"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 

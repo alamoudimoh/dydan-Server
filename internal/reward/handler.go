@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"donetick.com/core/internal/auth"
-	cModel "donetick.com/core/internal/circle/model"
-	cRepo "donetick.com/core/internal/circle/repo"
-	nModel "donetick.com/core/internal/notifier/model"
-	nService "donetick.com/core/internal/notifier/service"
+	"github.com/alamoudimoh/daydan-server/internal/auth"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	nService "github.com/alamoudimoh/daydan-server/internal/notifier/service"
 	"github.com/gin-gonic/gin"
 )
 

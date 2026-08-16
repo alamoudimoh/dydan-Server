@@ -1,4 +1,4 @@
-module donetick.com/core
+module github.com/alamoudimoh/daydan-server
 
 go 1.24.0
 

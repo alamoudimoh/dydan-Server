@@ -3,8 +3,8 @@ package auth
 import (
 	"testing"
 
-	cModel "donetick.com/core/internal/circle/model"
-	uModel "donetick.com/core/internal/user/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 )
 
 func TestEffectiveRoleAndPermissions(t *testing.T) {

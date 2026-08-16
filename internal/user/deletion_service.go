@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"donetick.com/core/internal/storage"
-	uModel "donetick.com/core/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/internal/storage"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"gorm.io/gorm"
 )
 

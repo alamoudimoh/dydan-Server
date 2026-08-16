@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	"golang.org/x/oauth2"
 )
 

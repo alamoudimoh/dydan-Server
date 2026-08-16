@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"donetick.com/core/config"
-	uModel "donetick.com/core/internal/user/model"
-	uRepo "donetick.com/core/internal/user/repo"
+	"github.com/alamoudimoh/daydan-server/config"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/google/uuid"
 )

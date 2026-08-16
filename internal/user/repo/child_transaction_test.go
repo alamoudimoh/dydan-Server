@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"donetick.com/core/config"
-	cModel "donetick.com/core/internal/circle/model"
-	uModel "donetick.com/core/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/config"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

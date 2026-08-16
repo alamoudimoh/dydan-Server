@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"gorm.io/gorm"
 )
 

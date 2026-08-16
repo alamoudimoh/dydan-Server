@@ -5,13 +5,13 @@ import (
 	"log"
 	"time"
 
-	"donetick.com/core/config"
-	chRepo "donetick.com/core/internal/chore/repo"
-	"donetick.com/core/internal/events"
-	nRepo "donetick.com/core/internal/notifier/repo"
-	nService "donetick.com/core/internal/notifier/service"
-	uRepo "donetick.com/core/internal/user/repo"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
+	"github.com/alamoudimoh/daydan-server/internal/events"
+	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
+	nService "github.com/alamoudimoh/daydan-server/internal/notifier/service"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/daydan-server/logging"
 )
 
 type keyType string

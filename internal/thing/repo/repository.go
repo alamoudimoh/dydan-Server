@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	config "donetick.com/core/config"
-	tModel "donetick.com/core/internal/thing/model"
+	config "github.com/alamoudimoh/daydan-server/config"
+	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
 	"gorm.io/gorm"
 )
 

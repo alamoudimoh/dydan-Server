@@ -1,7 +1,7 @@
 package resource
 
 import (
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/ulule/limiter/v3"

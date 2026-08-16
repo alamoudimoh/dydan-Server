@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"testing"
 
-	cRepo "donetick.com/core/internal/circle/repo"
-	uModel "donetick.com/core/internal/user/model"
+	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/gin-gonic/gin"
 )
 

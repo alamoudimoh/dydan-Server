@@ -13,8 +13,8 @@ import (
 	// "gorm.io/driver/sqlite" // Sqlite driver based on CGO
 	"gorm.io/gorm/logger"
 
-	"donetick.com/core/config"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/glebarez/sqlite" // Pure go SQLite driver, checkout https://github.com/glebarez/sqlite for details
 	"gorm.io/gorm"
 )

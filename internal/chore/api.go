@@ -4,24 +4,24 @@ import (
 	"strconv"
 	"time"
 
-	"donetick.com/core/config"
-	"donetick.com/core/internal/auth"
-	authMiddleware "donetick.com/core/internal/auth"
-	chRepo "donetick.com/core/internal/chore/repo"
-	"donetick.com/core/internal/events"
-	nRepo "donetick.com/core/internal/notifier/repo"
-	nps "donetick.com/core/internal/notifier/service"
-	"donetick.com/core/internal/utils"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/daydan-server/internal/auth"
+	authMiddleware "github.com/alamoudimoh/daydan-server/internal/auth"
+	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
+	"github.com/alamoudimoh/daydan-server/internal/events"
+	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
+	nps "github.com/alamoudimoh/daydan-server/internal/notifier/service"
+	"github.com/alamoudimoh/daydan-server/internal/utils"
+	"github.com/alamoudimoh/daydan-server/logging"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 
 	limiter "github.com/ulule/limiter/v3"
 
-	chModel "donetick.com/core/internal/chore/model"
-	cRepo "donetick.com/core/internal/circle/repo"
-	stRepo "donetick.com/core/internal/subtask/repo"
-	uRepo "donetick.com/core/internal/user/repo"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
+	stRepo "github.com/alamoudimoh/daydan-server/internal/subtask/repo"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 )
 
 type API struct {

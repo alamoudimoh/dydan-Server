@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	cModel "donetick.com/core/internal/circle/model"
-	slModel "donetick.com/core/internal/shoppinglist/model"
-	slRepo "donetick.com/core/internal/shoppinglist/repo"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	slModel "github.com/alamoudimoh/daydan-server/internal/shoppinglist/model"
+	slRepo "github.com/alamoudimoh/daydan-server/internal/shoppinglist/repo"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"donetick.com/core/config"
-	cModel "donetick.com/core/internal/circle/model"
-	nModel "donetick.com/core/internal/notifier/model"
-	storageModel "donetick.com/core/internal/storage/model"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	storageModel "github.com/alamoudimoh/daydan-server/internal/storage/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"gorm.io/gorm"
 )
 

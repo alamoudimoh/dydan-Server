@@ -8,11 +8,11 @@ import (
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 
-	"donetick.com/core/config"
-	rewardModel "donetick.com/core/internal/reward"
-	tModel "donetick.com/core/internal/thing/model"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/migrations"
+	"github.com/alamoudimoh/daydan-server/config"
+	rewardModel "github.com/alamoudimoh/daydan-server/internal/reward"
+	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/migrations"
 )
 
 func TestMigrationScriptsSQLite(t *testing.T) {

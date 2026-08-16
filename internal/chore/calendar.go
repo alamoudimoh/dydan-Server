@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	chModel "donetick.com/core/internal/chore/model"
-	lModel "donetick.com/core/internal/label/model"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
 )
 
 // CalendarOccurrence is a read-only view of authoritative scheduled work.

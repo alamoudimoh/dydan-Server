@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"donetick.com/core/internal/auth"
-	choreDomain "donetick.com/core/internal/chore"
-	chModel "donetick.com/core/internal/chore/model"
-	chRepo "donetick.com/core/internal/chore/repo"
-	mModel "donetick.com/core/internal/meter/model"
-	mRepo "donetick.com/core/internal/meter/repo"
+	"github.com/alamoudimoh/daydan-server/internal/auth"
+	choreDomain "github.com/alamoudimoh/daydan-server/internal/chore"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
+	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
+	mRepo "github.com/alamoudimoh/daydan-server/internal/meter/repo"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

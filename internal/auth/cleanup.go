@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	uRepo "donetick.com/core/internal/user/repo"
-	"donetick.com/core/logging"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/daydan-server/logging"
 )
 
 type CleanupService struct {

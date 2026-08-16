@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 
-	chModel "donetick.com/core/internal/chore/model"
-	nModel "donetick.com/core/internal/notifier/model"
-	uModel "donetick.com/core/internal/user/model"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 )
 
 type Notifier interface {

@@ -27,9 +27,9 @@ ARG VERSION=dev
 ARG COMMIT=dev
 RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w \
-      -X donetick.com/core/config.Version=${VERSION} \
-      -X donetick.com/core/config.Commit=${COMMIT} \
-      -X donetick.com/core/config.BuildDate=${BUILD_DATE}" \
+      -X github.com/alamoudimoh/daydan-server/config.Version=${VERSION} \
+      -X github.com/alamoudimoh/daydan-server/config.Commit=${COMMIT} \
+      -X github.com/alamoudimoh/daydan-server/config.BuildDate=${BUILD_DATE}" \
       -buildvcs=false -o /daydan .
 
 # Stage 2: Create a smaller runtime image

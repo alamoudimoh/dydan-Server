@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"donetick.com/core/config"
-	chModel "donetick.com/core/internal/chore/model"
-	nModel "donetick.com/core/internal/notifier/model"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/config"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 

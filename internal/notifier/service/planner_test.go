@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	chModel "donetick.com/core/internal/chore/model"
-	cModel "donetick.com/core/internal/circle/model"
-	nModel "donetick.com/core/internal/notifier/model"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
 )
 
 func member(userID int, active bool, platform nModel.NotificationPlatform, targetID string) *cModel.UserCircleDetail {

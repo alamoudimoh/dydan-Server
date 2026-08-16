@@ -3,7 +3,7 @@ package routine
 import (
 	"time"
 
-	chModel "donetick.com/core/internal/chore/model"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
 )
 
 type Pack struct {

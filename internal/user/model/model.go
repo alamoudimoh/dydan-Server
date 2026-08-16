@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	cModel "donetick.com/core/internal/circle/model"
-	nModel "donetick.com/core/internal/notifier/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
 )
 
 type User struct {

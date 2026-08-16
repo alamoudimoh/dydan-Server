@@ -3,9 +3,9 @@ package filter
 import (
 	"strconv"
 
-	auth "donetick.com/core/internal/auth"
-	fModel "donetick.com/core/internal/filter/model"
-	fRepo "donetick.com/core/internal/filter/repo"
+	auth "github.com/alamoudimoh/daydan-server/internal/auth"
+	fModel "github.com/alamoudimoh/daydan-server/internal/filter/model"
+	fRepo "github.com/alamoudimoh/daydan-server/internal/filter/repo"
 	"github.com/gin-gonic/gin"
 )
 

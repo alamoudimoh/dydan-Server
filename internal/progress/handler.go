@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"donetick.com/core/internal/auth"
-	chModel "donetick.com/core/internal/chore/model"
-	cModel "donetick.com/core/internal/circle/model"
-	cRepo "donetick.com/core/internal/circle/repo"
-	pModel "donetick.com/core/internal/points"
+	"github.com/alamoudimoh/daydan-server/internal/auth"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
+	pModel "github.com/alamoudimoh/daydan-server/internal/points"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

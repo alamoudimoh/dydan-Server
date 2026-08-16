@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"donetick.com/core/config"
+	"github.com/alamoudimoh/daydan-server/config"
 )
 
 func newTestSigner() *URLSignerLocal {

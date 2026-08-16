@@ -3,10 +3,10 @@ package auth
 import (
 	"net/http"
 
-	"donetick.com/core/internal/mfa"
-	uModel "donetick.com/core/internal/user/model"
-	uRepo "donetick.com/core/internal/user/repo"
-	"donetick.com/core/logging"
+	"github.com/alamoudimoh/daydan-server/internal/mfa"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 

@@ -3,9 +3,9 @@ package user
 import (
 	"net/http"
 
-	auth "donetick.com/core/internal/auth"
-	uModel "donetick.com/core/internal/user/model"
-	"donetick.com/core/logging"
+	auth "github.com/alamoudimoh/daydan-server/internal/auth"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 

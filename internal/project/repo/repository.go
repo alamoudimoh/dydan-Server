@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	config "donetick.com/core/config"
-	chModel "donetick.com/core/internal/chore/model"
-	pModel "donetick.com/core/internal/project/model"
-	syncModel "donetick.com/core/internal/sync/model"
-	"donetick.com/core/logging"
+	config "github.com/alamoudimoh/daydan-server/config"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	pModel "github.com/alamoudimoh/daydan-server/internal/project/model"
+	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
+	"github.com/alamoudimoh/daydan-server/logging"
 	"gorm.io/gorm"
 )
 

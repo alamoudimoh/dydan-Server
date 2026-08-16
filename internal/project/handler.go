@@ -3,9 +3,9 @@ package project
 import (
 	"strconv"
 
-	"donetick.com/core/internal/auth"
-	pModel "donetick.com/core/internal/project/model"
-	pRepo "donetick.com/core/internal/project/repo"
+	"github.com/alamoudimoh/daydan-server/internal/auth"
+	pModel "github.com/alamoudimoh/daydan-server/internal/project/model"
+	pRepo "github.com/alamoudimoh/daydan-server/internal/project/repo"
 	"github.com/gin-gonic/gin"
 )
 

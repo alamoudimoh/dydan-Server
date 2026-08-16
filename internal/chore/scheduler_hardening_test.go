@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	chModel "donetick.com/core/internal/chore/model"
+	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
 )
 
 func metadataAt(t *testing.T, zone, local string) *chModel.FrequencyMetadata {

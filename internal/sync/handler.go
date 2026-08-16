@@ -3,9 +3,9 @@ package sync
 import (
 	"strconv"
 
-	auth "donetick.com/core/internal/auth"
-	chRepo "donetick.com/core/internal/chore/repo"
-	syncModel "donetick.com/core/internal/sync/model"
+	auth "github.com/alamoudimoh/daydan-server/internal/auth"
+	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
+	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
 	"github.com/gin-gonic/gin"
 )
 

@@ -3,9 +3,9 @@ package circle
 import (
 	"testing"
 
-	"donetick.com/core/internal/auth"
-	cModel "donetick.com/core/internal/circle/model"
-	uModel "donetick.com/core/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/internal/auth"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 )
 
 func TestCanResetPointsRequiresAdminRole(t *testing.T) {

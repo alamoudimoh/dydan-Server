@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	mModel "donetick.com/core/internal/meter/model"
-	mRepo "donetick.com/core/internal/meter/repo"
-	uModel "donetick.com/core/internal/user/model"
+	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
+	mRepo "github.com/alamoudimoh/daydan-server/internal/meter/repo"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"

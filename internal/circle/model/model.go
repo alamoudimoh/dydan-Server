@@ -3,7 +3,7 @@ package circle
 import (
 	"time"
 
-	nModel "donetick.com/core/internal/notifier/model"
+	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
 )
 
 type Circle struct {

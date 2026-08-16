@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	cModel "donetick.com/core/internal/circle/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
