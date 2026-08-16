@@ -1,6 +1,6 @@
 # Bug Report
 
-Thank you for taking the time to report a bug in Donetick! Please fill out the information below to help us diagnose and fix the issue as quickly as possible.
+Thank you for taking the time to report a bug in DayDan! Please fill out the information below to help us diagnose and fix the issue as quickly as possible.
 
 ---
 
@@ -31,7 +31,7 @@ Thank you for taking the time to report a bug in Donetick! Please fill out the i
 ---
 
 ## Environment
-- **Donetick Version:** (e.g., v1.2.3)
+- **DayDan Version:** (e.g., v1.2.3)
 - **Deployment Method:** (Self-hosted, Docker, Cloud, etc.)
 - **Operating System:** (e.g., Windows, macOS, Linux)
 - **Browser & Version:** (if applicable, e.g., Chrome 110.0, Firefox 99.0)

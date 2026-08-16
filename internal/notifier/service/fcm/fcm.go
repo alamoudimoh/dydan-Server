@@ -93,7 +93,7 @@ func (f *FCMNotifier) SendNotification(ctx context.Context, notification *nModel
 	// Use notification text as fallback if payload is empty
 	if payload.Title == "" && payload.Body == "" {
 		payload.Body = notification.Text
-		payload.Title = "DoneTick"
+		payload.Title = "DayDan"
 	}
 
 	// Create FCM message

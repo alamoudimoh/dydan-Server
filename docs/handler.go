@@ -31,9 +31,9 @@ func NewHandler(config *config.Config) *Handler {
 	return handler
 }
 
-//	@title			Donetick Swagger API
+//	@title			DayDan Swagger API
 //	@version		1.0
-//	@description	Donetick swagger documentation.
+//	@description	DayDan swagger documentation.
 
 //	@license.name	GNU Affero General Public License v3.0
 //	@license.url	https://github.com/donetick/donetick/blob/main/LICENSE.md

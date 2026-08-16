@@ -29,7 +29,7 @@ func (p *Pushover) SendNotification(c context.Context, notification *nModel.Noti
 	}
 	log := logging.FromContext(c)
 	recipient := pushover.NewRecipient(notification.TargetID)
-	message := pushover.NewMessageWithTitle(notification.Text, "Donetick")
+	message := pushover.NewMessageWithTitle(notification.Text, "DayDan")
 
 	_, err := p.pushover.SendMessage(message, recipient)
 	if err != nil {

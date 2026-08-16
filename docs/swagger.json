@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Donetick swagger documentation.",
-        "title": "Donetick Swagger API",
+        "description": "DayDan swagger documentation.",
+        "title": "DayDan Swagger API",
         "contact": {},
         "license": {
             "name": "GNU Affero General Public License v3.0",

@@ -1,11 +1,11 @@
 
-# <img src="assets/icon.png" alt="drawing" width="45"/>Donetick 
+# <img src="assets/icon.png" alt="drawing" width="45"/>DayDan 
 
 
 
 **Simplify Tasks & Chores, Together!**
 
-Donetick is an open-source, user-friendly app designed to help you organize tasks and chores effectively. featuring customizable options to help you and others stay organized
+DayDan is an open-source, user-friendly app designed to help you organize tasks and chores effectively. featuring customizable options to help you and others stay organized
 
 ![Screenshot](assets/screenshot.png)
 
@@ -25,21 +25,21 @@ Donetick is an open-source, user-friendly app designed to help you organize task
 ### Task & Chore Management
 **Collaborative**: Create and manage tasks either solo or with family and friends. You can create a group and share or assign some of the tasks or chores with others.
 
-**Natural Language Task Creation**: Describe what you need to do in plain English. Donetick automatically extracts dates, times, and recurrence patterns from phrases like “Change water filter every 6 months” or “Take the trash out every Monday and Tuesday at 6:15 pm.”
+**Natural Language Task Creation**: Describe what you need to do in plain English. DayDan automatically extracts dates, times, and recurrence patterns from phrases like “Change water filter every 6 months” or “Take the trash out every Monday and Tuesday at 6:15 pm.”
 
 **Task Advanced Scheduling**: 
-- Supports flexible scheduling: daily, weekly, monthly, yearly, specific months, specific days of the week, or even adaptive scheduling — where Donetick learns from historical completions to suggest due dates automatically.
+- Supports flexible scheduling: daily, weekly, monthly, yearly, specific months, specific days of the week, or even adaptive scheduling — where DayDan learns from historical completions to suggest due dates automatically.
 - Due Date vs Completion Date Based Recurrence: Choose whether recurring tasks should be scheduled from the previous due date (ideal for a consistent cadence) or from the actual completion date (useful when tasks are often delayed).
 - Assignee Rotation: Automatically rotate task assignments based on who has completed the fewest tasks, randomly, or in turns(round-robin) order.
 - Time Tracking & Session Insights: Track how much time you spend on a task whether in a single session or across multiple.
   
 **Subtasks with Smart Reset**: Break tasks into smaller steps with subtasks, each trackable on its own. For recurring tasks, subtasks automatically reset when the main task is completed. subtasks can be nested as well!
 
-**Organize with Priorities and Labels**: Organize everything using custom labels and priorities. Labels can be shared across your group, making it easy to filter and sort tasks by category. Priorities help you stay focused  Donetick supports five levels: P1, P2, P3, P4, and No Priority.
+**Organize with Priorities and Labels**: Organize everything using custom labels and priorities. Labels can be shared across your group, making it easy to filter and sort tasks by category. Priorities help you stay focused  DayDan supports five levels: P1, P2, P3, P4, and No Priority.
 
 **Add Photos**: Attach photos directly to tasks. Supports local storage (WIP) or cloud providers including AWS S3, Cloudflare R2, MinIO, and other S3-compatible services.
 
-**Things**: A unique feature in Donetick. “Things” let you track data that isn’t a task. A Thing can be a number, boolean (true/false), or plain text. You can also mark tasks as done automatically when a Thing changes to a certain value.
+**Things**: A unique feature in DayDan. “Things” let you track data that isn’t a task. A Thing can be a number, boolean (true/false), or plain text. You can also mark tasks as done automatically when a Thing changes to a certain value.
 
 **NFC Tag Support**: Create physical triggers by writing NFC tags that instantly mark tasks as complete when scanned.
 
@@ -57,30 +57,30 @@ Donetick is an open-source, user-friendly app designed to help you organize task
 
 ### Notifications & Integrations
 
-**Dashboard View**: If you’re on a larger screen (like a laptop or tablet) and logged in as an admin, Donetick shows a mount-friendly dashboard layout. a full task list, calendar, and recent activity all in one place. Perfect for wall-mounted displays or shared tablets. With the ability for any user to pick their account and complete a task on the go!
+**Dashboard View**: If you’re on a larger screen (like a laptop or tablet) and logged in as an admin, DayDan shows a mount-friendly dashboard layout. a full task list, calendar, and recent activity all in one place. Perfect for wall-mounted displays or shared tablets. With the ability for any user to pick their account and complete a task on the go!
 
 **Realtime Sync**: Enable realtime sync to instantly reflect task changes across all connected devices and users.  whether you are adding, editing, or completing a task. It reflects immediately on enabled devices!
 
-**Offline Support**: You can access donetick if you lose connection and navigate some areas, but this is very limited functionality at the moment. 
+**Offline Support**: You can access DayDan if you lose connection and navigate some areas, but this is very limited functionality at the moment. 
 
 **Multi-Platform Notifications**: Get reminders through the mobile app (we have an alpha iOS app on TestFlight, and the Android APK is available in releases), as well as via Telegram, Discord, or Pushover.
 
-**Home Assistant Integration**: Manage and view tasks directly within Home Assistant using the official integration. It creates separate to-do lists for each Donetick user. Donetick Home Assistant Integration
+**Home Assistant Integration**: Manage and view tasks directly within Home Assistant using the official integration. It creates separate to-do lists for each DayDan user. DayDan Home Assistant Integration
 
 ### Developer & API Features
-**REST API**: Full access to Donetick’s features through a REST API, great for custom automations and integrations. (For external use, we recommend using the eAPI, which offers limited access intended for long-lived access tokens.)
+**REST API**: Full access to DayDan’s features through a REST API, great for custom automations and integrations. (For external use, we recommend using the eAPI, which offers limited access intended for long-lived access tokens.)
 
-**Webhook System**: Connect Donetick to external systems using flexible webhook support good for custom notification flows or automations.
+**Webhook System**: Connect DayDan to external systems using flexible webhook support good for custom notification flows or automations.
 
 ---
 
 ## Quick Start
-Taskier works with secure built-in defaults. No YAML file, database selection,
+DayDan works with secure built-in defaults. No YAML file, database selection,
 JWT secret, CORS list, or scheduler/realtime tuning is required.
 
 ### Using Docker Compose
 
-The included Compose file builds Taskier, exposes port 2021, and mounts one
+The included Compose file builds DayDan, exposes port 2021, and mounts one
 persistent data volume:
 
 ```bash
@@ -115,7 +115,7 @@ docker run -d --name taskier -p 2021:2021 -v taskier-data:/data taskier
    ```bash
    cd path/to/extracted-folder
    ```
-3. **Run Taskier:**
+3. **Run DayDan:**
    ```bash
    ./taskier
    ```
@@ -272,7 +272,7 @@ For ideas or feature requests, please use GitHub Discussions. We also have a Dis
 
 ---
 
-## Support Donetick
+## Support DayDan
 
  If you find it helpful, consider supporting us by starring the repository, contributing code, or sharing feedback!  
 

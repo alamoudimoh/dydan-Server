@@ -1,4 +1,4 @@
-name: Taskier Server CI
+name: DayDan Server CI
 
 on:
   push:

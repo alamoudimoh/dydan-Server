@@ -30,7 +30,7 @@ func TestZeroConfigDefaultsAndPersistentSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Name != "taskier" || first.Database.Type != "sqlite" || !first.Database.Migration {
+	if first.Name != "daydan" || first.Database.Type != "sqlite" || !first.Database.Migration {
 		t.Fatalf("database defaults not populated: %#v", first.Database)
 	}
 	if first.Database.Path != filepath.Join(dataDir, "taskier.db") {

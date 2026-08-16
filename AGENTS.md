@@ -1,4 +1,4 @@
-# Taskier Server Verification Policy
+# DayDan Server Verification Policy
 
 - Run `./scripts/verify.sh` before completing substantial backend changes. It
   includes the zero-config container smoke test. Set

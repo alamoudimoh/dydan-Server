@@ -17,7 +17,7 @@ type MFAService struct {
 }
 
 func NewService(cfg *config.Config) *MFAService {
-	appName := "Donetick"
+	appName := "DayDan"
 	if cfg.Name != "" {
 		appName = cfg.Name
 	}

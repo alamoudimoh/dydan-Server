@@ -99,11 +99,11 @@ func (s *SMTP2GoSender) sendTemplate(to, subject, templateID string, templateDat
 func (s *SMTP2GoSender) SendResetPasswordEmail(c context.Context, to, code string) error {
 	fullURL := fmt.Sprintf("%s/password/update?c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
-	return s.sendTemplate(to, "Donetick! Password Reset", s.resetTemplateID, templateData)
+	return s.sendTemplate(to, "DayDan! Password Reset", s.resetTemplateID, templateData)
 }
 
 func (s *SMTP2GoSender) SendVerificationEmail(to, code string) error {
 	fullURL := fmt.Sprintf("%s/verify?c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
-	return s.sendTemplate(to, "Donetick! Verify your email", s.verifyTemplateID, templateData)
+	return s.sendTemplate(to, "DayDan! Verify your email", s.verifyTemplateID, templateData)
 }

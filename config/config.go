@@ -261,7 +261,7 @@ type LogConfig struct {
 func NewConfig() *Config {
 	return &Config{
 		DataDir: "data",
-		Name:    "taskier",
+		Name:    "daydan",
 		Database: DatabaseConfig{
 			Type:      "sqlite",
 			Migration: true,
@@ -351,7 +351,7 @@ func configEnvironmentOverrides(config *Config) {
 		config.Logging.Development = true
 	}
 }
-func setTaskierDefaults(v *viper.Viper) {
+func setDayDanDefaults(v *viper.Viper) {
 	cfg := NewConfig()
 	v.SetDefault("name", cfg.Name)
 	v.SetDefault("data_dir", cfg.DataDir)
@@ -419,7 +419,7 @@ func firstEnvironment(names ...string) string {
 func LoadConfig() *Config {
 	cfg, err := LoadConfigE()
 	if err != nil {
-		panic(fmt.Sprintf("Taskier configuration error: %v", err))
+		panic(fmt.Sprintf("DayDan configuration error: %v", err))
 	}
 	return cfg
 }
@@ -427,7 +427,7 @@ func LoadConfig() *Config {
 func LoadConfigE() (*Config, error) {
 	// https://github.com/spf13/viper/issues/1895#issuecomment-3316091229
 	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
-	setTaskierDefaults(v)
+	setDayDanDefaults(v)
 
 	configFile := firstEnvironment("TASKIER_CONFIG_FILE", "DT_CONFIG_FILE")
 	if configFile != "" {
