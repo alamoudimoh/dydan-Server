@@ -4,6 +4,7 @@ donetick.db
 /data/
 /jwt-secret
 /uploads/
+config/data/
 *.db-wal
 *.db-shm
 *.sqlite
