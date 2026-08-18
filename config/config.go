@@ -481,7 +481,11 @@ func LoadConfigE() (*Config, error) {
 	v.AddConfigPath("./config")
 	v.AddConfigPath("/config")
 	v.AddConfigPath(".")
-	v.SetConfigType("yaml")
+	// Config type is inferred from the file extension. Do not call
+	// SetConfigType here: viper treats a non-empty config type as permission to
+	// match a config file with no extension, which collides with the "/daydan"
+	// binary present in the container's working directory and panics parsing it
+	// as YAML.
 
 	if err := readOptionalConfigFile(v); err != nil {
 		return nil, err

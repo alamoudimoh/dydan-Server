@@ -288,6 +288,28 @@ func TestZeroConfigStartupWithoutConfigFiles(t *testing.T) {
 	}
 }
 
+func TestConfigNameFileWithoutExtensionIsIgnored(t *testing.T) {
+	clearConfigSelection(t)
+	tempDir := t.TempDir()
+	dataDir := filepath.Join(tempDir, "data")
+	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Chdir(tempDir)
+
+	// Regression test for the zero-config container: the runtime image places
+	// the "/daydan" binary in the working directory, and viper must not treat
+	// it as a config file (config name "daydan" with no extension) and fail
+	// parsing it as YAML.
+	writeTestConfig(t, tempDir, "daydan", string([]byte{0x00, 0x7f, 'n', 'o', 't', ' ', 'y', 'a', 'm', 'l'}))
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Name != "daydan" {
+		t.Fatalf("name=%q", cfg.Name)
+	}
+}
+
 func TestLegacyHostedCloudConfigKeysStillLoad(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
