@@ -5,7 +5,7 @@
 # `go build` for arm64/armv7 is drastically slower than native cross-compiling
 # a pure-Go (CGO_ENABLED=0) binary -- this matters for the multi-arch
 # (linux/amd64,arm64,arm/v7) image built in go-release.yml.
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 
 WORKDIR /usr/src/app
 
