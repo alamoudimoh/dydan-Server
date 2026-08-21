@@ -127,11 +127,11 @@ func (f *FCMNotifier) SendNotification(ctx context.Context, notification *nModel
 	// Send the message
 	response, err := f.client.Send(ctx, message)
 	if err != nil {
-		log.Error("Failed to send FCM notification", "error", err, "token", notification.TargetID)
+		log.Error("Failed to send FCM notification", "error", err)
 		return err
 	}
 
-	log.Info("FCM notification sent successfully", "message_id", response, "token", notification.TargetID)
+	log.Info("FCM notification sent successfully", "message_id", response)
 	return nil
 }
 
