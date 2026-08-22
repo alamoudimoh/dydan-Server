@@ -80,14 +80,36 @@ JWT secret, CORS list, or scheduler/realtime tuning is required.
 
 ### Using Docker Compose
 
-The included Compose file builds DayDan, exposes port 2021, and mounts one
-persistent data volume:
+Prerequisites: Docker (with Compose v2.17+). No Node, npm, Go, or Vite is
+needed on the host — the image build compiles the frontend and backend
+internally.
+
+DayDan's frontend and backend live in two repositories. Clone them side by
+side (the Compose file expects the frontend at `../daydan-app`; set
+`DAYDAN_FRONTEND_CONTEXT` to override the path):
 
 ```bash
-docker compose up -d
+git clone <daydan-app-url> daydan-app
+git clone <daydan-server-url> daydan-server
+cd daydan-server
+docker compose up -d --build
+```
+
+The included Compose file builds DayDan, exposes port 2021, mounts one
+persistent data volume, and starts automatically on boot (`restart:
+unless-stopped`). The frontend bundle uses same-origin relative `/api` URLs,
+so the deployment works unchanged over a LAN IP, hostname, reverse proxy, or
+HTTPS domain — changing the server address never requires rebuilding.
+
+To update an existing deployment:
+
+```bash
+git pull                       # in both repos
+docker compose up -d --build
 ```
 
 Persistent runtime state lives in `/data` inside the container:
+
 
 - `/data/daydan.db` — SQLite database (legacy `taskier.db` / `donetick.db` are migrated automatically)
 - `/data/jwt-secret` — automatically generated session-signing secret
@@ -104,6 +126,25 @@ DAYDAN_DOCKER_VOLUME=taskier-data docker compose up -d
 ```
 
 Legacy `TASKIER_DOCKER_VOLUME` is also accepted as a fallback override.
+
+### Operating the deployment
+
+```bash
+docker compose logs -f          # follow logs
+docker compose restart          # restart the container
+docker compose down             # stop (data volume is kept)
+docker compose up -d            # start again
+```
+
+Back up all persistent state with:
+
+```bash
+docker run --rm -v daydan-data:/data -v "$PWD":/backup alpine \
+  tar czf /backup/daydan-data-backup.tar.gz -C /data .
+```
+
+Restore by extracting the archive into an empty `daydan-data` volume before
+starting the container.
 
 Configuration remains optional. Canonical `DAYDAN_*` environment variables are
 preferred; legacy `DT_*`, `TASKIER_*`, and `DONETICK_*` variables remain
@@ -152,8 +193,12 @@ docker run -d --name daydan -p 2021:2021 -v daydan-data:/data daydan
    ```
 4. Build the frontend:
    ```bash
-   npm run build-selfhosted
+   npm run build
    ```
+   The production bundle uses same-origin relative `/api` URLs by default, so
+   it works against any self-hosted address without a special build mode. If
+   you host the API on a different origin, set `VITE_APP_API_URL` at build
+   time instead.
 5. If you want to work on the frontend you can run:
    ```bash
    npm start
