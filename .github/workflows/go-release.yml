@@ -33,25 +33,8 @@ jobs:
           repository: 'donetick/frontend'
           token: ${{ secrets.GITHUB_TOKEN }}
           path: 'frontend-code'
-      # build frontend 
-      - name: Install Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '23'
-      - name: Install Dependencies
-        run: |
-          cd frontend-code
-          npm install
-      - name: Build Frontend
-        run: |
-          cd frontend-code
-          npm run build-selfhosted
-
-      - name: Copy Frontend
-        run: |
-          rm -rf ./frontend/dist
-          cp -r frontend-code/dist ./frontend/dist
-
+      # The Dockerfile builds the frontend itself from the `frontend` named
+      # context, so no separate npm install/build step is needed here.
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -110,6 +93,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
+          build-contexts: |
+            frontend=./frontend-code
           build-args: |
             VERSION=${{ steps.resolve.outputs.tag }}
             COMMIT=${{ steps.commit.outputs.sha }}

@@ -4,6 +4,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # The frontend source lives in the sibling daydan-app checkout. Override
+      # the path with DAYDAN_FRONTEND_CONTEXT if your layout differs.
+      additional_contexts:
+        frontend: ${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}
+      args:
+        VERSION: ${DAYDAN_VERSION:-dev}
+        COMMIT: ${DAYDAN_COMMIT:-local}
     container_name: daydan
     restart: unless-stopped
     ports:

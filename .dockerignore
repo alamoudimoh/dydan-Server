@@ -1,0 +1,16 @@
+# Runtime state and local artifacts must never leak into the image or bloat
+# the build context. Persistent data lives in the daydan-data volume.
+data/
+*.db
+*.db-wal
+*.db-shm
+jwt-secret
+uploads/
+daydan-server
+daydan-zero-config-*
+daydan-container-*
+*.log
+.git
+node_modules
+frontend/dist/*
+!frontend/dist/index.html

@@ -1,4 +1,34 @@
-# Stage 1: Build the application from source.
+# Stage 1: Build the web frontend from source.
+# --platform=$BUILDPLATFORM keeps this stage on the host architecture: the
+# bundle is platform-independent JavaScript, so there is no reason to emulate
+# node under QEMU when building multi-arch images.
+# The `frontend` named build context must point at the daydan-app repository
+# checkout (docker-compose.yaml wires it up automatically; plain docker users
+# can pass --build-context frontend=/path/to/daydan-app).
+FROM --platform=$BUILDPLATFORM node:22-slim AS frontend-builder
+
+WORKDIR /web
+
+# One source per COPY: this daemon's BuildKit drops extra sources when a
+# local named context COPY mixes files and directories.
+COPY --from=frontend package.json ./
+COPY --from=frontend package-lock.json ./
+COPY --from=frontend index.html ./
+COPY --from=frontend vite.config.mjs ./
+COPY --from=frontend vite.allowed-hosts.mjs ./
+COPY --from=frontend tailwind.config.mjs ./
+COPY --from=frontend postcss.config.mjs ./
+COPY --from=frontend src ./src
+COPY --from=frontend public ./public
+COPY --from=frontend patches ./patches
+
+RUN npm ci --no-audit --no-fund
+
+# Plain `npm run build` produces a same-origin (relative `/api`) bundle that is
+# safe for any self-hosted IP/hostname/reverse proxy without rebuilding.
+RUN npm run build
+
+# Stage 2: Build the application from source.
 # --platform=$BUILDPLATFORM pins this stage to the host (native) architecture
 # even when building for other target platforms, so `go build` cross-compiles
 # natively via GOOS/GOARCH instead of running under QEMU emulation. Emulated
@@ -16,6 +46,10 @@ RUN go mod download && go mod verify
 
 COPY . .
 
+# Overwrite the tracked placeholder in frontend/dist with the freshly built
+# frontend so `go:embed` bakes the real SPA into the binary.
+COPY --from=frontend-builder /web/dist ./frontend/dist
+
 # TARGETOS/TARGETARCH are populated automatically by buildkit for the actual
 # target platform being built, regardless of the native host running this stage.
 ARG TARGETOS
@@ -32,7 +66,7 @@ RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
       -X github.com/alamoudimoh/daydan-server/config.BuildDate=${BUILD_DATE}" \
       -buildvcs=false -o /daydan .
 
-# Stage 2: Create a smaller runtime image
+# Stage 3: Create a smaller runtime image
 FROM alpine:latest
 
 # Install necessary CA certificates and timezone data
