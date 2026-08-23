@@ -81,10 +81,20 @@ RUN ln -sf /daydan /donetick
 ENV DAYDAN_DATA_DIR="/data"
 VOLUME ["/data"]
 
-# Release provenance: which daydan-app commit the embedded frontend came from
-# (populated by go-release.yml; empty for plain docker/compose builds).
+# Release provenance (populated by go-release.yml; "unknown"/"dev" for plain
+# docker/compose builds). The pairing of server commit/version and the exact
+# daydan-app commit the embedded frontend came from is always discoverable
+# via these immutable OCI labels. VERSION/COMMIT are re-declared here because
+# build args do not cross stage boundaries.
 ARG DAYDAN_FRONTEND_COMMIT=unknown
-LABEL com.daydan.frontend.commit=${DAYDAN_FRONTEND_COMMIT}
+ARG DAYDAN_FRONTEND_REF=unknown
+ARG VERSION=dev
+ARG COMMIT=dev
+LABEL com.daydan.frontend.commit=${DAYDAN_FRONTEND_COMMIT} \
+      com.daydan.frontend.ref=${DAYDAN_FRONTEND_REF} \
+      org.opencontainers.image.revision=${COMMIT} \
+      org.opencontainers.image.version=${VERSION} \
+      org.opencontainers.image.source=https://github.com/alamoudimoh/daydan-server
 
 # Expose the application port
 EXPOSE 2021
