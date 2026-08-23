@@ -38,6 +38,12 @@ func MustCurrentUser(c *gin.Context) *uModel.UserDetails {
 	panic("no account in gin.Context")
 }
 
+// SetCurrentUser installs an authenticated user into the gin context. Used by
+// tests that bypass the JWT middleware.
+func SetCurrentUser(c *gin.Context, user *uModel.UserDetails) {
+	c.Set(identityKey, user)
+}
+
 func NewAuthMiddleware(cfg *config.Config, userRepo *uRepo.UserRepository, mfaService *mfa.MFAService) (*jwt.GinJWTMiddleware, error) {
 	return jwt.New(&jwt.GinJWTMiddleware{
 		Realm:       "test zone",

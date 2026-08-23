@@ -20,6 +20,7 @@ type AuthHandler struct {
 	userRepo     *uRepo.UserRepository
 	jwtAuth      *jwt.GinJWTMiddleware
 	mfaService   *mfa.MFAService
+	csrfCheck    gin.HandlerFunc
 }
 
 // NewAuthHandler creates a new auth handler
@@ -32,10 +33,30 @@ func NewAuthHandler(tokenService *TokenService, userRepo *uRepo.UserRepository, 
 	}
 }
 
+// SetCSRFCheck attaches origin validation for cookie-authenticated endpoints.
+// It is optional so existing constructors keep working; handlers fall back to
+// a permissive no-op when it is not configured (tests).
+func (h *AuthHandler) SetCSRFCheck(check gin.HandlerFunc) {
+	h.csrfCheck = check
+}
+
+func (h *AuthHandler) requireCSRF(c *gin.Context) bool {
+	if h.csrfCheck == nil {
+		return true
+	}
+	h.csrfCheck(c)
+	return !c.IsAborted()
+}
+
 // RefreshTokenHandler handles POST /auth/refresh
 func (h *AuthHandler) RefreshTokenHandler(c *gin.Context) {
+	// Cookie-authenticated endpoint: validate the Origin before doing work so
+	// cross-site requests cannot ride the refresh credential.
+	if !h.requireCSRF(c) {
+		return
+	}
 	// Try to get refresh token from cookie first (httpOnly), fallback to body (legacy)
-	refreshToken, err := c.Cookie("refresh_token")
+	refreshToken, err := c.Cookie(RefreshTokenCookieName)
 	if err != nil {
 		// Fallback to JSON body for backward compatibility
 		var req RefreshRequest
@@ -67,15 +88,18 @@ func (h *AuthHandler) RefreshTokenHandler(c *gin.Context) {
 	}
 
 	// Set new refresh token as httpOnly cookie
-	c.SetCookie("refresh_token", tokenResponse.RefreshToken, int(h.tokenService.refreshTokenExpiry.Seconds()), "/", "", true, true)
+	SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.refreshTokenExpiry)
 
 	c.JSON(http.StatusOK, tokenResponse)
 }
 
 // LogoutHandler handles POST /auth/logout
 func (h *AuthHandler) LogoutHandler(c *gin.Context) {
-	// Try to get refresh token from cookie first (httpOnly), fallback to body (legacy)
-	refreshToken, err := c.Cookie("refresh_token")
+	// Cookie-authenticated endpoint: validate the Origin before doing work.
+	if !h.requireCSRF(c) {
+		return
+	}
+	refreshToken, err := c.Cookie(RefreshTokenCookieName)
 	if err != nil {
 		// Fallback to JSON body for backward compatibility
 		var req RefreshRequest
@@ -95,8 +119,8 @@ func (h *AuthHandler) LogoutHandler(c *gin.Context) {
 		}
 	}
 
-	// Clear the httpOnly cookie
-	c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+	// Clear the httpOnly cookie (both current and legacy paths)
+	ClearRefreshSessionCookie(c)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logged out successfully",
@@ -124,7 +148,7 @@ func (h *AuthHandler) RevokeAllHandler(c *gin.Context) {
 	}
 
 	// Clear the httpOnly cookie since all sessions are revoked
-	c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+	ClearRefreshSessionCookie(c)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "All sessions revoked successfully",
@@ -196,7 +220,7 @@ func (h *AuthHandler) EnhancedLoginHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.SetCookie("refresh_token", tokenResponse.RefreshToken, int(h.tokenService.refreshTokenExpiry.Seconds()), "/", "", true, true)
+	SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.refreshTokenExpiry)
 	c.JSON(http.StatusOK, tokenResponse)
 }
 
