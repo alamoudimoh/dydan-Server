@@ -12,7 +12,7 @@ const docTemplate = `{
         "contact": {},
         "license": {
             "name": "GNU Affero General Public License v3.0",
-            "url": "https://github.com/donetick/donetick/blob/main/LICENSE.md"
+            "url": "https://github.com/alamoudimoh/daydan-server/blob/main/LICENSE.md"
         },
         "version": "{{.Version}}"
     },
@@ -5559,7 +5559,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "APIKeyAuth": {
-            "description": "donetick issued apikey",
+            "description": "DayDan issued apikey",
             "type": "apiKey",
             "name": "secretkey",
             "in": "header"

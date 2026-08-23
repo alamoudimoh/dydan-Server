@@ -36,7 +36,7 @@ func NewHandler(config *config.Config) *Handler {
 //	@description	DayDan swagger documentation.
 
 //	@license.name	GNU Affero General Public License v3.0
-//	@license.url	https://github.com/donetick/donetick/blob/main/LICENSE.md
+//	@license.url	https://github.com/alamoudimoh/daydan-server/blob/main/LICENSE.md
 
 //	@BasePath	/api/v1
 
@@ -48,7 +48,7 @@ func NewHandler(config *config.Config) *Handler {
 //	@securityDefinitions.apikey	APIKeyAuth
 //	@in							header
 //	@name						secretkey
-//	@description				donetick issued apikey
+//	@description				DayDan issued apikey
 
 func Routes(router *gin.Engine, h *Handler) {
 	if h.ServeSwagger {
