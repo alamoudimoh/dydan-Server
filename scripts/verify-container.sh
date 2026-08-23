@@ -64,10 +64,67 @@ assert_legacy_database_migration() {
   rm -rf -- "$legacy_data_dir"
 }
 
+# The runtime process must never run as root: the entrypoint prepares /data as
+# root, drops privileges via su-exec, and execs DayDan (PID 1) as "daydan".
+assert_non_root_runtime() {
+  local uid gid
+  uid=$(docker exec "$container" sh -c 'stat -c %u /proc/1')
+  gid=$(docker exec "$container" stat -c %g /proc/1)
+  if [[ "$uid" == "0" || "$gid" == "0" ]]; then
+    echo "DayDan runs as root (uid=$uid gid=$gid); expected unprivileged daydan user" >&2
+    exit 1
+  fi
+}
+
+# A volume previously written by the root-running image must be migrated to
+# the unprivileged user automatically on boot.
+assert_root_owned_volume_migration() {
+  local root_data_dir root_container
+  root_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/daydan-root-vol-${run_id}.XXXXXX")
+  root_container="${container}-rootvol"
+  # Simulate a legacy root-owned volume: db + secret + uploads owned by root.
+  printf 'root-owned-jwt-secret-0123456789abcdef' >"$root_data_dir/jwt-secret"
+  chmod 600 "$root_data_dir/jwt-secret"
+  mkdir -p "$root_data_dir/uploads"
+  printf 'x' >"$root_data_dir/uploads/root-file.txt"
+  sudo chown -R root:root "$root_data_dir"
+
+  docker run -d \
+    --name "$root_container" \
+    --publish 127.0.0.1::2021 \
+    --volume "$root_data_dir:/data" \
+    "$image" >/dev/null
+
+  local port
+  for _ in $(seq 1 60); do
+    if port=$(docker port "$root_container" 2021/tcp 2>/dev/null | sed -E 's/.*:([0-9]+)$/\1/' | head -n 1) &&
+      [[ -n "$port" ]] &&
+      curl --fail --silent --show-error "http://127.0.0.1:${port}/api/v1/health" >/dev/null; then
+      break
+    fi
+    sleep 1
+  done
+  curl --fail --silent "http://127.0.0.1:${port}/api/v1/health" >/dev/null || {
+    docker logs "$root_container" >&2
+    echo "container failed on root-owned volume" >&2
+    exit 1
+  }
+
+  # All pre-existing files must now belong to the unprivileged runtime user.
+  test "$(sudo stat -c %u "$root_data_dir/jwt-secret")" = "1000"
+  test "$(sudo stat -c %u "$root_data_dir/uploads/root-file.txt")" = "1000"
+  test "$(docker exec "$root_container" stat -c %u /proc/1)" = "1000"
+
+  docker rm -f "$root_container" >/dev/null
+  sudo rm -rf -- "$root_data_dir"
+}
+
 assert_compose_config
-docker build --tag "$image" .
+docker build --tag "$image" \
+  --build-context "frontend=${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}" .
 assert_image_runtime
 assert_legacy_database_migration
+assert_root_owned_volume_migration
 
 start_container() {
   docker run -d \
@@ -112,6 +169,7 @@ start_container
 port=$(container_port)
 wait_for_health "$port"
 assert_clean_migrations
+assert_non_root_runtime
 docker exec "$container" test ! -e /config/selfhosted.yaml
 docker exec "$container" test -x /daydan
 docker exec "$container" test -L /donetick

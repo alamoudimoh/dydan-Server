@@ -71,8 +71,14 @@ RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
 # Stage 3: Create a smaller runtime image
 FROM alpine:latest
 
-# Install necessary CA certificates and timezone data
-RUN apk --no-cache add ca-certificates libc6-compat tzdata
+# Install necessary CA certificates and timezone data, plus su-exec for the
+# entrypoint's privilege drop (tiny, static, and signal-transparent).
+RUN apk --no-cache add ca-certificates libc6-compat tzdata su-exec
+
+# Dedicated unprivileged runtime user. The entrypoint starts as root only to
+# migrate ownership of pre-existing /data contents (volumes created by earlier
+# root-running images), then execs DayDan as this user.
+RUN addgroup -g 1000 daydan && adduser -D -H -u 1000 -G daydan daydan
 
 # Copy the self-contained binary. The frontend is embedded at build time.
 COPY --from=builder /daydan /daydan
@@ -80,6 +86,9 @@ RUN ln -sf /daydan /donetick
 
 # Operator toolkit (backup / verify / restore / prune).
 COPY --from=builder /daydanctl /usr/local/bin/daydanctl
+
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod 0755 /entrypoint.sh
 
 # DayDan keeps its SQLite database, generated JWT secret, and local uploads
 # under one persistent directory. No configuration file is required.
@@ -106,6 +115,10 @@ EXPOSE 2021
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost:2021/api/v1/health || exit 1
+
+# Run through the privilege-dropping entrypoint; the Go binary is exec'd as
+# the unprivileged "daydan" user (uid/gid 1000) with PID 1 semantics intact.
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Command to run the application
 CMD ["/daydan"]
