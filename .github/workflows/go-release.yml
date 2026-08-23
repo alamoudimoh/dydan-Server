@@ -14,7 +14,7 @@ on:
         required: false
         type: string
       frontend_ref:
-        description: 'daydan-app ref (tag/branch/SHA) to embed. Empty = matching tag if synchronized, else develop.'
+        description: 'daydan-app ref (tag/branch/SHA) to embed. Required for reproducible builds; empty = daydan-app@develop HEAD (non-reproducible).'
         required: false
         type: string
 
@@ -28,29 +28,29 @@ jobs:
         run: echo "tag=${{ inputs.tag || github.ref_name }}" >> $GITHUB_OUTPUT
 
       # The release image must embed the DayDan frontend, never upstream
-      # Donetick. Ref strategy (documented limitation): the two repositories do
-      # not share synchronized version tags, so by default releases pair with
-      # the app's established develop branch; a matching tag is preferred if it
-      # ever exists, and frontend_ref allows pinning any ref explicitly.
-      - name: Resolve frontend ref
+      # Donetick.
+      #
+      # Resolution rules:
+      # - Official tagged release (push of a vX.Y.Z tag): the exact same tag
+      #   must exist in daydan-app; otherwise the job FAILS. Rebuilding the
+      #   same server tag must never silently embed a moving branch such as
+      #   develop.
+      # - Manual dispatch: an explicit frontend_ref (tag/branch/full SHA) is
+      #   used as-is. If omitted, daydan-app@develop HEAD is used and the
+      #   build is clearly identified as a non-reproducible development build.
+      #
+      # In every case the ref is resolved to one immutable commit SHA here,
+      # once, and only that SHA is checked out and recorded as provenance, so
+      # the frontend cannot move between resolution and build. The logic lives
+      # in scripts/resolve-frontend-ref.sh so it can be tested locally.
+      - name: Resolve frontend ref and pin its commit
         id: frontend-ref
         env:
           INPUT_REF: ${{ inputs.frontend_ref }}
           TAG: ${{ steps.resolve.outputs.tag }}
+          IS_TAG_PUSH: ${{ github.event_name == 'push' }}
           REPO_URL: https://github.com/${{ github.repository_owner }}/daydan-app.git
-        run: |
-          set -euo pipefail
-          if [ -n "$INPUT_REF" ]; then
-            REF="$INPUT_REF"
-            echo "Using explicit frontend ref: $REF"
-          elif git ls-remote --exit-code --tags "$REPO_URL" "refs/tags/$TAG" >/dev/null 2>&1; then
-            REF="$TAG"
-            echo "Found synchronized frontend tag: $REF"
-          else
-            REF="develop"
-            echo "No synchronized frontend tag for $TAG; using stable branch: $REF"
-          fi
-          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+        run: bash scripts/resolve-frontend-ref.sh
 
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -61,16 +61,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/daydan-app
-          ref: ${{ steps.frontend-ref.outputs.ref }}
+          # Pin to the exact commit resolved above; never a moving ref.
+          ref: ${{ steps.frontend-ref.outputs.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
           path: 'frontend-code'
 
-      - name: Resolve frontend commit
-        id: frontend-commit
+      - name: Verify frontend checkout matches pinned commit
         run: |
-          sha=$(git -C frontend-code rev-parse HEAD)
-          echo "Frontend commit: $sha"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          actual=$(git -C frontend-code rev-parse HEAD)
+          expected=${{ steps.frontend-ref.outputs.sha }}
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Frontend checkout drift: expected $expected, got $actual"
+            exit 1
+          fi
 
       # The Dockerfile builds the frontend itself from the `frontend` named
       # context, so no separate npm install/build step is needed here.
@@ -137,11 +140,12 @@ jobs:
           build-args: |
             VERSION=${{ steps.resolve.outputs.tag }}
             COMMIT=${{ steps.commit.outputs.sha }}
-            DAYDAN_FRONTEND_COMMIT=${{ steps.frontend-commit.outputs.sha }}
+            DAYDAN_FRONTEND_COMMIT=${{ steps.frontend-ref.outputs.sha }}
+            DAYDAN_FRONTEND_REF=${{ steps.frontend-ref.outputs.ref }}
 
-      # Provenance is written to the run summary and baked into the image as an
-      # OCI label (see Dockerfile), so the embedded frontend commit is always
-      # discoverable for a published image.
+      # Provenance is written to the run summary and baked into the image as
+      # OCI labels (see Dockerfile), so the server/frontend pairing of a
+      # published image is always discoverable.
       - name: Record build provenance
         run: |
           {
@@ -149,8 +153,18 @@ jobs:
             echo ""
             echo "| Field | Value |"
             echo "| --- | --- |"
+            echo "| Server repository | \`${{ github.repository }}\` |"
+            echo "| Server version | \`${{ steps.resolve.outputs.tag }}\` |"
             echo "| Server commit | \`${{ steps.commit.outputs.sha }}\` |"
-            echo "| Frontend repository | \`${{ github.repository_owner }}/daydan-app@${{ steps.frontend-ref.outputs.ref }}\` |"
-            echo "| Frontend commit | \`${{ steps.frontend-commit.outputs.sha }}\` |"
+            echo "| Frontend repository | \`${{ github.repository_owner }}/daydan-app\` |"
+            echo "| Frontend ref | \`${{ steps.frontend-ref.outputs.ref }}\` |"
+            echo "| Frontend commit | \`${{ steps.frontend-ref.outputs.sha }}\` |"
             echo "| Image tags | \`${{ steps.meta.outputs.tags }}\` |"
+            if [ "${{ steps.frontend-ref.outputs.reproducible }}" = "true" ]; then
+              echo ""
+              echo "✅ Reproducible release: server tag and frontend ref are immutable."
+            else
+              echo ""
+              echo "⚠️ **Non-reproducible development build**: frontend resolved from moving branch \`develop\`. Do not treat this image as a release."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
