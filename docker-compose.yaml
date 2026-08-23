@@ -18,6 +18,29 @@ services:
     volumes:
       - daydan-data:/data
 
+  # Optional one-shot backup job. Not started with the default profile:
+  #   docker compose run --rm backup            # single backup
+  #   docker compose --profile backup up        # then stop when done
+  # Retention keeps DAYDAN_BACKUP_KEEP (default 7) newest backups.
+  # See docs/backup-restore.md for scheduled/host-cron examples and restore.
+  backup:
+    profiles: ["backup"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        frontend: ${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}
+      args:
+        VERSION: ${DAYDAN_VERSION:-dev}
+        COMMIT: ${DAYDAN_COMMIT:-local}
+    container_name: daydan-backup
+    entrypoint: ["/usr/local/bin/daydanctl"]
+    command: ["backup", "--data-dir", "/data", "--out", "/backups",
+              "--keep", "${DAYDAN_BACKUP_KEEP:-7}"]
+    volumes:
+      - daydan-data:/data
+      - ${DAYDAN_BACKUP_DIR:-./daydan-backups}:/backups
+
 volumes:
   daydan-data:
     name: ${DAYDAN_DOCKER_VOLUME:-${TASKIER_DOCKER_VOLUME:-daydan-data}}

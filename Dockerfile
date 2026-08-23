@@ -64,7 +64,9 @@ RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
       -X github.com/alamoudimoh/daydan-server/config.Version=${VERSION} \
       -X github.com/alamoudimoh/daydan-server/config.Commit=${COMMIT} \
       -X github.com/alamoudimoh/daydan-server/config.BuildDate=${BUILD_DATE}" \
-      -buildvcs=false -o /daydan .
+      -buildvcs=false -o /daydan . && \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" \
+      -buildvcs=false -o /daydanctl ./cmd/daydanctl
 
 # Stage 3: Create a smaller runtime image
 FROM alpine:latest
@@ -75,6 +77,9 @@ RUN apk --no-cache add ca-certificates libc6-compat tzdata
 # Copy the self-contained binary. The frontend is embedded at build time.
 COPY --from=builder /daydan /daydan
 RUN ln -sf /daydan /donetick
+
+# Operator toolkit (backup / verify / restore / prune).
+COPY --from=builder /daydanctl /usr/local/bin/daydanctl
 
 # DayDan keeps its SQLite database, generated JWT secret, and local uploads
 # under one persistent directory. No configuration file is required.
