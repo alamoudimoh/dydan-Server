@@ -35,6 +35,24 @@ func convertLogLevelToGorm(appLogLevel string) logger.LogLevel {
 	}
 }
 
+// sqliteDSN appends durability pragmas to the SQLite path (unless the caller
+// already supplied a DSN). WAL keeps readers from blocking writers, a
+// busy_timeout absorbs transient write contention between HTTP handlers and
+// background schedulers instead of failing with "database is locked", and
+// NORMAL synchronous mode is the recommended pairing with WAL: durable across
+// application crashes while avoiding an fsync on every commit.
+func sqliteDSN(path string) string {
+	if strings.Contains(path, "?") {
+		return path
+	}
+	pragmas := []string{
+		"_pragma=journal_mode(WAL)",
+		"_pragma=busy_timeout(5000)",
+		"_pragma=synchronous(NORMAL)",
+	}
+	return path + "?" + strings.Join(pragmas, "&")
+}
+
 func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 	var db *gorm.DB
 	var err error
@@ -69,7 +87,7 @@ func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 		}
 
 	default:
-		db, err = gorm.Open(sqlite.Open(cfg.Database.Path), &gormConfig)
+		db, err = gorm.Open(sqlite.Open(sqliteDSN(cfg.Database.Path)), &gormConfig)
 
 	}
 

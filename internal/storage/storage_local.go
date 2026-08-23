@@ -36,16 +36,34 @@ func (l *LocalStorage) Save(ctx context.Context, path string, file io.Reader) er
 		return err
 	}
 	fullPath := filepath.Join(l.BasePath, cleanPath)
-	if err := os.MkdirAll(filepath.Dir(fullPath), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
 		return err
 	}
-	outFile, err := os.Create(fullPath)
+	// Write to a temp file in the same directory and rename atomically so a
+	// crash or restart mid-upload never leaves a truncated file at the final
+	// path (which would then be served with immutable cache headers).
+	tmp, err := os.CreateTemp(filepath.Dir(fullPath), ".upload-*")
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
-	_, err = io.Copy(outFile, file)
-	return err
+	tmpName := tmp.Name()
+	defer func() {
+		tmp.Close()
+		os.Remove(tmpName)
+	}()
+	if _, err := io.Copy(tmp, file); err != nil {
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, fullPath); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (l *LocalStorage) Get(ctx context.Context, path string) (io.ReadCloser, error) {
