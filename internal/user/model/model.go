@@ -101,6 +101,7 @@ type MFASession struct {
 	UserID       int       `json:"userId" gorm:"column:user_id;not null;index"`
 	AuthMethod   string    `json:"authMethod" gorm:"column:auth_method;type:varchar(50);not null"` // 'local', 'google', 'oauth2'
 	Verified     bool      `json:"verified" gorm:"column:verified;default:false;not null"`
+	Attempts     int       `json:"attempts" gorm:"column:attempts;not null;default:0"` // failed verification attempts; session is destroyed past the configured limit
 	CreatedAt    time.Time `json:"createdAt" gorm:"column:created_at;not null"`
 	ExpiresAt    time.Time `json:"expiresAt" gorm:"column:expires_at;not null;index"`
 	UserData     string    `json:"-" gorm:"column:user_data;type:text"` // JSON data to complete auth after MFA

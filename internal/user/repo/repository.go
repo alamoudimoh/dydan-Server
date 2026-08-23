@@ -221,7 +221,13 @@ func (r *UserRepository) UpdatePasswordByToken(ctx context.Context, email string
 		Email: email,
 		Token: token,
 	}
-	result := r.db.WithContext(ctx).Where("email = ?", email).Where("token = ?", token).Delete(upr)
+	// The token row must still be unexpired: the delete only matches when both
+	// the token and a live expiration date exist, so stale tokens are unusable.
+	result := r.db.WithContext(ctx).
+		Where("email = ?", email).
+		Where("token = ?", token).
+		Where("expiration_date > ?", time.Now().UTC()).
+		Delete(upr)
 	if result.RowsAffected <= 0 {
 		return fmt.Errorf("invalid token")
 	}

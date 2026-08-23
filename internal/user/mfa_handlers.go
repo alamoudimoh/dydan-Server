@@ -189,6 +189,24 @@ func (h *Handler) verifyMFA(c *gin.Context) {
 	}
 
 	if !valid {
+		// Count failed verification attempts and destroy the session once the
+		// configured limit is reached, so TOTP codes cannot be brute-forced by
+		// repeatedly re-submitting the session token.
+		mfaSession.Attempts++
+		maxAttempts := h.mfaMaxAttempts
+		if maxAttempts <= 0 {
+			maxAttempts = 5
+		}
+		if mfaSession.Attempts >= maxAttempts {
+			if err := h.userRepo.DeleteMFASession(c, req.SessionToken); err != nil {
+				logger.Errorw("Failed to delete exhausted MFA session", "error", err)
+			}
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Too many failed verification attempts. Please sign in again."})
+			return
+		}
+		if err := h.userRepo.UpdateMFASession(c, mfaSession); err != nil {
+			logger.Errorw("Failed to record MFA verification attempt", "error", err)
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code"})
 		return
 	}
@@ -200,7 +218,6 @@ func (h *Handler) verifyMFA(c *gin.Context) {
 		}
 	}
 
-	// Mark session as verified
 	mfaSession.Verified = true
 	if err := h.userRepo.UpdateMFASession(c, mfaSession); err != nil {
 		logger.Errorw("Failed to update MFA session", "error", err)
