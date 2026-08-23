@@ -146,6 +146,16 @@ docker run --rm -v daydan-data:/data -v "$PWD":/backup alpine \
 Restore by extracting the archive into an empty `daydan-data` volume before
 starting the container.
 
+### Release provenance
+
+Official images are built by `.github/workflows/go-release.yml`, which checks
+out this repository at the release tag and `daydan-app` from the same owner.
+The two repositories do **not** share synchronized version tags: by default a
+release pairs with `daydan-app`'s `develop` branch, and maintainers must pass
+the workflow's `frontend_ref` input to pin a specific frontend tag, branch, or
+commit for a release. The embedded frontend commit is recorded in the image
+label `com.daydan.frontend.commit` and in each build's run summary.
+
 Configuration remains optional. Canonical `DAYDAN_*` environment variables are
 preferred; legacy `DT_*`, `TASKIER_*`, and `DONETICK_*` variables remain
 compatible. Advanced users can set `DAYDAN_DATA_DIR`, `DAYDAN_CONFIG_FILE`, or

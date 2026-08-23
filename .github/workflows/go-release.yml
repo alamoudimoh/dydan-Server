@@ -13,6 +13,10 @@ on:
         description: 'Tag to release (e.g. v1.0.0-beta.1)'
         required: false
         type: string
+      frontend_ref:
+        description: 'daydan-app ref (tag/branch/SHA) to embed. Empty = matching tag if synchronized, else develop.'
+        required: false
+        type: string
 
 jobs:
   build:
@@ -23,16 +27,51 @@ jobs:
         id: resolve
         run: echo "tag=${{ inputs.tag || github.ref_name }}" >> $GITHUB_OUTPUT
 
+      # The release image must embed the DayDan frontend, never upstream
+      # Donetick. Ref strategy (documented limitation): the two repositories do
+      # not share synchronized version tags, so by default releases pair with
+      # the app's established develop branch; a matching tag is preferred if it
+      # ever exists, and frontend_ref allows pinning any ref explicitly.
+      - name: Resolve frontend ref
+        id: frontend-ref
+        env:
+          INPUT_REF: ${{ inputs.frontend_ref }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+          REPO_URL: https://github.com/${{ github.repository_owner }}/daydan-app.git
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_REF" ]; then
+            REF="$INPUT_REF"
+            echo "Using explicit frontend ref: $REF"
+          elif git ls-remote --exit-code --tags "$REPO_URL" "refs/tags/$TAG" >/dev/null 2>&1; then
+            REF="$TAG"
+            echo "Found synchronized frontend tag: $REF"
+          else
+            REF="develop"
+            echo "No synchronized frontend tag for $TAG; using stable branch: $REF"
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.resolve.outputs.tag }}
+
       - name: Checkout Frontend
         uses: actions/checkout@v4
         with:
-          repository: 'donetick/frontend'
+          repository: ${{ github.repository_owner }}/daydan-app
+          ref: ${{ steps.frontend-ref.outputs.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           path: 'frontend-code'
+
+      - name: Resolve frontend commit
+        id: frontend-commit
+        run: |
+          sha=$(git -C frontend-code rev-parse HEAD)
+          echo "Frontend commit: $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       # The Dockerfile builds the frontend itself from the `frontend` named
       # context, so no separate npm install/build step is needed here.
       - name: Set up Go
@@ -98,3 +137,20 @@ jobs:
           build-args: |
             VERSION=${{ steps.resolve.outputs.tag }}
             COMMIT=${{ steps.commit.outputs.sha }}
+            DAYDAN_FRONTEND_COMMIT=${{ steps.frontend-commit.outputs.sha }}
+
+      # Provenance is written to the run summary and baked into the image as an
+      # OCI label (see Dockerfile), so the embedded frontend commit is always
+      # discoverable for a published image.
+      - name: Record build provenance
+        run: |
+          {
+            echo "## Release provenance"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Server commit | \`${{ steps.commit.outputs.sha }}\` |"
+            echo "| Frontend repository | \`${{ github.repository_owner }}/daydan-app@${{ steps.frontend-ref.outputs.ref }}\` |"
+            echo "| Frontend commit | \`${{ steps.frontend-commit.outputs.sha }}\` |"
+            echo "| Image tags | \`${{ steps.meta.outputs.tags }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

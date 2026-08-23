@@ -81,6 +81,11 @@ RUN ln -sf /daydan /donetick
 ENV DAYDAN_DATA_DIR="/data"
 VOLUME ["/data"]
 
+# Release provenance: which daydan-app commit the embedded frontend came from
+# (populated by go-release.yml; empty for plain docker/compose builds).
+ARG DAYDAN_FRONTEND_COMMIT=unknown
+LABEL com.daydan.frontend.commit=${DAYDAN_FRONTEND_COMMIT}
+
 # Expose the application port
 EXPOSE 2021
 
