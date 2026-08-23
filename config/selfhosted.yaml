@@ -32,7 +32,9 @@ server:
     - "http://localhost"
     - "capacitor://localhost"
   serve_frontend: true
-  serve_swagger: true
+  # API documentation is disabled by default in self-hosted deployments to
+  # avoid publicly exposing API internals. Enable explicitly if wanted:
+  serve_swagger: false
   public_host: "" # example: https://yourpublicdomain.com
 logging:
   level: "info"
