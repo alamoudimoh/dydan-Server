@@ -21,6 +21,12 @@ type TokenService struct {
 	jwtAuth            *jwt.GinJWTMiddleware
 	sessionTime        time.Duration
 	refreshTokenExpiry time.Duration
+
+	// refreshGraceWindow bounds how long after a rotation a concurrent use of
+	// the just-rotated token is still treated as benign (multiple browser tabs
+	// refreshing at once) rather than as theft-and-replay. Replays that arrive
+	// after this window revoke the whole family.
+	refreshGraceWindow time.Duration
 }
 
 // TokenResponse represents the response containing both access and refresh tokens
@@ -48,8 +54,22 @@ func NewTokenService(userRepo *uRepo.UserRepository, jwtAuth *jwt.GinJWTMiddlewa
 		jwtAuth:            jwtAuth,
 		sessionTime:        cfg.Jwt.SessionTime,
 		refreshTokenExpiry: cfg.Jwt.MaxRefresh,
+		refreshGraceWindow: defaultRefreshGraceWindow,
 	}
 }
+
+// defaultRefreshGraceWindow covers the realistic skew between two browser
+// tabs firing /auth/refresh at the same moment. A replayed token that shows
+// up later than this after its successor was minted is treated as theft.
+const defaultRefreshGraceWindow = 90 * time.Second
+
+// maxRotationContentionRetries bounds how many times handleAlreadyUsedSession
+// re-reads the family head under extreme concurrency before failing closed.
+const maxRotationContentionRetries = 8
+
+// rotationContentionBackoff is the pause between re-checks while another
+// refresher finishes persisting its successor session.
+const rotationContentionBackoff = 10 * time.Millisecond
 
 // GenerateTokens generates both access and refresh tokens for a user
 func (s *TokenService) GenerateTokens(ctx context.Context, user *uModel.UserDetails) (*TokenResponse, error) {
@@ -101,63 +121,121 @@ func (s *TokenService) GenerateTokens(ctx context.Context, user *uModel.UserDeta
 	}, nil
 }
 
-// RefreshTokens validates refresh token and generates new token pair
+// RefreshTokens validates a refresh token and generates the next token pair
+// in its rotation family.
+//
+// Rotation is serialized by an atomic "mark used" update: only one request
+// can consume a given token. A second request presenting the same token is
+// either (a) a benign concurrent refresh — e.g. two browser tabs sharing the
+// same HttpOnly cookie — in which case rotation continues from the newest
+// session of the family, or (b) replay of a rotated-away token, which revokes
+// the entire family. Case (a) is distinguished from (b) by the grace window:
+// a successor session minted within refreshGraceWindow of this token's use
+// proves a legitimate concurrent refresher got there first.
 func (s *TokenService) RefreshTokens(ctx context.Context, refreshToken string) (*TokenResponse, error) {
 	// Hash the provided refresh token
 	tokenHash := s.hashToken(refreshToken)
 
-	// Get session from database
+	// Get live session from database (used sessions are included so the
+	// reuse path below can tell concurrent refresh from stale replay).
 	session, err := s.userRepo.GetUserSessionByTokenHash(ctx, tokenHash)
 	if err != nil {
 		return nil, fmt.Errorf("invalid or expired refresh token")
 	}
 
-	// Check if token was already used (reuse detection)
 	if session.UsedAt != nil {
-		// Token reuse detected - revoke entire family
-		_ = s.userRepo.RevokeSessionFamily(ctx, session.FamilyID)
-		return nil, fmt.Errorf("token reuse detected - please login again")
+		return s.handleAlreadyUsedSession(ctx, session)
 	}
 
-	// Mark current token as used
-	if err := s.userRepo.MarkSessionUsed(ctx, session.ID); err != nil {
+	// Atomically claim the single-use rotation slot for this token.
+	won, err := s.userRepo.MarkSessionUsedIfUnused(ctx, session.ID)
+	if err != nil {
 		return nil, fmt.Errorf("failed to mark token as used: %w", err)
 	}
+	if !won {
+		// Another request claimed it between our read and write; approximate
+		// its consumption time with now for the grace-window comparison.
+		session.UsedAt = &[]time.Time{time.Now().UTC()}[0]
+		return s.handleAlreadyUsedSession(ctx, session)
+	}
 
+	return s.rotateFromSession(ctx, session)
+}
+
+// handleAlreadyUsedSession classifies a second presentation of a consumed
+// refresh token as either benign concurrency or theft-and-replay.
+func (s *TokenService) handleAlreadyUsedSession(ctx context.Context, session *uModel.UserSession) (*TokenResponse, error) {
+	for attempt := 0; attempt < maxRotationContentionRetries; attempt++ {
+		latest, err := s.userRepo.GetLatestFamilySession(ctx, session.FamilyID)
+		if err != nil {
+			// No live session left in the family at all: stale replay.
+			_ = s.userRepo.RevokeSessionFamily(ctx, session.FamilyID)
+			return nil, fmt.Errorf("token reuse detected - please login again")
+		}
+
+		// A successor must have been minted because someone else legitimately
+		// consumed this token moments ago. A family head older than the grace
+		// window relative to this token's use means a rotated-away token is
+		// being replayed — steal response, kill the family.
+		if latest.CreatedAt.Before(session.UsedAt.Add(-s.refreshGraceWindow)) {
+			_ = s.userRepo.RevokeSessionFamily(ctx, session.FamilyID)
+			return nil, fmt.Errorf("token reuse detected - please login again")
+		}
+
+		if latest.ID == session.ID || latest.UsedAt != nil {
+			// The winning refresher is between claiming its rotation slot and
+			// persisting the successor. Give it a moment, then look again.
+			time.Sleep(rotationContentionBackoff)
+			continue
+		}
+
+		won, err := s.userRepo.MarkSessionUsedIfUnused(ctx, latest.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to mark token as used: %w", err)
+		}
+		if !won {
+			// Another waiting tab claimed the head first; observe its result.
+			time.Sleep(rotationContentionBackoff)
+			continue
+		}
+		return s.rotateFromSession(ctx, latest)
+	}
+	// Sustained contention beyond any realistic tab count: fail closed.
+	_ = s.userRepo.RevokeSessionFamily(ctx, session.FamilyID)
+	return nil, fmt.Errorf("token reuse detected - please login again")
+}
+
+// rotateFromSession mints the next access/refresh pair continuing session's
+// rotation family. The caller must have already marked session as used.
+func (s *TokenService) rotateFromSession(ctx context.Context, session *uModel.UserSession) (*TokenResponse, error) {
 	// Get user details for new token generation
 	userData, err := s.userRepo.GetUserByID(ctx, session.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// Convert to UserDetails
 	user := &uModel.UserDetails{
 		User: *userData,
 		// WebhookURL will be nil for refresh tokens - that's ok
 	}
 
-	// Generate new access token
-	accessToken, accessExpiry, err := s.jwtAuth.TokenGenerator(user)
+	accessToken, _, err := s.jwtAuth.TokenGenerator(user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate new access token: %w", err)
 	}
 
-	// Generate new refresh token
 	newRefreshToken, err := s.generateRefreshToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate new refresh token: %w", err)
 	}
 
-	// Calculate new expiry times using config
 	accessTokenExpiry := time.Now().UTC().Add(s.sessionTime)
 	refreshTokenExpiry := time.Now().UTC().Add(s.refreshTokenExpiry)
 
-	// Create new session with same family ID
-	newTokenHash := s.hashToken(newRefreshToken)
 	newSession := &uModel.UserSession{
 		ID:        uuid.New().String(),
 		UserID:    session.UserID,
-		TokenHash: newTokenHash,
+		TokenHash: s.hashToken(newRefreshToken),
 		FamilyID:  session.FamilyID, // Keep same family ID for rotation tracking
 		CreatedAt: time.Now().UTC(),
 		ExpiresAt: refreshTokenExpiry,
@@ -175,7 +253,7 @@ func (s *TokenService) RefreshTokens(ctx context.Context, refreshToken string) (
 		TokenType:          "Bearer",
 		// Legacy fields for backward compatibility
 		Token:  accessToken,
-		Expire: accessExpiry,
+		Expire: accessTokenExpiry,
 	}, nil
 }
 
@@ -192,6 +270,29 @@ func (s *TokenService) RevokeToken(ctx context.Context, refreshToken string) err
 // RevokeAllUserTokens revokes all tokens for a user (logout from all devices)
 func (s *TokenService) RevokeAllUserTokens(ctx context.Context, userID int) error {
 	return s.userRepo.RevokeAllUserSessions(ctx, userID)
+}
+
+// SessionIDForToken resolves the session row behind a raw refresh token, or
+// an empty string when the token is unknown. Used to identify "the caller's
+// own session" when applying revocation policies.
+func (s *TokenService) SessionIDForToken(ctx context.Context, refreshToken string) string {
+	if refreshToken == "" {
+		return ""
+	}
+	session, err := s.userRepo.GetUserSessionByTokenHash(ctx, s.hashToken(refreshToken))
+	if err != nil {
+		return ""
+	}
+	return session.ID
+}
+
+// RevokeOtherUserSessions revokes every live session of the user except
+// keepSessionID. An empty keepSessionID revokes everything.
+func (s *TokenService) RevokeOtherUserSessions(ctx context.Context, userID int, keepSessionID string) error {
+	if keepSessionID == "" {
+		return s.userRepo.RevokeAllUserSessions(ctx, userID)
+	}
+	return s.userRepo.RevokeOtherUserSessions(ctx, userID, keepSessionID)
 }
 
 // RefreshTokenExpiry returns the configured refresh token expiry duration

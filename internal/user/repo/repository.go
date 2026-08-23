@@ -43,9 +43,12 @@ type IUserRepository interface {
 	CreateUserSession(c context.Context, session *uModel.UserSession) error
 	GetUserSessionByTokenHash(c context.Context, tokenHash string) (*uModel.UserSession, error)
 	MarkSessionUsed(c context.Context, sessionID string) error
+	MarkSessionUsedIfUnused(c context.Context, sessionID string) (bool, error)
+	GetLatestFamilySession(c context.Context, familyID string) (*uModel.UserSession, error)
 	RevokeSession(c context.Context, sessionID string) error
 	RevokeSessionFamily(c context.Context, familyID string) error
 	RevokeAllUserSessions(c context.Context, userID int) error
+	RevokeOtherUserSessions(c context.Context, userID int, keepSessionID string) error
 	CleanupExpiredSessions(c context.Context) error
 }
 
@@ -400,6 +403,30 @@ func (r *UserRepository) MarkSessionUsed(c context.Context, sessionID string) er
 	return r.db.WithContext(c).Model(&uModel.UserSession{}).Where("id = ?", sessionID).Update("used_at", now).Error
 }
 
+// MarkSessionUsedIfUnused atomically marks a session used only if no other
+// request has consumed it yet. It returns false when the row was already
+// used, which is the serialization point for concurrent refreshes.
+func (r *UserRepository) MarkSessionUsedIfUnused(c context.Context, sessionID string) (bool, error) {
+	now := time.Now().UTC()
+	res := r.db.WithContext(c).Model(&uModel.UserSession{}).
+		Where("id = ? AND used_at IS NULL", sessionID).
+		Update("used_at", now)
+	return res.RowsAffected > 0, res.Error
+}
+
+// GetLatestFamilySession returns the newest live (non-revoked, unexpired)
+// session in a rotation family, i.e. the current head of the chain.
+func (r *UserRepository) GetLatestFamilySession(c context.Context, familyID string) (*uModel.UserSession, error) {
+	var session uModel.UserSession
+	err := r.db.WithContext(c).
+		Where("family_id = ? AND revoked_at IS NULL AND expires_at > ?", familyID, time.Now().UTC()).
+		Order("created_at DESC").First(&session).Error
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
 // RevokeSession revokes a specific session
 func (r *UserRepository) RevokeSession(c context.Context, sessionID string) error {
 	now := time.Now().UTC()
@@ -416,6 +443,16 @@ func (r *UserRepository) RevokeSessionFamily(c context.Context, familyID string)
 func (r *UserRepository) RevokeAllUserSessions(c context.Context, userID int) error {
 	now := time.Now().UTC()
 	return r.db.WithContext(c).Model(&uModel.UserSession{}).Where("user_id = ? AND revoked_at IS NULL", userID).Update("revoked_at", now).Error
+}
+
+// RevokeOtherUserSessions revokes every live session of a user except the
+// given one. Used after a password change so the device that performed the
+// change keeps its session while every other refresh family dies.
+func (r *UserRepository) RevokeOtherUserSessions(c context.Context, userID int, keepSessionID string) error {
+	now := time.Now().UTC()
+	return r.db.WithContext(c).Model(&uModel.UserSession{}).
+		Where("user_id = ? AND revoked_at IS NULL AND id <> ?", userID, keepSessionID).
+		Update("revoked_at", now).Error
 }
 
 // CleanupExpiredSessions removes expired and revoked sessions
