@@ -196,8 +196,16 @@ func (p *ConnectionPool) Close() {
 	p.stats.mu.Unlock()
 }
 
+// ConnectionPoolStatsSnapshot is a point-in-time, mutex-free copy of a pool's
+// metrics safe to pass by value across goroutines.
+type ConnectionPoolStatsSnapshot struct {
+	ActiveConnections int64
+	TotalMessages     int64
+	QueueSize         int64
+}
+
 // GetStats returns current pool statistics
-func (p *ConnectionPool) GetStats() ConnectionPoolStats {
+func (p *ConnectionPool) GetStats() ConnectionPoolStatsSnapshot {
 	p.mu.RLock()
 
 	// Calculate queue size by summing all connection Send channel lengths
@@ -208,14 +216,14 @@ func (p *ConnectionPool) GetStats() ConnectionPoolStats {
 	p.mu.RUnlock()
 
 	p.stats.mu.RLock()
-	stats := ConnectionPoolStats{
+	snapshot := ConnectionPoolStatsSnapshot{
 		ActiveConnections: p.stats.ActiveConnections,
 		TotalMessages:     p.stats.TotalMessages,
 		QueueSize:         queueSize,
 	}
 	p.stats.mu.RUnlock()
 
-	return stats
+	return snapshot
 }
 
 // GetConnectionCount returns the number of active connections
