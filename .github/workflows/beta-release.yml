@@ -93,14 +93,30 @@ jobs:
           echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
           echo "should_release=true" >> "$GITHUB_OUTPUT"
 
+          # Beta is moving-edge, but it must still be traceable: resolve the
+          # daydan-app develop HEAD exactly once here and pass the immutable
+          # SHA to go-release.yml so the branch cannot move between
+          # provenance resolution and the build.
+          FRONTEND_SHA=$(git ls-remote "https://github.com/${{ github.repository_owner }}/daydan-app.git" refs/heads/develop | awk '{print $1}')
+          if [ -z "$FRONTEND_SHA" ]; then
+            echo "::error::Could not resolve daydan-app@develop HEAD."
+            exit 1
+          fi
+          echo "Pinning frontend commit: $FRONTEND_SHA"
+          echo "frontend_sha=$FRONTEND_SHA" >> "$GITHUB_OUTPUT"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$NEW_TAG"
           git push origin "$NEW_TAG"
 
           # Explicitly trigger go-release.yml (tag push won't trigger other workflows from Actions)
-          gh workflow run go-release.yml --repo ${{ github.repository }} -f tag="$NEW_TAG"
+          gh workflow run go-release.yml --repo ${{ github.repository }} -f tag="$NEW_TAG" -f frontend_ref="$FRONTEND_SHA"
 
       - name: Summary
         if: steps.tag.outputs.should_release == 'true'
-        run: echo "Beta tag ${{ steps.tag.outputs.new_tag }} pushed and go-release.yml triggered."
+        run: |
+          {
+            echo "Beta tag \`${{ steps.tag.outputs.new_tag }}\` pushed and go-release.yml triggered."
+            echo "Pinned frontend commit: \`${{ steps.tag.outputs.frontend_sha }}\`"
+          }
