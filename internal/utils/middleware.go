@@ -70,3 +70,12 @@ func TimeoutMiddleware(timeout time.Duration) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// NewBoundedRateLimiter builds an independent in-memory fixed-window limiter
+// with an explicit period/limit. Used for sensitive actions (like password
+// changes) that need a tighter budget than the general API limiter.
+func NewBoundedRateLimiter(period time.Duration, limit int64) *limiter.Limiter {
+	store := memory.NewStore()
+	rate := limiter.Rate{Period: period, Limit: limit}
+	return limiter.New(store, rate)
+}

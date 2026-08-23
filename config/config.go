@@ -140,6 +140,12 @@ type ServerConfig struct {
 	ServeFrontend    bool          `mapstructure:"serve_frontend" yaml:"serve_frontend"`
 	ServeSwagger     bool          `mapstructure:"serve_swagger" yaml:"serve_swagger"`
 	PublicHost       string        `mapstructure:"public_host" yaml:"public_host" default:"http://localhost:2021"`
+
+	// Dedicated budget for password changes (per IP, per period). Tighter than
+	// the general API bucket so the current-password check cannot be
+	// brute-forced from a fast connection.
+	RateLimitPasswordChangePeriod time.Duration `mapstructure:"rate_limit_password_change_period" yaml:"rate_limit_password_change_period" default:"60s"`
+	RateLimitPasswordChange       int           `mapstructure:"rate_limit_password_change" yaml:"rate_limit_password_change" default:"10"`
 }
 
 type SchedulerConfig struct {
@@ -284,6 +290,9 @@ func NewConfig() *Config {
 			WebhookTimeout:   5 * time.Second,
 			CorsAllowOrigins: []string{"http://localhost:5173", "http://localhost:7926", "http://localhost", "https://localhost", "capacitor://localhost"},
 			ServeFrontend:    true,
+
+			RateLimitPasswordChangePeriod: 60 * time.Second,
+			RateLimitPasswordChange:       10,
 		},
 		SchedulerJobs: SchedulerConfig{
 			DueJob:     30 * time.Minute,
@@ -373,6 +382,8 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("server.port", cfg.Server.Port)
 	v.SetDefault("server.rate_period", cfg.Server.RatePeriod)
 	v.SetDefault("server.rate_limit", cfg.Server.RateLimit)
+	v.SetDefault("server.rate_limit_password_change_period", cfg.Server.RateLimitPasswordChangePeriod)
+	v.SetDefault("server.rate_limit_password_change", cfg.Server.RateLimitPasswordChange)
 	v.SetDefault("server.read_timeout", cfg.Server.ReadTimeout)
 	v.SetDefault("server.write_timeout", cfg.Server.WriteTimeout)
 	v.SetDefault("server.webhook_timeout", cfg.Server.WebhookTimeout)

@@ -549,7 +549,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			})
 			return
 		}
-		c.SetCookie("refresh_token", tokenResponse.RefreshToken, int(h.tokenService.RefreshTokenExpiry().Seconds()), "/", "", true, true)
+		auth.SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.RefreshTokenExpiry())
 		c.JSON(http.StatusOK, tokenResponse)
 		return
 	case "apple":
@@ -730,7 +730,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			})
 			return
 		}
-		c.SetCookie("refresh_token", tokenResponse.RefreshToken, int(h.tokenService.RefreshTokenExpiry().Seconds()), "/", "", true, true)
+		auth.SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.RefreshTokenExpiry())
 		c.JSON(http.StatusOK, tokenResponse)
 		return
 	case "oauth2":
@@ -1021,7 +1021,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			})
 			return
 		}
-		c.SetCookie("refresh_token", tokenResponse.RefreshToken, int(h.tokenService.RefreshTokenExpiry().Seconds()), "/", "", true, true)
+		auth.SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.RefreshTokenExpiry())
 		c.JSON(http.StatusOK, tokenResponse)
 		return
 	}
@@ -1331,6 +1331,12 @@ func (h *Handler) UpdateNotificationTarget(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
+// updateUserPasswordLoggedInOnly handles an authenticated user changing their
+// own password. The current password is mandatory and verified server-side;
+// failures return a uniform error that does not hint at how close the
+// submitted value was. On success every other session of the user is revoked
+// so other devices must re-authenticate, while the device performing the
+// change keeps its current session.
 func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
 	if h.isDayDanCloud {
 		// only enable this feature for self-hosted instances
@@ -1339,13 +1345,17 @@ func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
 	}
 	logger := logging.FromContext(c)
 	type RequestBody struct {
-		Password string `json:"password" binding:"required,min=8,max=64"`
+		Password        string `json:"password" binding:"required,min=8,max=64"`
+		CurrentPassword string `json:"current_password" binding:"required"`
+		// RefreshToken optionally identifies the caller's own session for
+		// native clients that authenticate via Bearer and have no cookie.
+		RefreshToken string `json:"refresh_token"`
 	}
 	var body RequestBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		logger.Errorw("user.handler.resetAccountPassword failed to bind", "err", err)
+		logger.Errorw("user.handler.changePassword failed to bind", "err", err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request: " + err.Error(),
+			"error": "Invalid request",
 		})
 		return
 	}
@@ -1353,6 +1363,19 @@ func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
 	currentUser, ok := auth.CurrentUser(c)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
+
+	storedUser, err := h.userRepo.GetUserByID(c.Request.Context(), currentUser.ID)
+	if err != nil {
+		logger.Errorw("account.handler.changePassword failed to load user", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to change password"})
+		return
+	}
+
+	// Verify the current password before accepting any change.
+	if authErr := auth.Matches(storedUser.Password, body.CurrentPassword); authErr != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Current password is incorrect"})
 		return
 	}
 
@@ -1366,12 +1389,29 @@ func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
 
 	err = h.userRepo.UpdatePasswordByUserId(c.Request.Context(), currentUser.ID, password)
 	if err != nil {
-		logger.Errorw("account.handler.resetAccountPassword failed to reset password", "err", err)
+		logger.Errorw("account.handler.changePassword failed to reset password", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Unable to reset password",
 		})
 		return
 	}
+
+	// Revoke all other refresh families so stolen or forgotten sessions die
+	// with the old password. The caller's own session survives: it is
+	// identified by its HttpOnly cookie, or by an explicit refresh_token body
+	// field for native clients that authenticate with Bearer tokens only.
+	keepSessionID := ""
+	if rawCookie, err := c.Cookie(auth.RefreshTokenCookieName); err == nil && rawCookie != "" {
+		keepSessionID = h.tokenService.SessionIDForToken(c.Request.Context(), rawCookie)
+	} else if body.RefreshToken != "" {
+		keepSessionID = h.tokenService.SessionIDForToken(c.Request.Context(), body.RefreshToken)
+	}
+	if err := h.tokenService.RevokeOtherUserSessions(c.Request.Context(), currentUser.ID, keepSessionID); err != nil {
+		// The password itself was changed successfully; log revocation issues
+		// instead of failing the request.
+		logger.Errorw("account.handler.changePassword could not revoke other sessions", "err", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{})
 }
 
@@ -1883,7 +1923,7 @@ func (h *Handler) logout(c *gin.Context) {
 	logger := logging.FromContext(c)
 
 	// Try to get refresh token from cookie first (httpOnly), fallback to body
-	refreshToken, err := c.Cookie("refresh_token")
+	refreshToken, err := c.Cookie(auth.RefreshTokenCookieName)
 	if err != nil {
 		// Fallback to JSON body for backward compatibility
 		var req RefreshRequest
@@ -1914,10 +1954,9 @@ func (h *Handler) logout(c *gin.Context) {
 		}
 	}
 
-	// Clear the httpOnly cookie by setting it with negative max age
-	c.SetCookie("refresh_token", "", 0, "/", "", true, true)
-
-	// Also clear any access token cookie if it exists
+	// Clear the httpOnly cookie (current and legacy paths) plus any stale
+	// access-token cookie from older builds
+	auth.ClearRefreshSessionCookie(c)
 	c.SetCookie("access_token", "", 0, "/", "", true, true)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -1961,6 +2000,13 @@ func (h *Handler) requirePermission(permission auth.Permission) gin.HandlerFunc 
 
 func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limiter *limiter.Limiter, cfg *config.Config) {
 
+	// Origin validation for cookie-authenticated endpoints (refresh/logout).
+	csrfCheck := auth.CSRFOriginCheck(cfg.Server.CorsAllowOrigins)
+	// Tighter budget for credential-changing actions than the general API
+	// bucket, so brute-forcing the current-password check is impractical even
+	// from a fast connection.
+	pwChangeLimiter := utils.NewBoundedRateLimiter(cfg.Server.RateLimitPasswordChangePeriod, int64(cfg.Server.RateLimitPasswordChange))
+
 	userRoutes := router.Group("api/v1/users")
 	userRoutes.Use(jwtAuth.MiddlewareFunc(), utils.RateLimitMiddleware(limiter))
 	{
@@ -1972,10 +2018,10 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.DELETE("/tokens/:id", h.requirePermission(auth.PermissionManageAccount), h.DeleteUserToken)
 		userRoutes.PUT("/webhook", h.requirePermission(auth.PermissionManageCircle), h.setWebhook)
 		userRoutes.PUT("/targets", h.UpdateNotificationTarget)
-		userRoutes.PUT("change_password", h.updateUserPasswordLoggedInOnly)
+		userRoutes.PUT("change_password", utils.RateLimitMiddleware(pwChangeLimiter), h.updateUserPasswordLoggedInOnly)
 		userRoutes.POST("profile_photo", h.updateProfilePhoto)
 		userRoutes.GET("storage", h.getStorageUsage)
-		userRoutes.POST("/logout", h.logout) // Logout endpoint to clear cookies and expire refresh tokens
+		userRoutes.POST("/logout", csrfCheck, h.logout) // Logout endpoint to clear cookies and expire refresh tokens
 
 		// MFA endpoints
 		userRoutes.GET("/mfa/status", h.requirePermission(auth.PermissionManageAccount), h.getMFAStatus)
@@ -2007,8 +2053,8 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		// same ":provider" segment as /callback because gin's router tree does
 		// not allow mixing static and param segments at the same depth.
 		authRoutes.POST("/:provider/start", h.thirdPartyAuthStart)
-		authRoutes.POST("refresh", authHandler.RefreshTokenHandler) // Changed from GET to POST
-		authRoutes.POST("logout", authHandler.LogoutHandler)        // New logout endpoint
+		authRoutes.POST("refresh", csrfCheck, authHandler.RefreshTokenHandler) // Changed from GET to POST
+		authRoutes.POST("logout", csrfCheck, authHandler.LogoutHandler)        // New logout endpoint
 		authRoutes.POST("mfa/verify", h.verifyMFA)                  // Add MFA verification endpoint
 
 		// Password-based auth (signup, login, password reset). When
