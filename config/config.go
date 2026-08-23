@@ -219,6 +219,11 @@ type OAuth2Config struct {
 	Name          string   `mapstructure:"name" yaml:"name"`
 	AdminGroups   []string `mapstructure:"admin_groups" yaml:"admin_groups"`
 	ManagerGroups []string `mapstructure:"manager_groups" yaml:"manager_groups"`
+	// AllowLegacyOAuthState permits OAuth2 callbacks whose state has no
+	// matching server-side pending transaction (clients predating the
+	// server-enforced state/PKCE flow, e.g. un-updated native apps). This
+	// weakens CSRF/replay protection and should only be enabled transiently.
+	AllowLegacyOAuthState bool `mapstructure:"allow_legacy_oauth_state" yaml:"allow_legacy_oauth_state"`
 }
 
 type WebhookConfig struct {
@@ -338,6 +343,10 @@ func configEnvironmentOverrides(config *Config) {
 	}
 	if environmentIsTrue("DAYDAN_DISABLE_SIGNUP", "DONETICK_DISABLE_SIGNUP") {
 		config.IsUserCreationDisabled = true
+	}
+
+	if envAllowLegacyOAuthState() {
+		config.OAuth2Config.AllowLegacyOAuthState = true
 	}
 
 	// Logging environment overrides

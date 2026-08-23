@@ -4,9 +4,11 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -41,9 +43,9 @@ type Handler struct {
 	tokenService           *auth.TokenService
 	email                  email.Sender
 	identityProvider       *auth.IdentityProvider
-	isDayDanCloud       bool
+	isDayDanCloud          bool
 	IsUserCreationDisabled bool
-	DayDanCloudConfig    config.DayDanCloudConfig
+	DayDanCloudConfig      config.DayDanCloudConfig
 	storage                storage.Storage
 	storageRepo            *storageRepo.StorageRepository
 	signer                 storage.URLSigner
@@ -53,6 +55,7 @@ type Handler struct {
 	maxSubaccounts         int
 	plusMaxSubaccounts     int
 	oauth2Config           config.OAuth2Config
+	oauthTransactions      *auth.OAuthTransactionStore
 	singleCircleInstance   bool
 	mfaMaxAttempts         int
 }
@@ -71,9 +74,9 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		tokenService:           tokenService,
 		email:                  email,
 		identityProvider:       idp,
-		isDayDanCloud:       config.IsDayDanCloud,
+		isDayDanCloud:          config.IsDayDanCloud,
 		IsUserCreationDisabled: config.IsUserCreationDisabled,
-		DayDanCloudConfig:    config.DayDanCloudConfig,
+		DayDanCloudConfig:      config.DayDanCloudConfig,
 		storage:                storage,
 		storageRepo:            storageRepo,
 		signer:                 signer,
@@ -83,6 +86,7 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		maxSubaccounts:         config.FeatureLimits.MaxSubaccounts,
 		plusMaxSubaccounts:     config.FeatureLimits.PlusMaxSubaccounts,
 		oauth2Config:           config.OAuth2Config,
+		oauthTransactions:      auth.NewOAuthTransactionStore(),
 		singleCircleInstance:   config.SingleCircleInstance,
 		mfaMaxAttempts:         config.MFAConfig.MaxVerificationAttempts,
 	}
@@ -255,6 +259,120 @@ func (h *Handler) syncOIDCRole(c *gin.Context, userID, circleID int, groups []st
 		return
 	}
 	logger.Infow("OIDC role sync", "userID", userID, "circleID", circleID, "oldRole", currentRole, "newRole", resolvedRole, "groups", groups)
+}
+
+// nativeOAuthRedirectURIs are the fixed deep-link callbacks used by the
+// mobile clients. They are constants of the client applications and are not
+// attacker-controlled.
+var nativeOAuthRedirectURIs = []string{
+	"donetick://auth/oauth2",
+}
+
+// requestOrigin derives the scheme://origin of this request from trusted
+// forwarding headers (set by the same-origin reverse proxy) or the browser's
+// Origin/Referer headers. It is used to derive the same-origin OAuth callback
+// URL server-side instead of trusting an arbitrary redirect URI.
+func requestOrigin(c *gin.Context) string {
+	if proto := c.GetHeader("X-Forwarded-Proto"); proto != "" {
+		if host := c.GetHeader("X-Forwarded-Host"); host != "" {
+			return proto + "://" + host
+		}
+		if host := c.Request.Host; host != "" {
+			return proto + "://" + host
+		}
+	}
+	if origin := c.GetHeader("Origin"); origin != "" {
+		return origin
+	}
+	if referer := c.GetHeader("Referer"); referer != "" {
+		if u, err := url.Parse(referer); err == nil && u.Scheme != "" && u.Host != "" {
+			return u.Scheme + "://" + u.Host
+		}
+	}
+	if c.Request.Host != "" {
+		scheme := "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		return scheme + "://" + c.Request.Host
+	}
+	return ""
+}
+
+// allowedOAuthRedirectURIs returns the strict allowlist of permitted OAuth2
+// callback URLs for this deployment:
+//   - the configured oauth2.redirect_url (operator-controlled)
+//   - the same-origin /auth/oauth2 callback derived from trusted headers
+//   - the fixed native deep-link callbacks
+//
+// Anything else supplied by a client is rejected, preventing open-redirect or
+// authorization-code exfiltration via a browser-supplied redirect_uri.
+func (h *Handler) allowedOAuthRedirectURIs(c *gin.Context) map[string]bool {
+	allowed := make(map[string]bool)
+	if h.oauth2Config.RedirectURL != "" {
+		allowed[h.oauth2Config.RedirectURL] = true
+	}
+	if origin := requestOrigin(c); origin != "" {
+		allowed[origin+"/auth/oauth2"] = true
+	}
+	for _, uri := range nativeOAuthRedirectURIs {
+		allowed[uri] = true
+	}
+	return allowed
+}
+
+// thirdPartyAuthStart bootstraps an OAuth2/OIDC login transaction:
+//
+//	POST /api/v1/auth/:provider/start  {"redirect_uri": "..."}   (optional body)
+//
+// It returns a cryptographically random single-use state bound to a PKCE S256
+// verifier (kept server-side) plus the code_challenge to include in the
+// authorize request.
+func (h *Handler) thirdPartyAuthStart(c *gin.Context) {
+	logger := logging.FromContext(c)
+	provider := c.Param("provider")
+	if provider != "oauth2" || !h.identityProvider.Enabled() {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Unknown sign-in provider"})
+		return
+	}
+
+	var req struct {
+		RedirectURI string `json:"redirect_uri"`
+	}
+	// Body is optional; an empty body just means "derive from request".
+	_ = c.ShouldBindJSON(&req)
+
+	redirect := req.RedirectURI
+	if redirect == "" {
+		if h.oauth2Config.RedirectURL != "" {
+			redirect = h.oauth2Config.RedirectURL
+		} else if origin := requestOrigin(c); origin != "" {
+			redirect = origin + "/auth/oauth2"
+		}
+	}
+	if redirect == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No usable redirect URI: configure oauth2.redirect_url"})
+		return
+	}
+	allowed := h.allowedOAuthRedirectURIs(c)
+	if !allowed[redirect] {
+		logger.Warnw("oauth2 start rejected unapproved redirect_uri")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unapproved redirect URI"})
+		return
+	}
+
+	txn, err := h.oauthTransactions.Start(redirect)
+	if err != nil {
+		logger.Errorw("oauth2 start failed to create transaction", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start authentication"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"state":                 txn.State,
+		"code_challenge":        txn.CodeChallenge,
+		"code_challenge_method": "S256",
+	})
 }
 
 func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
@@ -620,6 +738,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 		// Read the ID token from the request bod
 		type Request struct {
 			Code        string `json:"code"`
+			State       string `json:"state"`
 			RedirectURI string `json:"redirect_uri"`
 		}
 		var req Request
@@ -638,8 +757,56 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 
 		logger.Infow("account.handler.thirdPartyAuthCallback (oauth2) attempting to exchange code", "codeLength", len(req.Code), "redirectURI", req.RedirectURI)
 
+		// The redirect URI must come from a strict server-side allowlist
+		// (configured redirect_url + same-origin derived callback + native
+		// deep links). A browser-supplied arbitrary value is never trusted.
+		allowedRedirects := h.allowedOAuthRedirectURIs(c)
+		exchangeRedirect := req.RedirectURI
+		if exchangeRedirect == "" {
+			exchangeRedirect = h.oauth2Config.RedirectURL
+		}
+		if exchangeRedirect == "" || !allowedRedirects[exchangeRedirect] {
+			logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) rejected unapproved redirect_uri")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Unapproved redirect URI"})
+			return
+		}
+
+		// Server-enforced state: single use, expiring, bound to the redirect
+		// URI and PKCE verifier issued at /oauth2/start.
+		var codeVerifier string
+		txn, txnErr := h.oauthTransactions.Consume(req.State)
+		switch {
+		case txnErr == nil:
+			// Redeem exactly what was authorized at start time.
+			if txn.RedirectURI != "" {
+				exchangeRedirect = txn.RedirectURI
+			}
+			codeVerifier = txn.CodeVerifier
+		case errors.Is(txnErr, auth.ErrExpiredOAuthState):
+			logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) expired state")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Sign-in session expired. Please try signing in again."})
+			return
+		case errors.Is(txnErr, auth.ErrUnknownOAuthState) && req.State != "":
+			// Unknown state: forged/replayed, or produced by a client
+			// predating the hardened flow. The legacy fallback is opt-in
+			// because it weakens CSRF/replay protection.
+			if !h.oauth2Config.AllowLegacyOAuthState {
+				logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) unknown state (legacy fallback disabled)")
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sign-in state. Please try signing in again."})
+				return
+			}
+			logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) accepting legacy client without server state")
+		default:
+			if !h.oauth2Config.AllowLegacyOAuthState {
+				logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) missing state")
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Missing sign-in state. Please try signing in again."})
+				return
+			}
+			logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) accepting legacy client with missing state")
+		}
+
 		// Pass the redirect URI from the request if provided, otherwise use config default
-		token, err := h.identityProvider.ExchangeToken(c, req.Code, req.RedirectURI)
+		token, err := h.identityProvider.ExchangeToken(c, req.Code, exchangeRedirect, codeVerifier)
 
 		if err != nil {
 			logger.Errorw("account.handler.thirdPartyAuthCallback (oauth2) failed to exchange token", "err", err, "code", req.Code[:min(len(req.Code), 10)]+"...")
@@ -663,6 +830,31 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 				"error": "Failed to fetch user info from identity provider",
 			})
 			return
+		}
+
+		// Identity hardening: the IdP's email assertion is only trusted for
+		// account linking when explicitly verified. An unverified external
+		// address must never grant access to an existing DayDan account.
+		if claims.EmailVerified != nil && !*claims.EmailVerified {
+			logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) rejected unverified email claim")
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Your email address is not verified with the identity provider. Verify it and try again.",
+			})
+			return
+		}
+
+		existingAccount, findErr := h.userRepo.FindByEmail(c, claims.Email)
+		if findErr == nil {
+			// Linking an existing account by email requires a verified email
+			// claim. Providers that do not expose email_verified are not
+			// allowed to silently take over an existing password account.
+			if claims.EmailVerified == nil || !*claims.EmailVerified {
+				logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) refusing unverified link to existing account", "username", existingAccount.Username)
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "The identity provider did not confirm your email address. Contact your administrator to enable sign-in.",
+				})
+				return
+			}
 		}
 
 		acc, err := h.userRepo.FindByEmail(c, claims.Email)
@@ -1810,6 +2002,11 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 	authRoutes.Use(utils.RateLimitMiddleware(limiter))
 	{
 		authRoutes.POST("/:provider/callback", h.thirdPartyAuthCallback)
+		// OAuth2 login bootstrap: issues a single-use state bound to a PKCE
+		// verifier (S256) and the validated redirect URI. Registered under the
+		// same ":provider" segment as /callback because gin's router tree does
+		// not allow mixing static and param segments at the same depth.
+		authRoutes.POST("/:provider/start", h.thirdPartyAuthStart)
 		authRoutes.POST("refresh", authHandler.RefreshTokenHandler) // Changed from GET to POST
 		authRoutes.POST("logout", authHandler.LogoutHandler)        // New logout endpoint
 		authRoutes.POST("mfa/verify", h.verifyMFA)                  // Add MFA verification endpoint

@@ -20,6 +20,10 @@ type IdentityProviderUserInfo struct {
 	Email       string
 	Picture     string
 	Groups      []string
+	// EmailVerified mirrors the OIDC email_verified claim:
+	//   nil            -> provider did not expose the claim
+	//   true/false     -> provider's explicit assertion
+	EmailVerified *bool
 }
 
 type IdentityProvider struct {
@@ -40,7 +44,38 @@ func NewIdentityProvider(cfg *config.Config) *IdentityProvider {
 	return &IdentityProvider{config: &cfg.OAuth2Config, isEnabled: true, httpClient: &http.Client{Timeout: idpHTTPTimeout}}
 }
 
-func (i *IdentityProvider) ExchangeToken(ctx context.Context, code string, redirectURL string) (string, error) {
+func (i *IdentityProvider) Enabled() bool {
+	return i.isEnabled
+}
+
+// oauth2ConfigFor builds the provider config for a specific redirect URI.
+func (i *IdentityProvider) oauth2ConfigFor(redirectURI string) *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     i.config.ClientID,
+		ClientSecret: i.config.ClientSecret,
+		RedirectURL:  redirectURI,
+		Scopes:       i.config.Scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  i.config.AuthURL,
+			TokenURL: i.config.TokenURL,
+		},
+	}
+}
+
+// AuthCodeURL builds the provider authorization URL for a pending transaction.
+// When codeChallenge is non-empty the flow uses PKCE (S256).
+func (i *IdentityProvider) AuthCodeURL(redirectURI, state, codeChallenge string) string {
+	opts := []oauth2.AuthCodeOption{}
+	if codeChallenge != "" {
+		opts = append(opts,
+			oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+			oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		)
+	}
+	return i.oauth2ConfigFor(redirectURI).AuthCodeURL(state, opts...)
+}
+
+func (i *IdentityProvider) ExchangeToken(ctx context.Context, code string, redirectURL string, codeVerifier ...string) (string, error) {
 	if !i.isEnabled {
 		return "", errors.New("identity provider is not enabled")
 	}
@@ -49,24 +84,22 @@ func (i *IdentityProvider) ExchangeToken(ctx context.Context, code string, redir
 		return "", errors.New("authorization code is empty")
 	}
 
-	// Use provided redirect URL if given, otherwise fall back to config
+	// Use provided redirect URL if given, otherwise fall back to config.
 	redirect := i.config.RedirectURL
 	if len(redirectURL) > 0 && redirectURL != "" {
 		redirect = redirectURL
 	}
 
-	conf := &oauth2.Config{
-		ClientID:     i.config.ClientID,
-		ClientSecret: i.config.ClientSecret,
-		RedirectURL:  redirect,
-		Scopes:       i.config.Scopes,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  i.config.AuthURL,
-			TokenURL: i.config.TokenURL,
-		},
+	conf := i.oauth2ConfigFor(redirect)
+
+	opts := []oauth2.AuthCodeOption{}
+	for _, verifier := range codeVerifier {
+		if verifier != "" {
+			opts = append(opts, oauth2.SetAuthURLParam("code_verifier", verifier))
+		}
 	}
 
-	token, err := conf.Exchange(ctx, code)
+	token, err := conf.Exchange(ctx, code, opts...)
 	if err != nil {
 		// Enhanced error handling for OAuth2 errors
 		switch {
@@ -127,6 +160,17 @@ func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) 
 	}
 	if val, ok := claims["email"]; ok {
 		userInfo.Email, _ = val.(string)
+	}
+	// email_verified may arrive as a JSON bool or, from non-compliant IdPs,
+	// as the strings "true"/"false". Absent -> nil (unknown).
+	if raw, present := claims["email_verified"]; present {
+		switch v := raw.(type) {
+		case bool:
+			userInfo.EmailVerified = &v
+		case string:
+			parsed := strings.EqualFold(v, "true")
+			userInfo.EmailVerified = &parsed
+		}
 	}
 	if val, ok := claims["picture"]; ok {
 		pictureURL, _ := val.(string)

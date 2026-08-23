@@ -46,6 +46,10 @@ func envDisableSignup() string {
 	return firstEnvironment("DAYDAN_DISABLE_SIGNUP", "DONETICK_DISABLE_SIGNUP")
 }
 
+func envAllowLegacyOAuthState() bool {
+	return firstEnvironment("DAYDAN_OAUTH2_ALLOW_LEGACY_STATE") == "true"
+}
+
 func envLogLevel() string {
 	return firstEnvironment("DAYDAN_LOG_LEVEL", "DONETICK_LOG_LEVEL")
 }
