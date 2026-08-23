@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -53,6 +54,7 @@ type Handler struct {
 	plusMaxSubaccounts     int
 	oauth2Config           config.OAuth2Config
 	singleCircleInstance   bool
+	mfaMaxAttempts         int
 }
 
 func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
@@ -82,6 +84,7 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		plusMaxSubaccounts:     config.FeatureLimits.PlusMaxSubaccounts,
 		oauth2Config:           config.OAuth2Config,
 		singleCircleInstance:   config.SingleCircleInstance,
+		mfaMaxAttempts:         config.MFAConfig.MaxVerificationAttempts,
 	}
 }
 
@@ -383,6 +386,9 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 				})
 				return
 			}
+			// acc was never assigned in this branch: the FindByEmail error above
+			// means no account existed, so point it at the freshly created user.
+			acc = &uModel.UserDetails{User: *createdUser}
 		}
 		// Check if user has MFA enabled
 		if acc.MFAEnabled {
@@ -652,7 +658,11 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 
 		claims, err := h.identityProvider.GetUserInfo(c, token)
 		if err != nil {
-			logger.Error("account.handler.thirdPartyAuthCallback (oauth2) failed to get claims", "err", err)
+			logger.Errorw("account.handler.thirdPartyAuthCallback (oauth2) failed to get claims", "err", err)
+			c.JSON(http.StatusBadGateway, gin.H{
+				"error": "Failed to fetch user info from identity provider",
+			})
+			return
 		}
 
 		acc, err := h.userRepo.FindByEmail(c, claims.Email)
@@ -1235,7 +1245,9 @@ func (h *Handler) updateProfilePhoto(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file"})
 		return
 	}
-	fileExtension := file.Filename[strings.LastIndex(file.Filename, "."):]
+	// Use filepath.Ext so dotless filenames return "" instead of panicking on
+	// a negative slice index.
+	fileExtension := strings.ToLower(filepath.Ext(file.Filename))
 	// validate file extension:
 	if fileExtension != ".jpg" && fileExtension != ".jpeg" && fileExtension != ".png" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file extension"})
