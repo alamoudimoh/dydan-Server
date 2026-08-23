@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
 	"golang.org/x/oauth2"
@@ -24,13 +25,19 @@ type IdentityProviderUserInfo struct {
 type IdentityProvider struct {
 	config    *config.OAuth2Config
 	isEnabled bool
+	// httpClient bounds every outbound call to the identity provider so a hung
+	// upstream cannot stall login requests or the notification scheduler.
+	httpClient *http.Client
 }
+
+// idpHTTPTimeout bounds userinfo fetches and picture reachability probes.
+const idpHTTPTimeout = 10 * time.Second
 
 func NewIdentityProvider(cfg *config.Config) *IdentityProvider {
 	if cfg.OAuth2Config.ClientID == "" || cfg.OAuth2Config.ClientSecret == "" {
-		return &IdentityProvider{isEnabled: false}
+		return &IdentityProvider{isEnabled: false, httpClient: &http.Client{Timeout: idpHTTPTimeout}}
 	}
-	return &IdentityProvider{config: &cfg.OAuth2Config, isEnabled: true}
+	return &IdentityProvider{config: &cfg.OAuth2Config, isEnabled: true, httpClient: &http.Client{Timeout: idpHTTPTimeout}}
 }
 
 func (i *IdentityProvider) ExchangeToken(ctx context.Context, code string, redirectURL string) (string, error) {
@@ -91,7 +98,7 @@ func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := i.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -107,21 +114,23 @@ func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) 
 		return nil, errors.New("failed to unmarshal claims")
 	}
 	userInfo := IdentityProviderUserInfo{}
+	// Use comma-ok assertions: a compliant-but-unusual IdP returning non-string
+	// claim values must not panic the handler.
 	if val, ok := claims["sub"]; ok {
-		userInfo.Identifier = val.(string)
+		userInfo.Identifier, _ = val.(string)
 	}
 	if val, ok := claims["preferred_username"]; ok {
 		userInfo.Username, _ = val.(string)
 	}
 	if val, ok := claims["name"]; ok {
-		userInfo.DisplayName = val.(string)
+		userInfo.DisplayName, _ = val.(string)
 	}
 	if val, ok := claims["email"]; ok {
-		userInfo.Email = val.(string)
+		userInfo.Email, _ = val.(string)
 	}
 	if val, ok := claims["picture"]; ok {
-		pictureURL := val.(string)
-		isValid := isPictureURLValid(pictureURL)
+		pictureURL, _ := val.(string)
+		isValid := i.isPictureURLValid(pictureURL)
 		if isValid {
 			userInfo.Picture = pictureURL
 		}
@@ -139,8 +148,8 @@ func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) 
 }
 
 // Check if the provided URL is reachable and returns a valid image
-func isPictureURLValid(url string) bool {
-	resp, err := http.Get(url)
+func (i *IdentityProvider) isPictureURLValid(url string) bool {
+	resp, err := i.httpClient.Get(url)
 	if err != nil {
 		return false
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
 )
@@ -19,6 +20,9 @@ type SMTP2GoSender struct {
 	appHost          string
 	verifyTemplateID string
 	resetTemplateID  string
+	// httpClient bounds API calls so a hung SMTP2Go endpoint cannot stall
+	// password-reset or verification flows.
+	httpClient *http.Client
 }
 
 const smtp2goEndpoint = "https://api.smtp2go.com/v3/email/send"
@@ -44,6 +48,7 @@ func NewSMTP2GoSender(conf *config.Config) *SMTP2GoSender {
 		appHost:          conf.EmailConfig.AppHost,
 		verifyTemplateID: conf.EmailConfig.VerifyTemplateID,
 		resetTemplateID:  conf.EmailConfig.ResetPasswordTemplateID,
+		httpClient:       &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -68,7 +73,7 @@ func (s *SMTP2GoSender) sendTemplate(to, subject, templateID string, templateDat
 	req.Header.Set("X-Smtp2go-Api-Key", s.apiKey)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}

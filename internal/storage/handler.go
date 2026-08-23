@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +24,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+// fileExt returns the lowercase extension of a filename including the dot,
+// or "" when the name has none. Unlike slicing at LastIndex("."), this is
+// safe for names without a dot.
+func fileExt(name string) string {
+	return strings.ToLower(filepath.Ext(name))
+}
 
 // Handler handles file storage-related routes
 type Handler struct {
@@ -90,26 +98,41 @@ func (h *Handler) AssetHandler(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Detect content type
-	// buf := make([]byte, 512)
-	// n, _ := file.Read(buf)
-	// contentType := http.DetectContentType(buf[:n])
-
-	// Reset reader to stream full file
-
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read file"})
-	// 	return
-	// }
-
-	// Set headers
-	// c.Header("Content-Type", contentType)
+	// Serve only known-safe image/media types inline; everything else is
+	// forced to application/octet-stream so an uploaded HTML/SVG file can
+	// never render as an active document on the API origin (stored XSS).
+	// nosniff stops browsers from second-guessing the declared type.
+	contentType := safeContentType(filename)
+	c.Header("Content-Type", contentType)
+	c.Header("X-Content-Type-Options", "nosniff")
 	c.Header("Cache-Control", "public, max-age=604800, immutable")
 	c.Header("Expires", time.Now().UTC().Add(7*24*time.Hour).Format(http.TimeFormat))
 	c.Status(http.StatusOK)
 
 	// Serve content
 	io.Copy(c.Writer, file)
+}
+
+// safeContentType maps a storage key to a conservative Content-Type. Only
+// extensions that browsers treat as inert media are served with their real
+// type; everything else downloads instead of executing/rendering.
+func safeContentType(name string) string {
+	switch fileExt(name) {
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".png":
+		return "image/png"
+	case ".gif":
+		return "image/gif"
+	case ".webp":
+		return "image/webp"
+	case ".bmp":
+		return "image/bmp"
+	case ".avif":
+		return "image/avif"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 func (h *Handler) ChoreUploadHandler(c *gin.Context) {
@@ -155,7 +178,7 @@ func (h *Handler) ChoreUploadHandler(c *gin.Context) {
 	uuid := uuid.New().String()
 
 	// append the file extension to the uuid:
-	ext := file.Filename[strings.LastIndex(file.Filename, "."):]
+	ext := fileExt(file.Filename)
 	path := fmt.Sprintf("users/%d/%s%s", currentUser.ID, uuid, ext)
 	mediaRecord := &storageModel.StorageFile{
 		FilePath:   path,
