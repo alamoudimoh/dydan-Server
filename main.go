@@ -266,6 +266,15 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 	// log when http request is made:
 
 	r := gin.New()
+	r.Use(gin.Recovery())
+
+	// Never trust client-supplied X-Forwarded-For: gin's default trusts every
+	// proxy, which let anyone spoof c.ClientIP() and rotate identities past the
+	// IP-based auth rate limiter. Direct clients are the safe default; reverse
+	// proxy deployments can still set trusted proxies via config if needed.
+	if err := r.SetTrustedProxies(nil); err != nil {
+		log.Printf("failed to configure trusted proxies: %v", err)
+	}
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
@@ -366,13 +375,33 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 				// Force close
 				srv.Close()
 			}
+
+			// Close the database pool last so in-flight writes finish first.
+			if sqlDB, err := db.DB(); err == nil {
+				if err := sqlDB.Close(); err != nil {
+					log.Printf("failed to close database cleanly: %v", err)
+				}
+			}
 			return nil
 		},
 	})
 
-	// Simple health-check endpoint
+	// Health-check endpoint: verifies process liveness AND that the database
+	// answers queries, so orchestrators restart an instance whose DB is wedged
+	// instead of serving requests that can only fail.
 	r.GET("/api/v1/health", func(c *gin.Context) {
-		c.Status(http.StatusOK) // 200 - OK if server started
+		pingCtx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+		defer cancel()
+		sqlDB, err := db.DB()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "error": "database unavailable"})
+			return
+		}
+		if err := sqlDB.PingContext(pingCtx); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "error": "database unreachable"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
 	return r
