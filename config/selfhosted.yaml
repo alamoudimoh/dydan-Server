@@ -51,7 +51,7 @@ email:
   email:
   user: # optional, will be filled with email.email if not set.
   appHost:
-  log_raw_url: true # log password reset URL to console (useful when email is not configured)
+  log_raw_url: false # never expose live password-reset links in normal self-hosted logs
 oauth2:
   client_id:
   client_secret:

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -79,6 +80,13 @@ func (h *AuthHandler) RefreshTokenHandler(c *gin.Context) {
 	// Validate and refresh tokens
 	tokenResponse, err := h.tokenService.RefreshTokens(c.Request.Context(), refreshToken)
 	if err != nil {
+		if errors.Is(err, ErrRefreshRetry) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "Refresh already completed by another request",
+				"code":  "REFRESH_RETRY",
+			})
+			return
+		}
 		logging.FromContext(c).Errorw("Failed to refresh token", "error", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Invalid or expired refresh token",
@@ -88,7 +96,7 @@ func (h *AuthHandler) RefreshTokenHandler(c *gin.Context) {
 	}
 
 	// Set new refresh token as httpOnly cookie
-	SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.refreshTokenExpiry)
+	SetRefreshSessionCookie(c, tokenResponse.RefreshToken, time.Until(tokenResponse.RefreshTokenExpiry))
 
 	c.JSON(http.StatusOK, tokenResponse)
 }

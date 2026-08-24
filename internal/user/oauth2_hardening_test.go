@@ -11,8 +11,8 @@ import (
 	"github.com/alamoudimoh/daydan-server/config"
 	auth "github.com/alamoudimoh/daydan-server/internal/auth"
 	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -55,7 +55,7 @@ func newFakeIdP(t *testing.T, userInfo map[string]any) *fakeIdPUserPackage {
 func newOAuthHarness(t *testing.T, userInfo map[string]any, allowLegacy bool) *oauthTestHarness {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-		f := newFakeIdP(t, userInfo)
+	f := newFakeIdP(t, userInfo)
 
 	gdb, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
@@ -91,6 +91,7 @@ func newOAuthHarness(t *testing.T, userInfo map[string]any, allowLegacy bool) *o
 		identityProvider:  auth.NewIdentityProvider(cfg),
 		oauthTransactions: auth.NewOAuthTransactionStore(),
 		oauth2Config:      cfg.OAuth2Config,
+		proxyTrust:        auth.NewProxyTrust([]string{"192.0.2.1"}),
 	}
 
 	r := gin.New()
@@ -108,6 +109,7 @@ func (th *oauthTestHarness) post(t *testing.T, path string, body any) *httptest.
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Forwarded-Proto", "https")
 	req.Header.Set("X-Forwarded-Host", "daydan.example.com")
+	req.RemoteAddr = "192.0.2.1:1234"
 	w := httptest.NewRecorder()
 	th.router.ServeHTTP(w, req)
 	return w
@@ -174,6 +176,21 @@ func TestOAuthStartAcceptsSameOriginDerivedRedirect(t *testing.T) {
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("same-origin redirect should be allowed, got %d (%s)", w.Code, w.Body.String())
+	}
+}
+
+func TestOAuthStartRejectsSpoofedForwardedOrigin(t *testing.T) {
+	th := newOAuthHarness(t, map[string]any{}, false)
+	payload, _ := json.Marshal(map[string]any{"redirect_uri": sameOriginRedirect})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oauth2/start", strings.NewReader(string(payload)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.Header.Set("X-Forwarded-Host", "daydan.example.com")
+	req.RemoteAddr = "203.0.113.10:1234"
+	w := httptest.NewRecorder()
+	th.router.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("untrusted forwarding headers must not authorize redirect, got %d (%s)", w.Code, w.Body.String())
 	}
 }
 

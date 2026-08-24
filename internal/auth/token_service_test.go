@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -86,14 +87,9 @@ func TestRefreshRotationSingleUse(t *testing.T) {
 		t.Fatal("refresh token must rotate on every use")
 	}
 
-	// Immediate replay of the just-consumed token is a benign concurrent
-	// refresh and must NOT revoke the family.
-	third, err := svc.RefreshTokens(ctx, first.RefreshToken)
-	if err != nil {
-		t.Fatalf("concurrent refresh should succeed within grace window: %v", err)
-	}
-	if third.RefreshToken == second.RefreshToken {
-		t.Fatal("concurrent refresh must still mint a distinct refresh token")
+	// Immediate reuse must not mint an attacker-controlled descendant.
+	if _, err := svc.RefreshTokens(ctx, first.RefreshToken); !errors.Is(err, ErrRefreshRetry) {
+		t.Fatalf("concurrent refresh should request a retry, got: %v", err)
 	}
 	if liveFamilySessions(t, db, familyIDOf(t, svc, db, second.RefreshToken)) == 0 {
 		t.Fatal("family should remain alive after benign concurrent refresh")
@@ -114,12 +110,12 @@ func TestRefreshReplayAfterGraceRevokesFamily(t *testing.T) {
 		t.Fatalf("first refresh: %v", err)
 	}
 
-	// Age every session beyond the grace window so replaying the original
-	// token can no longer be confused with an in-flight concurrent refresh.
+	// Age the original use beyond the grace window so replay can no longer be
+	// confused with an in-flight concurrent refresh.
 	if err := db.Model(&uModel.UserSession{}).
-		Where("family_id = ?", family).
-		Update("created_at", time.Now().UTC().Add(-2*defaultRefreshGraceWindow)).Error; err != nil {
-		t.Fatalf("backdate sessions: %v", err)
+		Where("token_hash = ?", svc.hashToken(first.RefreshToken)).
+		Update("used_at", time.Now().UTC().Add(-2*defaultRefreshGraceWindow)).Error; err != nil {
+		t.Fatalf("backdate token use: %v", err)
 	}
 
 	if _, err := svc.RefreshTokens(ctx, first.RefreshToken); err == nil {
@@ -134,7 +130,7 @@ func TestRefreshReplayAfterGraceRevokesFamily(t *testing.T) {
 	}
 }
 
-func TestRefreshConcurrentRequestsAllSucceedWithoutFamilyRevocation(t *testing.T) {
+func TestRefreshConcurrentRequestsMintOnlyOneSuccessor(t *testing.T) {
 	svc, db, user := newTokenServiceHarness(t)
 	ctx := context.Background()
 
@@ -148,6 +144,7 @@ func TestRefreshConcurrentRequestsAllSucceedWithoutFamilyRevocation(t *testing.T
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	rotated := make(map[string]bool)
+	retries := 0
 	failures := make([]error, 0)
 
 	for i := 0; i < tabs; i++ {
@@ -158,6 +155,10 @@ func TestRefreshConcurrentRequestsAllSucceedWithoutFamilyRevocation(t *testing.T
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
+				if errors.Is(err, ErrRefreshRetry) {
+					retries++
+					return
+				}
 				failures = append(failures, err)
 				return
 			}
@@ -167,10 +168,10 @@ func TestRefreshConcurrentRequestsAllSucceedWithoutFamilyRevocation(t *testing.T
 	wg.Wait()
 
 	if len(failures) != 0 {
-		t.Fatalf("concurrent refreshes must not fail under the grace window: %v", failures)
+		t.Fatalf("unexpected concurrent refresh failures: %v", failures)
 	}
-	if len(rotated) != tabs {
-		t.Fatalf("expected %d distinct rotated refresh tokens, got %d", tabs, len(rotated))
+	if len(rotated) != 1 || retries != tabs-1 {
+		t.Fatalf("expected one successor and %d retries, got %d successors and %d retries", tabs-1, len(rotated), retries)
 	}
 	if liveFamilySessions(t, db, family) == 0 {
 		t.Fatal("family was revoked by concurrent refreshes")
@@ -217,5 +218,48 @@ func TestRevokeOtherAndAllSessions(t *testing.T) {
 	}
 	if got := liveByToken(a.RefreshToken); got != 0 {
 		t.Fatalf("expected zero live sessions after revoke-all, got %d", got)
+	}
+}
+
+func TestRefreshRejectsDisabledUserAndRevokesFamily(t *testing.T) {
+	svc, db, user := newTokenServiceHarness(t)
+	ctx := context.Background()
+	tokens, err := svc.GenerateTokens(ctx, &uModel.UserDetails{User: *user})
+	if err != nil {
+		t.Fatal(err)
+	}
+	family := familyIDOf(t, svc, db, tokens.RefreshToken)
+	if err := db.Model(user).Update("disabled", true).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.RefreshTokens(ctx, tokens.RefreshToken); err == nil {
+		t.Fatal("disabled user refresh must fail")
+	}
+	if got := liveFamilySessions(t, db, family); got != 0 {
+		t.Fatalf("disabled user family remains live: %d", got)
+	}
+}
+
+func TestRefreshPreservesAbsoluteFamilyExpiry(t *testing.T) {
+	svc, db, user := newTokenServiceHarness(t)
+	ctx := context.Background()
+	first, err := svc.GenerateTokens(ctx, &uModel.UserDetails{User: *user})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var original uModel.UserSession
+	if err := db.Where("token_hash = ?", svc.hashToken(first.RefreshToken)).First(&original).Error; err != nil {
+		t.Fatal(err)
+	}
+	second, err := svc.RefreshTokens(ctx, first.RefreshToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var successor uModel.UserSession
+	if err := db.Where("token_hash = ?", svc.hashToken(second.RefreshToken)).First(&successor).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !successor.ExpiresAt.Equal(original.ExpiresAt) {
+		t.Fatalf("family expiry slid from %v to %v", original.ExpiresAt, successor.ExpiresAt)
 	}
 }

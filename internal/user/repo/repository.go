@@ -54,7 +54,7 @@ type IUserRepository interface {
 }
 
 type UserRepository struct {
-	db               *gorm.DB
+	db            *gorm.DB
 	isDayDanCloud bool
 }
 
@@ -221,30 +221,37 @@ func (r *UserRepository) UpdatePasswordByToken(ctx context.Context, email string
 	logger := logging.FromContext(ctx)
 
 	logger.Debugw("account.db.UpdatePasswordByToken", "email", email)
-	upr := &uModel.UserPasswordReset{
-		Email: email,
-		Token: token,
-	}
-	// The token row must still be unexpired: the delete only matches when both
-	// the token and a live expiration date exist, so stale tokens are unusable.
-	result := r.db.WithContext(ctx).
-		Where("email = ?", email).
-		Where("token = ?", token).
-		Where("expiration_date > ?", time.Now().UTC()).
-		Delete(upr)
-	if result.RowsAffected <= 0 {
-		return fmt.Errorf("invalid token")
-	}
-	// find account by email and update password:
-	chain := r.db.WithContext(ctx).Model(&uModel.User{}).Where("email = ?", email).UpdateColumns(map[string]interface{}{"password": password})
-	if chain.Error != nil {
-		return chain.Error
-	}
-	if chain.RowsAffected == 0 {
-		return fmt.Errorf("account not found")
-	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var reset uModel.UserPasswordReset
+		if err := tx.Where("email = ? AND token = ? AND expiration_date > ?", email, token, time.Now().UTC()).First(&reset).Error; err != nil {
+			return fmt.Errorf("invalid token")
+		}
+		// Conditional delete is the serialization point: concurrent redemption
+		// attempts may both read the row, but only one can consume it.
+		deleted := tx.Where("id = ? AND token = ?", reset.ID, token).Delete(&uModel.UserPasswordReset{})
+		if deleted.Error != nil {
+			return deleted.Error
+		}
+		if deleted.RowsAffected != 1 {
+			return fmt.Errorf("invalid token")
+		}
 
-	return nil
+		chain := tx.Model(&uModel.User{}).Where("id = ? AND email = ?", reset.UserID, email).Update("password", password)
+		if chain.Error != nil {
+			return chain.Error
+		}
+		if chain.RowsAffected == 0 {
+			return fmt.Errorf("account not found")
+		}
+
+		now := time.Now().UTC()
+		if err := tx.Model(&uModel.UserSession{}).
+			Where("user_id = ? AND revoked_at IS NULL", reset.UserID).
+			Update("revoked_at", now).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (r *UserRepository) StoreAPIToken(c context.Context, userID int, name string, tokenCode string) (*uModel.APIToken, error) {

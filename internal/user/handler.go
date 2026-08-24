@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -58,6 +57,7 @@ type Handler struct {
 	oauthTransactions      *auth.OAuthTransactionStore
 	singleCircleInstance   bool
 	mfaMaxAttempts         int
+	proxyTrust             *auth.ProxyTrust
 }
 
 func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
@@ -89,6 +89,7 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		oauthTransactions:      auth.NewOAuthTransactionStore(),
 		singleCircleInstance:   config.SingleCircleInstance,
 		mfaMaxAttempts:         config.MFAConfig.MaxVerificationAttempts,
+		proxyTrust:             auth.NewProxyTrust(config.Server.TrustedProxies),
 	}
 }
 
@@ -272,31 +273,12 @@ var nativeOAuthRedirectURIs = []string{
 // forwarding headers (set by the same-origin reverse proxy) or the browser's
 // Origin/Referer headers. It is used to derive the same-origin OAuth callback
 // URL server-side instead of trusting an arbitrary redirect URI.
-func requestOrigin(c *gin.Context) string {
-	if proto := c.GetHeader("X-Forwarded-Proto"); proto != "" {
-		if host := c.GetHeader("X-Forwarded-Host"); host != "" {
-			return proto + "://" + host
-		}
-		if host := c.Request.Host; host != "" {
-			return proto + "://" + host
-		}
+func (h *Handler) requestOrigin(c *gin.Context) string {
+	host := auth.RequestHost(c, h.proxyTrust)
+	if host == "" {
+		return ""
 	}
-	if origin := c.GetHeader("Origin"); origin != "" {
-		return origin
-	}
-	if referer := c.GetHeader("Referer"); referer != "" {
-		if u, err := url.Parse(referer); err == nil && u.Scheme != "" && u.Host != "" {
-			return u.Scheme + "://" + u.Host
-		}
-	}
-	if c.Request.Host != "" {
-		scheme := "http"
-		if c.Request.TLS != nil {
-			scheme = "https"
-		}
-		return scheme + "://" + c.Request.Host
-	}
-	return ""
+	return auth.RequestScheme(c, h.proxyTrust) + "://" + host
 }
 
 // allowedOAuthRedirectURIs returns the strict allowlist of permitted OAuth2
@@ -312,7 +294,7 @@ func (h *Handler) allowedOAuthRedirectURIs(c *gin.Context) map[string]bool {
 	if h.oauth2Config.RedirectURL != "" {
 		allowed[h.oauth2Config.RedirectURL] = true
 	}
-	if origin := requestOrigin(c); origin != "" {
+	if origin := h.requestOrigin(c); origin != "" {
 		allowed[origin+"/auth/oauth2"] = true
 	}
 	for _, uri := range nativeOAuthRedirectURIs {
@@ -346,7 +328,7 @@ func (h *Handler) thirdPartyAuthStart(c *gin.Context) {
 	if redirect == "" {
 		if h.oauth2Config.RedirectURL != "" {
 			redirect = h.oauth2Config.RedirectURL
-		} else if origin := requestOrigin(c); origin != "" {
+		} else if origin := h.requestOrigin(c); origin != "" {
 			redirect = origin + "/auth/oauth2"
 		}
 	}
@@ -1396,17 +1378,13 @@ func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
 		return
 	}
 
-	// Revoke all other refresh families so stolen or forgotten sessions die
-	// with the old password. The caller's own session survives: it is
-	// identified by its HttpOnly cookie, or by an explicit refresh_token body
-	// field for native clients that authenticate with Bearer tokens only.
-	keepSessionID := ""
-	if rawCookie, err := c.Cookie(auth.RefreshTokenCookieName); err == nil && rawCookie != "" {
-		keepSessionID = h.tokenService.SessionIDForToken(c.Request.Context(), rawCookie)
-	} else if body.RefreshToken != "" {
-		keepSessionID = h.tokenService.SessionIDForToken(c.Request.Context(), body.RefreshToken)
+	// Preserve the authenticated access token's family, not one particular
+	// refresh row: rotation may already have replaced the cookie/body ancestor.
+	_, keepFamilyID := auth.SessionRefFromClaims(map[string]interface{}(jwt.ExtractClaims(c)))
+	if keepFamilyID == "" && body.RefreshToken != "" {
+		_, keepFamilyID = h.tokenService.SessionRefForToken(c.Request.Context(), body.RefreshToken)
 	}
-	if err := h.tokenService.RevokeOtherUserSessions(c.Request.Context(), currentUser.ID, keepSessionID); err != nil {
+	if err := h.tokenService.RevokeOtherUserFamilies(c.Request.Context(), currentUser.ID, keepFamilyID); err != nil {
 		// The password itself was changed successfully; log revocation issues
 		// instead of failing the request.
 		logger.Errorw("account.handler.changePassword could not revoke other sessions", "err", err)
@@ -2057,7 +2035,7 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		authRoutes.POST("/:provider/start", h.thirdPartyAuthStart)
 		authRoutes.POST("refresh", csrfCheck, authHandler.RefreshTokenHandler) // Changed from GET to POST
 		authRoutes.POST("logout", csrfCheck, authHandler.LogoutHandler)        // New logout endpoint
-		authRoutes.POST("mfa/verify", h.verifyMFA)                  // Add MFA verification endpoint
+		authRoutes.POST("mfa/verify", h.verifyMFA)                             // Add MFA verification endpoint
 
 		// Password-based auth (signup, login, password reset). When
 		// disable_password_auth is set the instance is SSO-only, so these
