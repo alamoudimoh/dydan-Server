@@ -2001,7 +2001,9 @@ func (h *Handler) requirePermission(permission auth.Permission) gin.HandlerFunc 
 func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limiter *limiter.Limiter, cfg *config.Config) {
 
 	// Origin validation for cookie-authenticated endpoints (refresh/logout).
-	csrfCheck := auth.CSRFOriginCheck(cfg.Server.CorsAllowOrigins)
+	// Forwarding headers are only honored from cfg.Server.TrustedProxies so
+	// directly exposed instances cannot be spoofed.
+	csrfCheck := auth.CSRFOriginCheck(cfg.Server.CorsAllowOrigins, cfg.Server.TrustedProxies)
 	// Tighter budget for credential-changing actions than the general API
 	// bucket, so brute-forcing the current-password check is impractical even
 	// from a fast connection.
@@ -2076,5 +2078,12 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 	protectedAuthRoutes.Use(jwtAuth.MiddlewareFunc(), utils.RateLimitMiddleware(limiter))
 	{
 		protectedAuthRoutes.POST("revoke-all", authHandler.RevokeAllHandler) // New revoke all endpoint
+
+		// Session management: list/revoke the caller's own login sessions.
+		// Bearer-authenticated (no cookies), so no CSRF check applies; all
+		// queries are scoped to the authenticated user server-side.
+		protectedAuthRoutes.GET("sessions", authHandler.ListSessionsHandler)
+		protectedAuthRoutes.DELETE("sessions/:id", authHandler.RevokeSessionHandler)
+		protectedAuthRoutes.POST("sessions/revoke-others", authHandler.RevokeOtherSessionsHandler)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,13 +21,28 @@ const refreshCookiePath = "/api/v1"
 
 const legacyRefreshCookiePath = "/"
 
+// activeProxyTrust holds the deployment's trusted-proxy allowlist. It is
+// installed once at startup via ConfigureProxyTrust and read on every
+// request; the atomic pointer keeps concurrent reads race-free.
+var activeProxyTrust atomic.Pointer[ProxyTrust]
+
+// ConfigureProxyTrust sets the allowlist of proxies whose forwarding headers
+// influence security decisions. Must be called during startup with
+// cfg.Server.TrustedProxies.
+func ConfigureProxyTrust(allowed []string) {
+	activeProxyTrust.Store(NewProxyTrust(allowed))
+}
+
+func currentProxyTrust() *ProxyTrust {
+	return activeProxyTrust.Load()
+}
+
 // requestIsHTTPS reports whether the current request arrived over TLS,
-// either directly or via a reverse proxy advertising X-Forwarded-Proto.
+// either directly or via an allowlisted reverse proxy. X-Forwarded-Proto from
+// any other peer is ignored so directly exposed instances cannot be tricked
+// into emitting Secure cookies (or omitting them) based on spoofed headers.
 func requestIsHTTPS(c *gin.Context) bool {
-	if c.Request != nil && c.Request.TLS != nil {
-		return true
-	}
-	return strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
+	return IsHTTPSRequest(c, currentProxyTrust())
 }
 
 // SetRefreshSessionCookie stores the refresh credential as an HttpOnly,
@@ -79,24 +95,6 @@ func csrfSafeMethod(method string) bool {
 	}
 }
 
-// requestOrigins returns every origin the server itself is willing to serve
-// this request from: the proxy-advertised origin first, then Host-based
-// fallbacks for direct access.
-func requestOrigins(c *gin.Context) []string {
-	var origins []string
-	scheme := "http"
-	if requestIsHTTPS(c) {
-		scheme = "https"
-	}
-	if host := c.GetHeader("X-Forwarded-Host"); host != "" {
-		origins = append(origins, scheme+"://"+host)
-	}
-	if c.Request != nil && c.Request.Host != "" {
-		origins = append(origins, scheme+"://"+c.Request.Host)
-	}
-	return origins
-}
-
 // CSRFOriginCheck rejects state-changing requests whose Origin header points
 // at a different site than the one serving the API. This is defense in depth
 // for cookie-authenticated endpoints (refresh/logout): SameSite=Lax already
@@ -104,8 +102,10 @@ func requestOrigins(c *gin.Context) []string {
 // SameSite, and CORS alone cannot reject same-site-but-different-port
 // attacks. Requests without an Origin header (native apps, curl, server-to-
 // server) are allowed. allowedOrigins carries the deployment's configured
-// CORS origins for split-origin setups.
-func CSRFOriginCheck(allowedOrigins []string) gin.HandlerFunc {
+// CORS origins for split-origin setups; trustedProxies controls which peers
+// may advertise the public scheme/host via forwarding headers.
+func CSRFOriginCheck(allowedOrigins []string, trustedProxies []string) gin.HandlerFunc {
+	trust := NewProxyTrust(trustedProxies)
 	allowed := make(map[string]bool, len(allowedOrigins))
 	for _, o := range allowedOrigins {
 		allowed[strings.TrimRight(strings.ToLower(o), "/")] = true
@@ -131,7 +131,7 @@ func CSRFOriginCheck(allowedOrigins []string) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		for _, candidate := range requestOrigins(c) {
+		for _, candidate := range requestOriginCandidates(c, trust) {
 			if strings.EqualFold(candidate, origin) {
 				c.Next()
 				return
@@ -139,4 +139,15 @@ func CSRFOriginCheck(allowedOrigins []string) gin.HandlerFunc {
 		}
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Cross-origin request rejected"})
 	}
+}
+
+// requestOriginCandidates enumerates the origins the server itself would use
+// for this request, given the already-resolved proxy trust decision.
+func requestOriginCandidates(c *gin.Context, trust *ProxyTrust) []string {
+	var origins []string
+	scheme := RequestScheme(c, trust)
+	if host := RequestHost(c, trust); host != "" {
+		origins = append(origins, scheme+"://"+host)
+	}
+	return origins
 }

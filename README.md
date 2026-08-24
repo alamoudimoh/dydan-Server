@@ -118,6 +118,14 @@ Persistent runtime state lives in `/data` inside the container:
 The backend serves both the embedded frontend and `/api/...` from the same
 origin. On upgrades, keep the same data volume and restart the container.
 
+### Reverse-proxy deployments
+
+Forwarding headers are honored only from allowlisted proxies
+(`server.trusted_proxies`, loopback by default), so directly exposed instances
+cannot be spoofed with `X-Forwarded-*` headers. For Nginx/Caddy/Traefik
+configuration — including header sanitization requirements and the
+short-lived access-token policy — see [docs/reverse-proxy.md](docs/reverse-proxy.md).
+
 The default Compose volume is `daydan-data`. Existing Taskier deployments can
 reuse a `taskier-data` volume without copying data:
 

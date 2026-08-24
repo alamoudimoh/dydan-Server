@@ -32,6 +32,7 @@ func newTokenServiceHarness(t *testing.T) (*TokenService, *gorm.DB, *uModel.User
 	}
 	cfg := &config.Config{}
 	cfg.Jwt.SessionTime = time.Hour
+	cfg.Jwt.AccessTokenTime = 15 * time.Minute
 	cfg.Jwt.MaxRefresh = 24 * time.Hour
 	cfg.Jwt.Secret = "test-secret-that-is-long-enough-1234"
 

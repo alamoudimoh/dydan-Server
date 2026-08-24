@@ -12,15 +12,23 @@ import (
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 	jwt "github.com/appleboy/gin-jwt/v2"
+	jwtstd "github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 )
 
 // TokenService handles JWT token generation and refresh token management
 type TokenService struct {
-	userRepo           *uRepo.UserRepository
-	jwtAuth            *jwt.GinJWTMiddleware
-	sessionTime        time.Duration
+	userRepo *uRepo.UserRepository
+	jwtAuth  *jwt.GinJWTMiddleware
+	// sessionTime is the lifetime of legacy /login/legacy access tokens only.
+	sessionTime time.Duration
+	// accessTokenTime is the lifetime of interactive (browser PWA + native
+	// app) access JWTs. Kept deliberately short so a stolen access token
+	// cannot outlive logout/session revocation for long; sessions survive via
+	// the rotating refresh credential.
+	accessTokenTime    time.Duration
 	refreshTokenExpiry time.Duration
+	jwtSecret          []byte
 
 	// refreshGraceWindow bounds how long after a rotation a concurrent use of
 	// the just-rotated token is still treated as benign (multiple browser tabs
@@ -53,7 +61,9 @@ func NewTokenService(userRepo *uRepo.UserRepository, jwtAuth *jwt.GinJWTMiddlewa
 		userRepo:           userRepo,
 		jwtAuth:            jwtAuth,
 		sessionTime:        cfg.Jwt.SessionTime,
+		accessTokenTime:    cfg.Jwt.AccessTokenTime,
 		refreshTokenExpiry: cfg.Jwt.MaxRefresh,
+		jwtSecret:          []byte(cfg.Jwt.Secret),
 		refreshGraceWindow: defaultRefreshGraceWindow,
 	}
 }
@@ -73,12 +83,6 @@ const rotationContentionBackoff = 10 * time.Millisecond
 
 // GenerateTokens generates both access and refresh tokens for a user
 func (s *TokenService) GenerateTokens(ctx context.Context, user *uModel.UserDetails) (*TokenResponse, error) {
-	// Generate access token using existing JWT middleware
-	accessToken, accessExpiry, err := s.jwtAuth.TokenGenerator(user)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate access token: %w", err)
-	}
-
 	// Generate refresh token
 	refreshToken, err := s.generateRefreshToken()
 	if err != nil {
@@ -92,8 +96,9 @@ func (s *TokenService) GenerateTokens(ctx context.Context, user *uModel.UserDeta
 	tokenHash := s.hashToken(refreshToken)
 
 	// Calculate expiry times using config
-	accessTokenExpiry := time.Now().UTC().Add(s.sessionTime)
-	refreshTokenExpiry := time.Now().UTC().Add(s.refreshTokenExpiry)
+	now := time.Now().UTC()
+	accessTokenExpiry := now.Add(s.accessTokenTime)
+	refreshTokenExpiry := now.Add(s.refreshTokenExpiry)
 
 	// Store refresh token in database
 	userSession := &uModel.UserSession{
@@ -101,12 +106,21 @@ func (s *TokenService) GenerateTokens(ctx context.Context, user *uModel.UserDeta
 		UserID:    user.ID,
 		TokenHash: tokenHash,
 		FamilyID:  familyID,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
 		ExpiresAt: refreshTokenExpiry,
 	}
 
 	if err := s.userRepo.CreateUserSession(ctx, userSession); err != nil {
 		return nil, fmt.Errorf("failed to store refresh token: %w", err)
+	}
+
+	accessToken, err := s.mintAccessToken(user, accessTokenTime{
+		ttl:      s.accessTokenTime,
+		session:  userSession.ID,
+		familyID: familyID,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return &TokenResponse{
@@ -117,8 +131,57 @@ func (s *TokenService) GenerateTokens(ctx context.Context, user *uModel.UserDeta
 		TokenType:          "Bearer",
 		// Legacy fields for backward compatibility
 		Token:  accessToken,
-		Expire: accessExpiry,
+		Expire: accessTokenExpiry,
 	}, nil
+}
+
+// accessTokenTime carries the minting parameters for an interactive access
+// JWT: its TTL plus the refresh-session lineage it was issued against.
+type accessTokenTime struct {
+	ttl      time.Duration
+	session  string
+	familyID string
+}
+
+// mintAccessToken signs a short-lived HS256 access JWT with the same claims
+// shape the gin-jwt middleware expects ("id" identity claim), plus "sid"/
+// "fam" so later requests can identify which refresh session (and rotation
+// family) the bearer belongs to. This is what lets session-management
+// endpoints flag and preserve the caller's current session without exposing
+// any credential material. Interactive tokens use jwt.accessTokenTime rather
+// than the middleware Timeout, which remains reserved for legacy
+// /login/legacy integration tokens.
+func (s *TokenService) mintAccessToken(user *uModel.UserDetails, p accessTokenTime) (string, error) {
+	now := time.Now().UTC()
+	claims := jwtstd.MapClaims{
+		identityKey: user.Username,
+		"orig_iat":  now.Unix(),
+		"exp":       now.Add(p.ttl).Unix(),
+	}
+	if p.session != "" {
+		claims["sid"] = p.session
+	}
+	if p.familyID != "" {
+		claims["fam"] = p.familyID
+	}
+	token := jwtstd.NewWithClaims(jwtstd.SigningMethodHS256, claims)
+	signed, err := token.SignedString(s.jwtSecret)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate access token: %w", err)
+	}
+	return signed, nil
+}
+
+// SessionRefFromClaims extracts the refresh-session/family references embedded
+// in an access JWT, or empty strings for tokens that predate them.
+func SessionRefFromClaims(claims map[string]interface{}) (sessionID, familyID string) {
+	if v, ok := claims["sid"].(string); ok {
+		sessionID = v
+	}
+	if v, ok := claims["fam"].(string); ok {
+		familyID = v
+	}
+	return sessionID, familyID
 }
 
 // RefreshTokens validates a refresh token and generates the next token pair
@@ -164,7 +227,22 @@ func (s *TokenService) RefreshTokens(ctx context.Context, refreshToken string) (
 
 // handleAlreadyUsedSession classifies a second presentation of a consumed
 // refresh token as either benign concurrency or theft-and-replay.
+//
+// The grace decision is anchored to the token's ORIGINAL consumption time
+// (session.UsedAt, persisted atomically at first use), not to the age of the
+// family head. This is what stops replay-extension attacks: an attacker who
+// replays inside the window can mint successors of their own (which move the
+// head forward), but every further replay is still measured against the same
+// UsedAt timestamp, so the free pass expires exactly refreshGraceWindow after
+// legitimate first use no matter how much traffic the attacker generates.
 func (s *TokenService) handleAlreadyUsedSession(ctx context.Context, session *uModel.UserSession) (*TokenResponse, error) {
+	// Replay after the grace period is theft regardless of how fresh the
+	// family head looks — an attacker replaying earlier may have advanced it.
+	if time.Now().UTC().After(session.UsedAt.Add(s.refreshGraceWindow)) {
+		_ = s.userRepo.RevokeSessionFamily(ctx, session.FamilyID)
+		return nil, fmt.Errorf("token reuse detected - please login again")
+	}
+
 	for attempt := 0; attempt < maxRotationContentionRetries; attempt++ {
 		latest, err := s.userRepo.GetLatestFamilySession(ctx, session.FamilyID)
 		if err != nil {
@@ -219,30 +297,35 @@ func (s *TokenService) rotateFromSession(ctx context.Context, session *uModel.Us
 		// WebhookURL will be nil for refresh tokens - that's ok
 	}
 
-	accessToken, _, err := s.jwtAuth.TokenGenerator(user)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate new access token: %w", err)
-	}
-
 	newRefreshToken, err := s.generateRefreshToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate new refresh token: %w", err)
 	}
 
-	accessTokenExpiry := time.Now().UTC().Add(s.sessionTime)
-	refreshTokenExpiry := time.Now().UTC().Add(s.refreshTokenExpiry)
+	now := time.Now().UTC()
+	accessTokenExpiry := now.Add(s.accessTokenTime)
+	refreshTokenExpiry := now.Add(s.refreshTokenExpiry)
 
 	newSession := &uModel.UserSession{
 		ID:        uuid.New().String(),
 		UserID:    session.UserID,
 		TokenHash: s.hashToken(newRefreshToken),
 		FamilyID:  session.FamilyID, // Keep same family ID for rotation tracking
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
 		ExpiresAt: refreshTokenExpiry,
 	}
 
 	if err := s.userRepo.CreateUserSession(ctx, newSession); err != nil {
 		return nil, fmt.Errorf("failed to store new refresh token: %w", err)
+	}
+
+	accessToken, err := s.mintAccessToken(user, accessTokenTime{
+		ttl:      s.accessTokenTime,
+		session:  newSession.ID,
+		familyID: session.FamilyID,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return &TokenResponse{
