@@ -17,7 +17,7 @@ func TestResourceExposesDisablePasswordAuth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	for _, want := range []bool{true, false} {
-		h := NewHandler(&config.Config{DisablePasswordAuth: want})
+		h := NewHandler(&config.Config{DisablePasswordAuth: want}, nil)
 		r := gin.New()
 		r.GET("api/v1/resource", h.getResource)
 

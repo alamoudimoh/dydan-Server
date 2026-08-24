@@ -68,6 +68,7 @@ import (
 
 	"github.com/alamoudimoh/daydan-server/internal/filter"
 	fRepo "github.com/alamoudimoh/daydan-server/internal/filter/repo"
+	"github.com/alamoudimoh/daydan-server/internal/httpx"
 )
 
 func main() {
@@ -266,9 +267,17 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 	}
 
 	// log when http request is made:
-
 	r := gin.New()
-	r.Use(gin.Recovery())
+	// Credential-safe panic recovery: unlike gin's built-in Recovery, the
+	// debug-mode request dump masks Authorization/Cookie/secretkey/refresh
+	// headers and strips query strings that may carry single-use tickets.
+	r.Use(httpx.Recovery())
+	// MIME-sniffing guard: self-hosted single-origin deployments serve
+	// user-uploaded files from the same origin as the browser app.
+	r.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Next()
+	})
 
 	// Forwarding headers are honored only from allowlisted proxies
 	// (server.trusted_proxies, loopback by default). This governs both gin's
@@ -328,6 +337,14 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 				if err := database.MigrationScripts(db, cfg); err != nil {
 					return fmt.Errorf("automatic SQL migration: %w", err)
 				}
+			}
+			// Operator observability for the API-token plaintext migration:
+			// one startup line while legacy rows remain, count only. This is
+			// informational — pending lazy upgrades must not block startup,
+			// and replicas converging on the same table stay safe because the
+			// check is read-only.
+			if remaining, err := uRepo.CountLegacyPlaintextAPITokens(context.Background(), db); err == nil && remaining > 0 {
+				log.Printf("API-token security migration incomplete: %d credential row(s) still stored as legacy plaintext; they will be upgraded automatically on next use or by re-running migrations", remaining)
 			}
 			if !db.Migrator().HasTable(&authlimit.Bucket{}) || !db.Migrator().HasTable(&authlimit.CapacityGuard{}) {
 				return fmt.Errorf("authentication rate-limit tables are missing; enable database migrations")
@@ -395,21 +412,9 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 
 	// Health-check endpoint: verifies process liveness AND that the database
 	// answers queries, so orchestrators restart an instance whose DB is wedged
-	// instead of serving requests that can only fail.
-	r.GET("/api/v1/health", func(c *gin.Context) {
-		pingCtx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
-		defer cancel()
-		sqlDB, err := db.DB()
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "error": "database unavailable"})
-			return
-		}
-		if err := sqlDB.PingContext(pingCtx); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "error": "database unreachable"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	// instead of serving requests that can only fail. Registered by
+	// resource.Routes (see internal/resource/handler.go), which also reports
+	// the API-token plaintext-migration status as a count only.
 
 	return r
 }

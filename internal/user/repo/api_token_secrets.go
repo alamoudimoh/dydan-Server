@@ -103,6 +103,37 @@ func HashLegacyAPITokenRows(ctx context.Context, db *gorm.DB) (int, error) {
 	return converted, nil
 }
 
+// CountLegacyPlaintextAPITokens reports how many api_tokens rows still hold a
+// pre-migration plaintext credential (the operational signal for "is the
+// 20260824_hash_api_token_secrets migration fully drained yet"). It exposes a
+// count only — never token values or digests — and is safe to call from any
+// request path, health endpoint, or replica:
+//
+//   - read-only, so concurrent sweeps/lazy upgrades cannot corrupt state;
+//   - idempotent under repetition;
+//   - empty-token rows are excluded because they can never authenticate and
+//     are deliberately skipped by the sweep, so counting them as pending work
+//     would misreport migration progress forever.
+//
+// A count of 0 means every stored credential is in hashed representation.
+// Rows are matched with NOT LIKE on the digest prefix; api_tokens is small
+// (one row per user-created token), so this stays cheap for the rare callers
+// that use it (startup log + health endpoint), not per-request hot paths.
+func CountLegacyPlaintextAPITokens(ctx context.Context, db *gorm.DB) (int64, error) {
+	if !db.WithContext(ctx).Migrator().HasTable("api_tokens") {
+		// Fresh installations have nothing legacy to report.
+		return 0, nil
+	}
+	var n int64
+	if err := db.WithContext(ctx).
+		Table("api_tokens").
+		Where("token <> '' AND token NOT LIKE ?", apiTokenHashPrefix+"%").
+		Count(&n).Error; err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 // upgradeLegacyAPIToken atomically rewrites a single legacy plaintext row to
 // hashed representation after a successful legacy authentication. The
 // conditional predicate makes concurrent upgrades idempotent: whichever
