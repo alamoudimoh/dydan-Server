@@ -112,6 +112,13 @@ func (r *UserRepository) CreateUser(c context.Context, user *uModel.User) (*uMod
 		return nil, ErrUserAlreadyExists
 	}
 	if err := r.db.WithContext(c).Create(user).Error; err != nil {
+		// The pre-check above cannot close the race between two concurrent
+		// signups of the same identity; the unique indexes are the
+		// authoritative guard. Classify that constraint violation as the same
+		// expected duplicate condition so both paths yield 409 upstream.
+		if classifyDuplicateIdentity(err) {
+			return nil, ErrUserAlreadyExists
+		}
 		return nil, err
 	}
 	return user, nil
@@ -316,9 +323,11 @@ func (r *UserRepository) UpdatePasswordByToken(ctx context.Context, email string
 
 func (r *UserRepository) StoreAPIToken(c context.Context, userID int, name string, tokenCode string) (*uModel.APIToken, error) {
 	token := &uModel.APIToken{
-		UserID:    userID,
-		Name:      name,
-		Token:     tokenCode,
+		UserID: userID,
+		Name:   name,
+		// Only the digest is persisted; the plaintext secret is returned to
+		// the caller exactly once in the creation response and never stored.
+		Token:     APITokenSecretHash(tokenCode),
 		CreatedAt: time.Now().UTC(),
 	}
 	if err := r.db.WithContext(c).Model(&uModel.APIToken{}).Save(
@@ -329,16 +338,54 @@ func (r *UserRepository) StoreAPIToken(c context.Context, userID int, name strin
 	return token, nil
 }
 
+// GetUserByToken authenticates a presented API-token secret and resolves its
+// owner. Lookup complexity is unchanged from the plaintext design: one
+// indexed equality probe on api_tokens.token, now against the SHA-256 digest
+// of the presented secret (plus a legacy candidate so pre-migration plaintext
+// rows keep working), followed by the existing single user-details join keyed
+// on the resolved token row id.
 func (r *UserRepository) GetUserByToken(c context.Context, token string) (*uModel.UserDetails, error) {
+	if !isWellFormedAPITokenSecret(token) {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	// Resolve the credential row. At most one of the candidates can exist:
+	// hashed rows store "sha256:<digest>", legacy rows store the raw secret.
+	var cred struct {
+		ID    int
+		Token string
+	}
+	err := r.db.WithContext(c).
+		Table("api_tokens").
+		Select("id, token").
+		Where("token IN ?", []string{APITokenSecretHash(token), token}).
+		First(&cred).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Transitional path: a legacy plaintext row matched. Verify it in
+	// constant time, upgrade it to hashed storage for good, and continue.
+	if isStoredFormatToken(cred.Token) {
+		if !constantTimeTokenEqual(APITokenSecretHash(token), cred.Token) {
+			return nil, gorm.ErrRecordNotFound
+		}
+	} else {
+		if !constantTimeTokenEqual(token, cred.Token) {
+			return nil, gorm.ErrRecordNotFound
+		}
+		r.upgradeLegacyAPIToken(c, cred.Token)
+	}
+
 	var user *uModel.UserDetails
 	now := time.Now().UTC()
 
 	if r.isDayDanCloud {
-		if err := r.db.WithContext(c).Table("users u").Select("u.*, s.status as subscription, s.expires_at as expiration, c.webhook_url as webhook_url").Joins("left join api_tokens at on at.user_id = u.id").Joins("left join subscriptions s on s.circle_id = u.circle_id AND s.status = 'active' AND (s.expires_at IS NULL OR s.expires_at > ?)", now).Joins("left join circles c on c.id = u.circle_id").Where("at.token = ?", token).First(&user).Error; err != nil {
+		if err := r.db.WithContext(c).Table("users u").Select("u.*, s.status as subscription, s.expires_at as expiration, c.webhook_url as webhook_url").Joins("left join api_tokens at on at.user_id = u.id").Joins("left join subscriptions s on s.circle_id = u.circle_id AND s.status = 'active' AND (s.expires_at IS NULL OR s.expires_at > ?)", now).Joins("left join circles c on c.id = u.circle_id").Where("at.id = ?", cred.ID).First(&user).Error; err != nil {
 			return nil, err
 		}
 	} else {
-		if err := r.db.WithContext(c).Table("users u").Select("u.*, c.webhook_url as webhook_url").Joins("left join api_tokens at on at.user_id = u.id").Joins("left join circles c on c.id = u.circle_id").Where("at.token = ?", token).First(&user).Error; err != nil {
+		if err := r.db.WithContext(c).Table("users u").Select("u.*, c.webhook_url as webhook_url").Joins("left join api_tokens at on at.user_id = u.id").Joins("left join circles c on c.id = u.circle_id").Where("at.id = ?", cred.ID).First(&user).Error; err != nil {
 			return nil, err
 		}
 		// Set default subscription/expiration for self-hosted
