@@ -1970,6 +1970,10 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 
 	authRoutes := router.Group("api/v1/auth")
 	authRoutes.Use(utils.RateLimitMiddleware(limiter))
+	// Credential payloads are tiny; cap the body so oversized requests are
+	// rejected before any limiter or validator buffers them (memory-DoS
+	// guard). File uploads do not traverse this group.
+	authRoutes.Use(auth.LimitRequestBody(auth.MaxAuthRequestBodyBytes))
 	{
 		authRoutes.POST("/:provider/callback", securityLimiter.Middleware("oidc-callback", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.thirdPartyAuthCallback)
 		// OAuth2 login bootstrap: issues a single-use state bound to a PKCE
@@ -1997,7 +2001,7 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 
 	// Protected auth routes (require JWT)
 	protectedAuthRoutes := router.Group("api/v1/auth")
-	protectedAuthRoutes.Use(jwtAuth.MiddlewareFunc(), utils.RateLimitMiddleware(limiter))
+	protectedAuthRoutes.Use(jwtAuth.MiddlewareFunc(), utils.RateLimitMiddleware(limiter), auth.LimitRequestBody(auth.MaxAuthRequestBodyBytes))
 	{
 		protectedAuthRoutes.POST("revoke-all", authHandler.RevokeAllHandler) // New revoke all endpoint
 
