@@ -42,6 +42,7 @@ type IUserRepository interface {
 	// UserSession methods for refresh token management
 	CreateUserSession(c context.Context, session *uModel.UserSession) error
 	GetUserSessionByTokenHash(c context.Context, tokenHash string) (*uModel.UserSession, error)
+	GetLiveUserSessions(c context.Context, userID int) ([]*uModel.UserSession, error)
 	MarkSessionUsed(c context.Context, sessionID string) error
 	MarkSessionUsedIfUnused(c context.Context, sessionID string) (bool, error)
 	GetLatestFamilySession(c context.Context, familyID string) (*uModel.UserSession, error)
@@ -437,6 +438,20 @@ func (r *UserRepository) RevokeSession(c context.Context, sessionID string) erro
 func (r *UserRepository) RevokeSessionFamily(c context.Context, familyID string) error {
 	now := time.Now().UTC()
 	return r.db.WithContext(c).Model(&uModel.UserSession{}).Where("family_id = ? AND revoked_at IS NULL", familyID).Update("revoked_at", now).Error
+}
+
+// GetLiveUserSessions returns every non-revoked, unexpired refresh session
+// belonging to a user, oldest first. Rows carry the raw TokenHash; callers
+// presenting these sessions to users must project them onto safe metadata
+// only.
+func (r *UserRepository) GetLiveUserSessions(c context.Context, userID int) ([]*uModel.UserSession, error) {
+	var sessions []*uModel.UserSession
+	now := time.Now().UTC()
+	err := r.db.WithContext(c).
+		Where("user_id = ? AND revoked_at IS NULL AND expires_at > ?", userID, now).
+		Order("created_at ASC").
+		Find(&sessions).Error
+	return sessions, err
 }
 
 // RevokeAllUserSessions revokes all sessions for a user (logout from all devices)

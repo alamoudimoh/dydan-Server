@@ -127,6 +127,14 @@ type JwtConfig struct {
 	SecretFile  string        `mapstructure:"secret_file" yaml:"secret_file"`
 	SessionTime time.Duration `mapstructure:"session_time" yaml:"session_time" default:"24h"` // 24 hours
 	MaxRefresh  time.Duration `mapstructure:"max_refresh" yaml:"max_refresh" default:"1440h"` // 60 days
+	// AccessTokenTime is the lifetime of the short-lived access JWTs minted by
+	// the token service for interactive sessions (browser PWA and native app).
+	// It is deliberately separate from SessionTime, which only governs legacy
+	// /api/v1/auth/login/legacy tokens kept for API/integration compatibility.
+	// Browsers restore sessions transparently via the HttpOnly refresh cookie,
+	// so a short access-token lifetime costs no UX while shrinking the window
+	// in which a stolen access JWT outlives logout/session revocation.
+	AccessTokenTime time.Duration `mapstructure:"access_token_time" yaml:"access_token_time" default:"15m"`
 }
 
 type ServerConfig struct {
@@ -146,6 +154,14 @@ type ServerConfig struct {
 	// brute-forced from a fast connection.
 	RateLimitPasswordChangePeriod time.Duration `mapstructure:"rate_limit_password_change_period" yaml:"rate_limit_password_change_period" default:"60s"`
 	RateLimitPasswordChange       int           `mapstructure:"rate_limit_password_change" yaml:"rate_limit_password_change" default:"10"`
+
+	// TrustedProxies lists the proxies allowed to set forwarding headers
+	// (X-Forwarded-Proto, X-Forwarded-Host, X-Forwarded-For). Entries are IPs
+	// or CIDRs. Forwarding headers from any other client are ignored, so a
+	// directly exposed instance cannot be fooled into marking requests as
+	// HTTPS or deriving CSRF origins from attacker-chosen hosts. The default
+	// covers loopback, which matches the common single-host nginx/Caddy setup.
+	TrustedProxies []string `mapstructure:"trusted_proxies" yaml:"trusted_proxies"`
 }
 
 type SchedulerConfig struct {
@@ -278,8 +294,9 @@ func NewConfig() *Config {
 			Migration: true,
 		},
 		Jwt: JwtConfig{
-			SessionTime: 24 * time.Hour,
-			MaxRefresh:  60 * 24 * time.Hour,
+			SessionTime:     24 * time.Hour,
+			MaxRefresh:      60 * 24 * time.Hour,
+			AccessTokenTime: 15 * time.Minute,
 		},
 		Server: ServerConfig{
 			Port:             2021,
@@ -293,6 +310,7 @@ func NewConfig() *Config {
 
 			RateLimitPasswordChangePeriod: 60 * time.Second,
 			RateLimitPasswordChange:       10,
+			TrustedProxies:                []string{"127.0.0.1/8", "::1/128"},
 		},
 		SchedulerJobs: SchedulerConfig{
 			DueJob:     30 * time.Minute,
@@ -368,6 +386,18 @@ func configEnvironmentOverrides(config *Config) {
 	if environmentIsTrue("DAYDAN_LOG_DEVELOPMENT", "DONETICK_LOG_DEVELOPMENT") {
 		config.Logging.Development = true
 	}
+
+	// Trusted proxies come in as a comma-separated list because Viper does not
+	// split raw environment values into slices on its own.
+	if raw := firstEnvironment("DAYDAN_TRUSTED_PROXIES", "DT_SERVER_TRUSTED_PROXIES", "TASKIER_TRUSTED_PROXIES"); raw != "" {
+		var proxies []string
+		for _, part := range strings.Split(raw, ",") {
+			if trimmed := strings.TrimSpace(part); trimmed != "" {
+				proxies = append(proxies, trimmed)
+			}
+		}
+		config.Server.TrustedProxies = proxies
+	}
 }
 func setDayDanDefaults(v *viper.Viper) {
 	cfg := NewConfig()
@@ -379,6 +409,7 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("database.migration", cfg.Database.Migration)
 	v.SetDefault("jwt.session_time", cfg.Jwt.SessionTime)
 	v.SetDefault("jwt.max_refresh", cfg.Jwt.MaxRefresh)
+	v.SetDefault("jwt.access_token_time", cfg.Jwt.AccessTokenTime)
 	v.SetDefault("server.port", cfg.Server.Port)
 	v.SetDefault("server.rate_period", cfg.Server.RatePeriod)
 	v.SetDefault("server.rate_limit", cfg.Server.RateLimit)
@@ -388,6 +419,7 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("server.write_timeout", cfg.Server.WriteTimeout)
 	v.SetDefault("server.webhook_timeout", cfg.Server.WebhookTimeout)
 	v.SetDefault("server.cors_allow_origins", cfg.Server.CorsAllowOrigins)
+	v.SetDefault("server.trusted_proxies", cfg.Server.TrustedProxies)
 	v.SetDefault("server.serve_frontend", cfg.Server.ServeFrontend)
 	v.SetDefault("server.serve_swagger", false)
 	v.SetDefault("scheduler_jobs.due_job", cfg.SchedulerJobs.DueJob)

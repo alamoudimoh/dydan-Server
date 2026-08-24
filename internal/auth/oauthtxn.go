@@ -83,7 +83,7 @@ func (s *OAuthTransactionStore) Start(redirectURI string) (*OAuthPendingTransact
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	txn := OAuthPendingTransaction{
 		State:         state,
 		CodeVerifier:  verifier,
@@ -115,7 +115,7 @@ func (s *OAuthTransactionStore) Consume(state string) (*OAuthPendingTransaction,
 		return nil, ErrUnknownOAuthState
 	}
 	delete(s.pending, state)
-	now := time.Now()
+	now := time.Now().UTC()
 	if now.After(txn.ExpiresAt) {
 		return nil, ErrExpiredOAuthState
 	}

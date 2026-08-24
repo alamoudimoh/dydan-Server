@@ -268,13 +268,15 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	// Never trust client-supplied X-Forwarded-For: gin's default trusts every
-	// proxy, which let anyone spoof c.ClientIP() and rotate identities past the
-	// IP-based auth rate limiter. Direct clients are the safe default; reverse
-	// proxy deployments can still set trusted proxies via config if needed.
-	if err := r.SetTrustedProxies(nil); err != nil {
+	// Forwarding headers are honored only from allowlisted proxies
+	// (server.trusted_proxies, loopback by default). This governs both gin's
+	// ClientIP resolution and the auth package's Secure-cookie/CSRF-origin
+	// decisions, so a directly exposed instance cannot be spoofed with
+	// X-Forwarded-* headers.
+	if err := r.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
 		log.Printf("failed to configure trusted proxies: %v", err)
 	}
+	auth.ConfigureProxyTrust(cfg.Server.TrustedProxies)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),

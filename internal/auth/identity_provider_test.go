@@ -45,12 +45,12 @@ func newFakeIdP(t *testing.T, userInfo map[string]any) *fakeIdP {
 
 func testOAuth2Config(f *fakeIdP) config.OAuth2Config {
 	return config.OAuth2Config{
-		ClientID:      "test-client",
-		ClientSecret:  "test-secret",
-		AuthURL:       f.server.URL + "/auth",
-		TokenURL:      f.server.URL + "/token",
-		UserInfoURL:   f.server.URL + "/userinfo",
-		Scopes:        []string{"openid", "profile", "email"},
+		ClientID:     "test-client",
+		ClientSecret: "test-secret",
+		AuthURL:      f.server.URL + "/auth",
+		TokenURL:     f.server.URL + "/token",
+		UserInfoURL:  f.server.URL + "/userinfo",
+		Scopes:       []string{"openid", "profile", "email"},
 	}
 }
 
