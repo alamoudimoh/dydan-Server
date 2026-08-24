@@ -332,34 +332,46 @@ func (h *AuthHandler) ListSessionsHandler(c *gin.Context) {
 }
 
 // RevokeSessionHandler handles DELETE /auth/sessions/:id. The :id is a
-// rotation-family ID; ownership is enforced server-side so users can only
-// revoke their own sessions.
+// rotation-family ID (device session); ownership is enforced server-side so
+// users can only revoke their own sessions. As of session-granular
+// revocation, :id may also be an individual refresh-session row ID, in which
+// case only that row is revoked and sibling sessions in the same family stay
+// live.
 func (h *AuthHandler) RevokeSessionHandler(c *gin.Context) {
 	currentUser, ok := CurrentUser(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	familyID := c.Param("id")
-	if familyID == "" {
+	sessionOrFamilyID := c.Param("id")
+	if sessionOrFamilyID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Session id required"})
 		return
 	}
-	_, currentFamily := h.currentSessionRef(c)
+	currentSessionID, currentFamily := h.currentSessionRef(c)
 
-	found, err := h.tokenService.RevokeUserSessionFamily(c.Request.Context(), currentUser.ID, familyID)
+	found, err := h.tokenService.RevokeUserSessionFamily(c.Request.Context(), currentUser.ID, sessionOrFamilyID)
 	if err != nil {
 		logging.FromContext(c).Errorw("Failed to revoke session", "error", err, "userID", currentUser.ID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to revoke session"})
 		return
 	}
 	if !found {
+		found, err = h.tokenService.RevokeUserSessionByID(c.Request.Context(), currentUser.ID, sessionOrFamilyID)
+		if err != nil {
+			logging.FromContext(c).Errorw("Failed to revoke session", "error", err, "userID", currentUser.ID)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to revoke session"})
+			return
+		}
+	}
+	if !found {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
 		return
 	}
 
-	// Revoking your own current session is a logout: drop the refresh cookie.
-	if currentFamily == familyID {
+	// Revoking your own current family or your own current session is a
+	// logout: drop the refresh cookie.
+	if currentFamily == sessionOrFamilyID || (currentSessionID != "" && currentSessionID == sessionOrFamilyID) {
 		ClearRefreshSessionCookie(c)
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Session revoked"})

@@ -86,6 +86,8 @@ oauth2:
 realtime:
   enabled: true
   sse_enabled: true
+  # heartbeat_interval is also the SSE revocation-propagation bound: values
+  # <=0 fall back to 30s and values >5m are clamped to 5m server-side.
   heartbeat_interval: 60s
   connection_timeout: 120s
   max_connections: 1000

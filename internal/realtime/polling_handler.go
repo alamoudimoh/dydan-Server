@@ -20,6 +20,32 @@ import (
 	"go.uber.org/zap"
 )
 
+// Auth revalidation for long-lived realtime connections rides on the
+// heartbeat tick, so the heartbeat configuration is also the revocation
+// propagation bound. These constants keep that bound finite even when the
+// configured interval is unset or unreasonably large:
+//   - <= 0 falls back to defaultHeartbeatInterval (revocation can never be
+//     disabled by misconfiguration)
+//   - values above maxHeartbeatInterval are clamped to it
+//
+// The maximum stale interval for SSE is therefore
+// min(max(configured, default), maxHeartbeatInterval) — 30s with stock
+// settings.
+const (
+	defaultHeartbeatInterval = 30 * time.Second
+	maxHeartbeatInterval     = 5 * time.Minute
+)
+
+func effectiveHeartbeatInterval(interval time.Duration) time.Duration {
+	if interval <= 0 {
+		return defaultHeartbeatInterval
+	}
+	if interval > maxHeartbeatInterval {
+		return maxHeartbeatInterval
+	}
+	return interval
+}
+
 // PollingHandler handles Server-Sent Events (SSE) for real-time updates
 type PollingHandler struct {
 	realTimeService *RealTimeService
@@ -336,7 +362,7 @@ func (h *PollingHandler) sendSSEEvent(c *gin.Context, event *Event) bool {
 
 // heartbeatLoop sends periodic heartbeat events
 func (h *PollingHandler) heartbeatLoop(ctx context.Context, c *gin.Context, circleID int) {
-	ticker := time.NewTicker(h.config.RealTimeConfig.HeartbeatInterval)
+	ticker := time.NewTicker(effectiveHeartbeatInterval(h.config.RealTimeConfig.HeartbeatInterval))
 	defer ticker.Stop()
 
 	for {
@@ -354,7 +380,7 @@ func (h *PollingHandler) heartbeatLoop(ctx context.Context, c *gin.Context, circ
 
 // sseEventLoop manages the main event loop for SSE connections
 func (h *PollingHandler) sseEventLoop(ctx context.Context, c *gin.Context, conn *Connection, circleID int, claims map[string]interface{}) {
-	ticker := time.NewTicker(h.config.RealTimeConfig.HeartbeatInterval)
+	ticker := time.NewTicker(effectiveHeartbeatInterval(h.config.RealTimeConfig.HeartbeatInterval))
 	defer ticker.Stop()
 
 	h.logger.Debugw("SSE event loop started", "connectionId", conn.ID, "heartbeatInterval", h.config.RealTimeConfig.HeartbeatInterval)

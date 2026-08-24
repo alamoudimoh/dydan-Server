@@ -1,12 +1,14 @@
 package realtime
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"net/http"
 
 	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/daydan-server/internal/auth"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/gin-gonic/gin"
@@ -69,6 +71,18 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 	user := userInterface.(*uModel.User)
 	circleID := circleIDInterface.(int)
 
+	// Snapshot the validated security claims so the connection can be
+	// re-validated against authoritative state after the handshake.
+	securityState, hasClaims := c.Get("accessSecurityClaims")
+	claims, claimsAreMap := securityState.(map[string]interface{})
+	if !hasClaims || !claimsAreMap {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication state is invalid",
+			"code":  "AUTH_REQUIRED",
+		})
+		return
+	}
+
 	// Upgrade HTTP connection to WebSocket
 	conn, err := WebSocketUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -84,6 +98,35 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 
 	// Create connection object
 	wsConn := NewConnection(connectionID, circleID, user.ID, user, conn, h.logger)
+
+	// Bounded post-handshake enforcement: handshake-only authentication would
+	// otherwise let a revoked session keep an authenticated WebSocket
+	// indefinitely. The write pump re-validates the original claims against
+	// the database on every ping tick (<= 54s), so session, family, global,
+	// and credential-version revocations all terminate this connection within
+	// one ping interval.
+	//
+	// Two deliberate details:
+	//   - The check runs on a detached, timeout-bounded context: the handshake
+	//     request's context is cancelled by the HTTP server as soon as this
+	//     handler returns, while the connection lives on.
+	//   - Validation ignores the snapshot's "exp" (ValidateRealtimeSession):
+	//     ongoing authorization here is continuous authoritative state
+	//     (session-row liveness, credential version, account enabled), so a
+	//     healthy session's connection must not be cut off merely because its
+	//     original access JWT aged past its TTL.
+	snapshot := make(map[string]interface{}, len(claims))
+	for k, v := range claims {
+		snapshot[k] = v
+	}
+	wsConn.SetAuthRevalidator(func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), wsRevalidationTimeout)
+		defer cancel()
+		if _, err := auth.ValidateRealtimeSession(ctx, h.authMiddleware.userRepo, snapshot); err != nil {
+			return err
+		}
+		return nil
+	})
 
 	// Add connection to the real-time service
 	if err := h.realTimeService.AddConnection(wsConn); err != nil {

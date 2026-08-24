@@ -620,6 +620,18 @@ func (r *UserRepository) IsUserSessionFamilyLive(c context.Context, userID int, 
 	return count > 0, err
 }
 
+// IsUserSessionLive reports whether the exact session row is still live.
+// Because revoking a family stamps every row in it, a live row implies its
+// family is live, so this single check subsumes family liveness for tokens
+// that carry a session reference.
+func (r *UserRepository) IsUserSessionLive(c context.Context, userID int, sessionID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(c).Model(&uModel.UserSession{}).
+		Where("user_id = ? AND id = ? AND revoked_at IS NULL AND expires_at > ?", userID, sessionID, time.Now().UTC()).
+		Limit(1).Count(&count).Error
+	return count > 0, err
+}
+
 // RevokeSession revokes a specific session
 func (r *UserRepository) RevokeSession(c context.Context, sessionID string) error {
 	now := time.Now().UTC()
@@ -640,6 +652,24 @@ func (r *UserRepository) RevokeUserSessionFamily(c context.Context, userID int, 
 		}
 		res := tx.Model(&uModel.UserSession{}).
 			Where("user_id = ? AND family_id = ? AND revoked_at IS NULL", userID, familyID).
+			Update("revoked_at", time.Now().UTC())
+		found = res.RowsAffected > 0
+		return res.Error
+	})
+	return found, err
+}
+
+// RevokeUserSessionByID revokes exactly one session row after verifying it
+// belongs to userID. Other sessions in the same rotation family stay live,
+// so their access JWTs keep working while the revoked session's tokens die.
+func (r *UserRepository) RevokeUserSessionByID(c context.Context, userID int, sessionID string) (bool, error) {
+	found := false
+	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if _, err := lockUserSessionWrites(tx, userID); err != nil {
+			return err
+		}
+		res := tx.Model(&uModel.UserSession{}).
+			Where("user_id = ? AND id = ? AND revoked_at IS NULL", userID, sessionID).
 			Update("revoked_at", time.Now().UTC())
 		found = res.RowsAffected > 0
 		return res.Error
