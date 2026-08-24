@@ -145,16 +145,21 @@ refreshed=$(curl --silent --cookie "$jar_a" --cookie-jar "$jar_a" \
 new_token=$(jq -r .access_token <<<"$refreshed")
 [[ "$new_token" != "null" && -n "$new_token" ]] && ok "cookie refresh issues new access token" || bad "cookie refresh failed: $refreshed"
 
-# --- parallel refresh: all tabs succeed within grace window ------------------
+# --- parallel refresh: one rotation, stale requests receive no credentials ---
 pids=(); results="${data_dir}/parallel"
 rm -rf "$results"; mkdir -p "$results"
+parallel_token=$(awk '{print $NF}' <(grep refresh_token "$jar_a"))
 for i in 1 2 3 4 5; do
-  (curl --silent --cookie "$jar_a" -X POST -H "Origin: ${base}" \
-    "${base}/api/v1/auth/refresh" >"$results/$i.json") & pids+=($!)
+  (curl --silent --output "$results/$i.json" --write-out '%{http_code}' \
+    -X POST --header 'Content-Type: application/json' \
+    --data "{\"refresh_token\":\"${parallel_token}\"}" \
+    "${base}/api/v1/auth/refresh" >"$results/$i.status") & pids+=($!)
 done
 wait "${pids[@]}"
 parallel_ok=$(grep -l access_token "$results"/*.json 2>/dev/null | wc -l)
-assert_eq "5 parallel tab refreshes all succeeded" "$parallel_ok" "5"
+parallel_retry=$(grep -l '^409$' "$results"/*.status 2>/dev/null | wc -l)
+assert_eq "parallel refresh mints exactly one successor" "$parallel_ok" "1"
+assert_eq "parallel stale refreshes return retry conflicts" "$parallel_retry" "4"
 
 # --- CSRF: cross-origin POST rejected ----------------------------------------
 code=$(curl --silent --output /dev/null --write-out '%{http_code}' --cookie "$jar_a" \
@@ -170,9 +175,17 @@ code=$(curl --silent --output /dev/null --write-out '%{http_code}' --cookie "$ja
 assert_eq "spoofed X-Forwarded-* cannot legitimize cross-origin refresh (403)" "$code" "403"
 
 # --- native flow: refresh token in body --------------------------------------
+parallel_success=""
+for candidate in "$results"/*.json; do
+  if grep -q access_token "$candidate"; then
+    parallel_success="$candidate"
+    break
+  fi
+done
+native_token=$(jq -r .refresh_token "$parallel_success")
 native_refresh=$(curl --silent --cookie-jar /dev/null -X POST \
   --header 'Content-Type: application/json' \
-  --data "{\"refresh_token\":\"$(awk '{print $NF}' <(grep refresh_token "$jar_a"))\"}" \
+  --data "{\"refresh_token\":\"${native_token}\"}" \
   "${base}/api/v1/auth/refresh")
 [[ "$(jq -r .access_token <<<"$native_refresh")" != "null" ]] && ok "native body-flow refresh works" || bad "native body-flow refresh failed"
 
@@ -211,6 +224,12 @@ pw=$(curl --silent --header "Authorization: Bearer $new_token" \
 code=$(curl --silent --output /dev/null --write-out '%{http_code}' --cookie "$jar_b" \
   -X POST -H "Origin: ${base}" "${base}/api/v1/auth/refresh")
 assert_eq "password change revoked other device session (401)" "$code" "401"
+current_refresh=$(jq -r .refresh_token <<<"$native_refresh")
+code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --request POST --header 'Content-Type: application/json' \
+  --data "{\"refresh_token\":\"${current_refresh}\"}" \
+  "${base}/api/v1/auth/refresh")
+assert_eq "password change preserves caller family (200)" "$code" "200"
 
 # wrong current password refused
 code=$(curl --silent --output /dev/null --write-out '%{http_code}' \

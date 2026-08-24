@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -25,10 +26,7 @@ func backdateTokenUse(t *testing.T, svc *TokenService, db *gorm.DB, refreshToken
 	}
 }
 
-// TestReplayWithinGraceWindowSucceeds documents the benign case: a parallel
-// browser tab (or a retry) re-presenting the just-rotated token inside the
-// grace window must continue the rotation, not revoke the family.
-func TestReplayWithinGraceWindowSucceeds(t *testing.T) {
+func TestReplayWithinGraceWindowCannotMintDescendant(t *testing.T) {
 	svc, db, user := newTokenServiceHarness(t)
 	ctx := context.Background()
 
@@ -43,8 +41,8 @@ func TestReplayWithinGraceWindowSucceeds(t *testing.T) {
 	// A few seconds of tab skew, still far inside the 90s window.
 	backdateTokenUse(t, svc, db, first.RefreshToken, 5*time.Second)
 
-	if _, err := svc.RefreshTokens(ctx, first.RefreshToken); err != nil {
-		t.Fatalf("replay inside grace window must be treated as concurrency: %v", err)
+	if _, err := svc.RefreshTokens(ctx, first.RefreshToken); !errors.Is(err, ErrRefreshRetry) {
+		t.Fatalf("replay inside grace window must only request retry: %v", err)
 	}
 }
 
@@ -70,18 +68,16 @@ func TestReplayCannotExtendGraceIndefinitely(t *testing.T) {
 		t.Fatalf("legitimate rotation: %v", err)
 	}
 
-	// Attacker replays inside the window; this mints attacker-owned branches
-	// and (under the old algorithm) would have refreshed their lease.
+	// Attacker replay inside the window receives no credentials.
 	backdateTokenUse(t, svc, db, first.RefreshToken, 30*time.Second)
-	replay1, err := svc.RefreshTokens(ctx, first.RefreshToken)
-	if err != nil {
-		t.Fatalf("first in-window replay should mimic a concurrent tab: %v", err)
+	if _, err := svc.RefreshTokens(ctx, first.RefreshToken); !errors.Is(err, ErrRefreshRetry) {
+		t.Fatalf("first in-window replay should only request retry: %v", err)
 	}
 
-	// Attacker keeps replaying; each one advances the family head to "now".
+	// Repeated replay still cannot advance the family head.
 	backdateTokenUse(t, svc, db, first.RefreshToken, 80*time.Second)
-	if _, err := svc.RefreshTokens(ctx, first.RefreshToken); err != nil {
-		t.Fatalf("second in-window replay should also be tolerated: %v", err)
+	if _, err := svc.RefreshTokens(ctx, first.RefreshToken); !errors.Is(err, ErrRefreshRetry) {
+		t.Fatalf("second in-window replay should only request retry: %v", err)
 	}
 
 	// The window closes on the ORIGINAL consumption time, not on attacker
@@ -91,20 +87,10 @@ func TestReplayCannotExtendGraceIndefinitely(t *testing.T) {
 		t.Fatal("replay after original-use + grace must be rejected regardless of fresh head")
 	}
 
-	// Fail-closed: the whole family — including the attacker's freshly minted
-	// branch — must be dead.
-	if _, err := svc.RefreshTokens(ctx, replay1.RefreshToken); err == nil {
-		t.Fatal("attacker-minted successor must die with the family")
-	}
 	if got := liveFamilySessions(t, db, family); got != 0 {
 		t.Fatalf("expected entire family revoked, got %d live sessions", got)
 	}
 
-	// The legitimate user's current token dies too (reuse detection tradeoff):
-	// present it and confirm rejection.
-	if _, err := svc.RefreshTokens(ctx, replay1.RefreshToken); err == nil {
-		t.Fatal("revoked family must keep rejecting refreshes")
-	}
 }
 
 // TestRepeatedAttackerReplayIsBounded proves the attacker cannot ride along

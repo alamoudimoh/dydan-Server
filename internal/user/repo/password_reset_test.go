@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,10 +18,75 @@ func passwordResetRepo(t *testing.T) (*UserRepository, *gorm.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&uModel.User{}, &uModel.UserPasswordReset{}); err != nil {
+	if err := db.AutoMigrate(&uModel.User{}, &uModel.UserPasswordReset{}, &uModel.UserSession{}); err != nil {
 		t.Fatal(err)
 	}
 	return NewUserRepository(db, &config.Config{IsDayDanCloud: false}), db
+}
+
+func TestUpdatePasswordByTokenRevokesAllRefreshSessions(t *testing.T) {
+	r, db := passwordResetRepo(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	user := &uModel.User{ID: 1, Username: "alice", Email: "alice@example.com", Password: "old"}
+	if err := db.Create(user).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&uModel.UserPasswordReset{UserID: user.ID, Token: "valid-token", Email: user.Email, ExpirationDate: now.Add(time.Hour)}).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"session-a", "session-b"} {
+		if err := db.Create(&uModel.UserSession{ID: id, UserID: user.ID, TokenHash: "hash-" + id, FamilyID: "family-" + id, CreatedAt: now, ExpiresAt: now.Add(time.Hour)}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := r.UpdatePasswordByToken(ctx, user.Email, "valid-token", "newpass"); err != nil {
+		t.Fatalf("reset password: %v", err)
+	}
+	var live int64
+	db.Model(&uModel.UserSession{}).Where("user_id = ? AND revoked_at IS NULL", user.ID).Count(&live)
+	if live != 0 {
+		t.Fatalf("password reset left %d live refresh sessions", live)
+	}
+	var resetRows int64
+	db.Model(&uModel.UserPasswordReset{}).Where("token = ?", "valid-token").Count(&resetRows)
+	if resetRows != 0 {
+		t.Fatal("reset token was not consumed transactionally")
+	}
+}
+
+func TestUpdatePasswordByTokenHasSingleConcurrentWinner(t *testing.T) {
+	r, db := passwordResetRepo(t)
+	now := time.Now().UTC()
+	user := &uModel.User{ID: 1, Username: "alice", Email: "alice@example.com", Password: "old"}
+	if err := db.Create(user).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&uModel.UserPasswordReset{UserID: user.ID, Token: "one-use", Email: user.Email, ExpirationDate: now.Add(time.Hour)}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	results := make(chan error, 2)
+	for _, password := range []string{"first", "second"} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results <- r.UpdatePasswordByToken(context.Background(), user.Email, "one-use", password)
+		}()
+	}
+	wg.Wait()
+	close(results)
+	winners := 0
+	for err := range results {
+		if err == nil {
+			winners++
+		}
+	}
+	if winners != 1 {
+		t.Fatalf("expected one reset-token winner, got %d", winners)
+	}
 }
 
 // Regression: UpdatePasswordByToken must reject reset tokens whose expiration

@@ -93,7 +93,7 @@ func (am *AuthMiddleware) AuthenticateConnection(c *gin.Context) (*uModel.User, 
 
 	// Get user from database
 	user, err := am.userRepo.GetUserByID(c.Request.Context(), userID)
-	if err != nil {
+	if err != nil || user.Disabled {
 		logger.Errorw("Failed to get user", "userID", userID, "error", err)
 		return nil, 0, ErrInvalidToken
 	}

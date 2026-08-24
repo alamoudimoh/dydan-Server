@@ -94,7 +94,7 @@ forwards raw client headers through to DayDan unmodified (do not enable the
 |-----------------------------------------|-----------------------|---------|------------|
 | Interactive access JWT                  | `jwt.access_token_time` | **15m** | Browser PWA + native app logins (`/auth/login`, refresh rotation, OIDC/MFA flows) |
 | Legacy login JWT                        | `jwt.session_time`      | 24h     | `/api/v1/auth/login/legacy` only |
-| Refresh session (rotating family)       | `jwt.max_refresh`       | 60d sliding | Both browser cookie and native body flow |
+| Refresh session (rotating family)       | `jwt.max_refresh`       | 60d absolute | Both browser cookie and native body flow |
 
 Interactive access tokens are short-lived on purpose: logout and session
 revocation take full effect within minutes even if a bearer token was copied
@@ -119,7 +119,13 @@ Responses contain metadata only — never token values, hashes, or secrets:
 
 Revoking the current session also clears the refresh cookie (self-logout).
 
-> **Frontend follow-up:** the settings UI for this API is intentionally not
-> part of the Phase 3 change set (the settings surfaces were under concurrent
-> edit). The API above is stable and ready for a small "Active sessions"
-> panel in a later change.
+Refresh rotation is single-use. A duplicate request inside the bounded grace
+window receives `409 REFRESH_RETRY` and no credentials; browser clients retry
+against the successor in the shared HttpOnly cookie. Reuse after the grace
+window revokes every descendant in the family.
+
+An authenticated password change preserves the caller's current refresh
+session and revokes all other interactive sessions. Password recovery revokes
+all interactive refresh sessions transactionally with the password update.
+Already-issued access JWTs remain usable only for their configured short
+`jwt.access_token_time`; DayDan does not maintain an access-token blacklist.

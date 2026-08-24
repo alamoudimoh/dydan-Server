@@ -8,16 +8,22 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/sync/singleflight"
 )
 
 type AppleService struct {
 	clientID    string
 	keys        map[string]*rsa.PublicKey
 	keysFetched time.Time
+	keysMu      sync.RWMutex
+	keysFetch   singleflight.Group
+	keysURL     string
+	httpClient  *http.Client
 }
 
 type AppleUserInfo struct {
@@ -53,6 +59,10 @@ func NewAppleService(config *config.Config) *AppleService {
 	return &AppleService{
 		clientID: config.DayDanCloudConfig.AppleClientID,
 		keys:     make(map[string]*rsa.PublicKey),
+		keysURL:  "https://appleid.apple.com/auth/keys",
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 
@@ -113,15 +123,22 @@ func (s *AppleService) ValidateIDToken(ctx context.Context, idToken string) (*Ap
 
 func (s *AppleService) getPublicKey(ctx context.Context, kid string) (*rsa.PublicKey, error) {
 	// Check if we have the key and it's not too old (refresh every hour)
+	s.keysMu.RLock()
 	if key, exists := s.keys[kid]; exists && time.Since(s.keysFetched) < time.Hour {
+		s.keysMu.RUnlock()
 		return key, nil
 	}
+	s.keysMu.RUnlock()
 
-	// Fetch keys from Apple
-	if err := s.fetchApplePublicKeys(ctx); err != nil {
+	// Coalesce cache misses without holding the cache lock during network I/O.
+	if _, err, _ := s.keysFetch.Do("apple-jwks", func() (interface{}, error) {
+		return nil, s.fetchApplePublicKeys(ctx)
+	}); err != nil {
 		return nil, err
 	}
 
+	s.keysMu.RLock()
+	defer s.keysMu.RUnlock()
 	key, exists := s.keys[kid]
 	if !exists {
 		return nil, fmt.Errorf("key with kid %s not found", kid)
@@ -131,13 +148,12 @@ func (s *AppleService) getPublicKey(ctx context.Context, kid string) (*rsa.Publi
 }
 
 func (s *AppleService) fetchApplePublicKeys(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://appleid.apple.com/auth/keys", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.keysURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to fetch keys: %w", err)
 	}
@@ -152,10 +168,8 @@ func (s *AppleService) fetchApplePublicKeys(ctx context.Context) error {
 		return fmt.Errorf("failed to decode keys response: %w", err)
 	}
 
-	// Clear existing keys
-	s.keys = make(map[string]*rsa.PublicKey)
-
 	// Convert Apple keys to RSA public keys
+	keys := make(map[string]*rsa.PublicKey)
 	for _, key := range keysResponse.Keys {
 		if key.Kty != "RSA" {
 			continue
@@ -166,10 +180,13 @@ func (s *AppleService) fetchApplePublicKeys(ctx context.Context) error {
 			return fmt.Errorf("failed to parse RSA public key for kid %s: %w", key.Kid, err)
 		}
 
-		s.keys[key.Kid] = publicKey
+		keys[key.Kid] = publicKey
 	}
 
+	s.keysMu.Lock()
+	s.keys = keys
 	s.keysFetched = time.Now().UTC()
+	s.keysMu.Unlock()
 	return nil
 }
 
