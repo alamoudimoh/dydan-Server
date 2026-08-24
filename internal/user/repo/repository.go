@@ -22,6 +22,11 @@ import (
 
 var ErrInvalidPasswordResetToken = errors.New("invalid password reset token")
 
+// ErrUserAlreadyExists reports that the submitted signup identity (username or
+// email) collides with an existing account. It is an expected, client-facing
+// condition — not an internal failure.
+var ErrUserAlreadyExists = errors.New("an account with this username or email already exists")
+
 const passwordResetLifetime = time.Hour
 
 func passwordResetTokenHash(token string) string {
@@ -93,6 +98,19 @@ func (r *UserRepository) GetAllUsersForSystemOnly(c context.Context) ([]*uModel.
 }
 func (r *UserRepository) CreateUser(c context.Context, user *uModel.User) (*uModel.User, error) {
 	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
+	// Expected duplicate identities are classified up front (mirroring the
+	// label-repo sentinel-error convention) so the handler can answer 409
+	// instead of surfacing an internal server error. The unique indexes remain
+	// the authoritative guard against concurrent-signup races.
+	var count int64
+	if err := r.db.WithContext(c).Model(&uModel.User{}).
+		Where("username = ? OR (email != '' AND email = ?)", user.Username, user.Email).
+		Count(&count).Error; err != nil {
+		return nil, err
+	}
+	if count > 0 {
+		return nil, ErrUserAlreadyExists
+	}
 	if err := r.db.WithContext(c).Create(user).Error; err != nil {
 		return nil, err
 	}

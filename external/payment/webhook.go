@@ -268,7 +268,9 @@ func (h *Webhook) RevenueCatWebhook(c *gin.Context) {
 	// check authentication header to be equal to secret123:
 	authHeader := c.GetHeader("Authorization")
 	if authHeader != h.revenueCatConfig.AuthSecret {
-		logger.Errorw("revenuecat.webhook.RevenueCatWebhook failed to validate auth header", "auth_header", authHeader)
+		// Log only the failure category. The Authorization header carries the
+		// webhook secret and must never be written to logs.
+		logger.Errorw("revenuecat.webhook.RevenueCatWebhook failed to validate auth header", "header_present", authHeader != "")
 		c.JSON(http.StatusForbidden, "Forbidden")
 		return
 	}

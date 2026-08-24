@@ -247,24 +247,6 @@ func (h *AuthHandler) authenticateUser(c *gin.Context, username, password string
 	return user, nil
 }
 
-// Enhanced login response that uses token service
-func (h *AuthHandler) EnhancedLoginResponse(c *gin.Context, code int, token string, expire time.Time, user *uModel.UserDetails) {
-	// Generate refresh token along with access token
-	tokenResponse, err := h.tokenService.GenerateTokens(context.TODO(), user)
-	if err != nil {
-		logging.FromContext(c).Errorw("Failed to generate refresh token", "error", err)
-		// Fallback to original response
-		c.JSON(code, gin.H{
-			"code":   code,
-			"token":  token,
-			"expire": expire,
-		})
-		return
-	}
-
-	WriteTokenResponse(c, code, tokenResponse)
-}
-
 // WriteTokenResponse keeps browser refresh credentials confined to the
 // HttpOnly cookie while preserving the JSON contract for native/API clients.
 func WriteTokenResponse(c *gin.Context, code int, response *TokenResponse) {

@@ -55,7 +55,9 @@ type APIToken struct {
 	ID        int       `json:"id" gorm:"primary_key"`              // Unique identifier
 	Name      string    `json:"name" gorm:"column:name"`            // Name (display only, not unique)
 	UserID    int       `json:"userId" gorm:"column:user_id;index"` // Index on userID
-	Token     string    `json:"token" gorm:"column:token;index"`    // Index on token
+	// Token is the reusable credential. It is never serialized (shown once in
+	// the creation response) and must not be retrievable via list/read.
+	Token     string    `json:"-" gorm:"column:token;index"` // Index on token
 	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at"`
 }
 
