@@ -180,6 +180,14 @@ func (h *Handler) signUp(c *gin.Context) {
 		CreatedAt:   time.Now().UTC(),
 		UpdatedAt:   time.Now().UTC(),
 	}); err != nil {
+		if errors.Is(err, uRepo.ErrUserAlreadyExists) {
+			// Expected conflict, not an internal failure. The message mirrors
+			// the information the previous error body already disclosed.
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "Error creating user, email already exists or username is taken",
+			})
+			return
+		}
 		c.JSON(500, gin.H{
 			"error": "Error creating user, email already exists or username is taken",
 		})
@@ -1215,7 +1223,16 @@ func (h *Handler) CreateLongLivedToken(c *gin.Context) {
 		return
 	}
 
-	response := gin.H{"res": tokenModel}
+	// The raw credential is disclosed exactly once, here. Listing and other
+	// read paths only ever expose safe metadata (see APIToken model).
+	response := gin.H{
+		"res": gin.H{
+			"id":        tokenModel.ID,
+			"name":      tokenModel.Name,
+			"createdAt": tokenModel.CreatedAt,
+			"token":     token,
+		},
+	}
 
 	// If user has MFA enabled but didn't provide a code, suggest using MFA for enhanced security
 	if currentUser.MFAEnabled && req.MFACode == "" {

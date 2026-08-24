@@ -120,7 +120,7 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 		snapshot[k] = v
 	}
 	wsConn.SetAuthRevalidator(func() error {
-		ctx, cancel := context.WithTimeout(context.Background(), wsRevalidationTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), realtimeAuthProbeTimeout)
 		defer cancel()
 		if _, err := auth.ValidateRealtimeSession(ctx, h.authMiddleware.userRepo, snapshot); err != nil {
 			return err

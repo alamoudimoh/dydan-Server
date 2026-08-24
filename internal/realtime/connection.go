@@ -30,9 +30,11 @@ type Connection struct {
 	authRevalidate func() error
 }
 
-// wsRevalidationTimeout bounds each auth probe so a slow database can never
-// stall the write pump indefinitely.
-const wsRevalidationTimeout = 5 * time.Second
+// realtimeAuthProbeTimeout bounds each authoritative auth revalidation probe
+// (WebSocket and SSE alike) so a slow database can never stall the validating
+// caller indefinitely. Both paths fail closed: any probe error, including a
+// deadline overrun, tears the connection down.
+const realtimeAuthProbeTimeout = 5 * time.Second
 
 // wsPingInterval controls the WebSocket server-ping cadence. It is also the
 // maximum interval at which auth revalidation runs, i.e. the worst-case bound

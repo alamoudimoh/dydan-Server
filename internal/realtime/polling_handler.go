@@ -14,6 +14,7 @@ import (
 	"github.com/alamoudimoh/daydan-server/config"
 	"github.com/alamoudimoh/daydan-server/internal/auth"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 	"github.com/alamoudimoh/daydan-server/logging"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
@@ -360,6 +361,24 @@ func (h *PollingHandler) sendSSEEvent(c *gin.Context, event *Event) bool {
 	return true
 }
 
+// validateSSESession runs one authoritative mutable-session revalidation
+// probe under an explicit deadline (realtimeAuthProbeTimeout, shared with the
+// WebSocket path) so a stalled repository operation cannot hang this handler
+// goroutine indefinitely. The parent context is the connection lifecycle
+// context — already detached from the handshake request — so client
+// disconnects still cancel in-flight probes. Fail-closed: any error, including
+// a deadline overrun, terminates the connection via sseEventLoop.
+func validateSSESession(ctx context.Context, repo *uRepo.UserRepository, claims map[string]interface{}) error {
+	return boundedSessionProbe(ctx, repo, claims, realtimeAuthProbeTimeout)
+}
+
+func boundedSessionProbe(ctx context.Context, repo *uRepo.UserRepository, claims map[string]interface{}, timeout time.Duration) error {
+	probeCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	_, err := auth.ValidateAccessClaims(probeCtx, repo, claims)
+	return err
+}
+
 // heartbeatLoop sends periodic heartbeat events
 func (h *PollingHandler) heartbeatLoop(ctx context.Context, c *gin.Context, circleID int) {
 	ticker := time.NewTicker(effectiveHeartbeatInterval(h.config.RealTimeConfig.HeartbeatInterval))
@@ -410,7 +429,7 @@ func (h *PollingHandler) sseEventLoop(ctx context.Context, c *gin.Context, conn 
 			h.logger.Debugw("SSE event sent successfully", "connectionId", conn.ID, "eventType", event.Type)
 
 		case <-ticker.C:
-			if _, err := auth.ValidateAccessClaims(ctx, h.authMiddleware.userRepo, claims); err != nil {
+			if err := validateSSESession(ctx, h.authMiddleware.userRepo, claims); err != nil {
 				h.logger.Infow("SSE authentication state revoked, closing connection", "connectionId", conn.ID)
 				return
 			}
