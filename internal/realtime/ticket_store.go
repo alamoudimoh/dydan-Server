@@ -25,6 +25,7 @@ var ErrTicketStoreFull = errors.New("ticket store is full")
 
 type ticketEntry struct {
 	userID    int
+	claims    map[string]interface{}
 	expiresAt time.Time
 }
 
@@ -62,7 +63,7 @@ func (s *TicketStore) Stop() {
 }
 
 // Issue creates a new single-use ticket bound to the given user and returns it.
-func (s *TicketStore) Issue(userID int) (string, error) {
+func (s *TicketStore) Issue(userID int, claims map[string]interface{}) (string, error) {
 	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {
 		return "", err
@@ -88,6 +89,7 @@ func (s *TicketStore) Issue(userID int) (string, error) {
 
 	s.tickets[ticket] = ticketEntry{
 		userID:    userID,
+		claims:    claims,
 		expiresAt: time.Now().UTC().Add(ticketTTL),
 	}
 
@@ -96,9 +98,9 @@ func (s *TicketStore) Issue(userID int) (string, error) {
 
 // Consume validates a ticket and returns the associated user ID. Tickets are
 // single-use: a successful lookup removes the ticket so it cannot be replayed.
-func (s *TicketStore) Consume(ticket string) (int, bool) {
+func (s *TicketStore) Consume(ticket string) (ticketEntry, bool) {
 	if ticket == "" {
-		return 0, false
+		return ticketEntry{}, false
 	}
 
 	s.mu.Lock()
@@ -106,17 +108,17 @@ func (s *TicketStore) Consume(ticket string) (int, bool) {
 
 	entry, ok := s.tickets[ticket]
 	if !ok {
-		return 0, false
+		return ticketEntry{}, false
 	}
 
 	// Always delete on lookup so it cannot be reused, even if expired.
 	delete(s.tickets, ticket)
 
 	if time.Now().UTC().After(entry.expiresAt) {
-		return 0, false
+		return ticketEntry{}, false
 	}
 
-	return entry.userID, true
+	return entry, true
 }
 
 // purgeExpiredLocked removes all expired tickets. The caller must hold s.mu.

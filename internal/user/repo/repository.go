@@ -361,8 +361,22 @@ func (r *UserRepository) DeleteNotificationTarget(c context.Context, userID int)
 func (r *UserRepository) UpdateNotificationTargetForAllNotifications(c context.Context, userID int, targetID string, targetType nModel.NotificationPlatform) error {
 	return r.db.WithContext(c).Model(&nModel.Notification{}).Where("user_id = ?", userID).Update("target_id", targetID).Update("type", targetType).Error
 }
-func (r *UserRepository) UpdatePasswordByUserId(c context.Context, userID int, password string) error {
-	return r.db.WithContext(c).Model(&uModel.User{}).Where("id = ?", userID).Update("password", password).Error
+func (r *UserRepository) ChangeChildPasswordAndRevokeSessions(c context.Context, userID int, password string) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		updated := tx.Model(&uModel.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+			"password":           password,
+			"credential_version": gorm.Expr("credential_version + 1"),
+		})
+		if updated.Error != nil {
+			return updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		return tx.Model(&uModel.UserSession{}).
+			Where("user_id = ? AND revoked_at IS NULL", userID).
+			Update("revoked_at", time.Now().UTC()).Error
+	})
 }
 
 func (r *UserRepository) ChangePasswordAndRevokeOtherFamilies(c context.Context, userID int, password, keepFamilyID string) error {
@@ -397,22 +411,38 @@ func (r *UserRepository) EnableMFA(c context.Context, userID int, secret string,
 		return err
 	}
 
-	return r.db.WithContext(c).Model(&uModel.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+	return r.changeMFAStateAndRevokeSessions(c, userID, map[string]interface{}{
 		"mfa_enabled":             true,
 		"mfa_secret":              secret,
 		"mfa_backup_codes":        string(backupCodesJSON),
 		"mfa_recovery_codes_used": "[]",
-	}).Error
+	})
 }
 
 // DisableMFA disables MFA for a user
 func (r *UserRepository) DisableMFA(c context.Context, userID int) error {
-	return r.db.WithContext(c).Model(&uModel.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+	return r.changeMFAStateAndRevokeSessions(c, userID, map[string]interface{}{
 		"mfa_enabled":             false,
 		"mfa_secret":              "",
 		"mfa_backup_codes":        "",
 		"mfa_recovery_codes_used": "",
-	}).Error
+	})
+}
+
+func (r *UserRepository) changeMFAStateAndRevokeSessions(c context.Context, userID int, updates map[string]interface{}) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		updates["credential_version"] = gorm.Expr("credential_version + 1")
+		updated := tx.Model(&uModel.User{}).Where("id = ?", userID).Updates(updates)
+		if updated.Error != nil {
+			return updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		return tx.Model(&uModel.UserSession{}).
+			Where("user_id = ? AND revoked_at IS NULL", userID).
+			Update("revoked_at", time.Now().UTC()).Error
+	})
 }
 
 // UpdateMFARecoveryCodes updates the used recovery codes for a user
@@ -580,6 +610,14 @@ func (r *UserRepository) GetLatestFamilySession(c context.Context, familyID stri
 		return nil, err
 	}
 	return &session, nil
+}
+
+func (r *UserRepository) IsUserSessionFamilyLive(c context.Context, userID int, familyID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(c).Model(&uModel.UserSession{}).
+		Where("user_id = ? AND family_id = ? AND revoked_at IS NULL AND expires_at > ?", userID, familyID, time.Now().UTC()).
+		Limit(1).Count(&count).Error
+	return count > 0, err
 }
 
 // RevokeSession revokes a specific session

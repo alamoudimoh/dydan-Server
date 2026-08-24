@@ -16,6 +16,7 @@ import (
 	"github.com/alamoudimoh/daydan-server/config"
 	auth "github.com/alamoudimoh/daydan-server/internal/auth"
 	"github.com/alamoudimoh/daydan-server/internal/auth/apple"
+	"github.com/alamoudimoh/daydan-server/internal/authlimit"
 	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
 	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
 	"github.com/alamoudimoh/daydan-server/internal/email"
@@ -1778,7 +1779,7 @@ func (h *Handler) updateChildPassword(c *gin.Context) {
 	}
 
 	// Update password
-	err = h.userRepo.UpdatePasswordByUserId(c.Request.Context(), req.ChildUserID, encodedPassword)
+	err = h.userRepo.ChangeChildPasswordAndRevokeSessions(c.Request.Context(), req.ChildUserID, encodedPassword)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
 		return
@@ -1901,7 +1902,7 @@ func (h *Handler) requirePermission(permission auth.Permission) gin.HandlerFunc 
 	}
 }
 
-func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limiter *limiter.Limiter, cfg *config.Config) {
+func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limiter *limiter.Limiter, securityLimiter *authlimit.Limiter, cfg *config.Config) {
 
 	// Origin validation for cookie-authenticated endpoints (refresh/logout).
 	// Forwarding headers are only honored from cfg.Server.TrustedProxies so
@@ -1927,16 +1928,16 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.DELETE("/tokens/:id", h.requirePermission(auth.PermissionManageAccount), h.DeleteUserToken)
 		userRoutes.PUT("/webhook", h.requirePermission(auth.PermissionManageCircle), h.setWebhook)
 		userRoutes.PUT("/targets", h.UpdateNotificationTarget)
-		userRoutes.PUT("change_password", utils.RateLimitMiddleware(pwChangeLimiter), h.updateUserPasswordLoggedInOnly)
+		userRoutes.PUT("change_password", securityLimiter.Middleware("password-change", cfg.Server.RateLimitPasswordChangePeriod, int64(cfg.Server.RateLimitPasswordChange)), utils.RateLimitMiddleware(pwChangeLimiter), h.updateUserPasswordLoggedInOnly)
 		userRoutes.POST("profile_photo", h.updateProfilePhoto)
 		userRoutes.GET("storage", h.getStorageUsage)
-		userRoutes.POST("/logout", authHandler.LogoutHandler)
+		userRoutes.POST("/logout", securityLimiter.Middleware("logout", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "refresh_token"}), authHandler.LogoutHandler)
 
 		// MFA endpoints
 		userRoutes.GET("/mfa/status", h.requirePermission(auth.PermissionManageAccount), h.getMFAStatus)
 		userRoutes.POST("/mfa/setup", h.requirePermission(auth.PermissionManageAccount), h.setupMFA)
-		userRoutes.POST("/mfa/confirm", h.requirePermission(auth.PermissionManageAccount), h.confirmMFA)
-		userRoutes.POST("/mfa/disable", h.requirePermission(auth.PermissionManageAccount), h.disableMFA)
+		userRoutes.POST("/mfa/confirm", securityLimiter.Middleware("mfa-confirm", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.requirePermission(auth.PermissionManageAccount), h.confirmMFA)
+		userRoutes.POST("/mfa/disable", securityLimiter.Middleware("mfa-disable", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.requirePermission(auth.PermissionManageAccount), h.disableMFA)
 		// userRoutes.POST("/mfa/regenerate-backup-codes", h.regenerateBackupCodes)
 
 		// Account deletion endpoints
@@ -1946,22 +1947,22 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		// Child user management endpoints
 		userRoutes.POST("/subaccounts", h.requirePermission(auth.PermissionManageSubaccounts), h.createChildUser)
 		userRoutes.GET("/subaccounts", h.requirePermission(auth.PermissionManageSubaccounts), h.getChildUsers)
-		userRoutes.PUT("/subaccounts/password", h.requirePermission(auth.PermissionManageSubaccounts), h.updateChildPassword)
+		userRoutes.PUT("/subaccounts/password", securityLimiter.Middleware("child-password-change", cfg.Server.RateLimitPasswordChangePeriod, int64(cfg.Server.RateLimitPasswordChange)), h.requirePermission(auth.PermissionManageSubaccounts), h.updateChildPassword)
 		userRoutes.DELETE("/subaccounts/:id", h.requirePermission(auth.PermissionManageSubaccounts), h.deleteChildUser)
 	}
 
 	authRoutes := router.Group("api/v1/auth")
 	authRoutes.Use(utils.RateLimitMiddleware(limiter))
 	{
-		authRoutes.POST("/:provider/callback", h.thirdPartyAuthCallback)
+		authRoutes.POST("/:provider/callback", securityLimiter.Middleware("oidc-callback", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.thirdPartyAuthCallback)
 		// OAuth2 login bootstrap: issues a single-use state bound to a PKCE
 		// verifier (S256) and the validated redirect URI. Registered under the
 		// same ":provider" segment as /callback because gin's router tree does
 		// not allow mixing static and param segments at the same depth.
-		authRoutes.POST("/:provider/start", h.thirdPartyAuthStart)
-		authRoutes.POST("refresh", authHandler.RefreshTokenHandler) // Changed from GET to POST
-		authRoutes.POST("logout", authHandler.LogoutHandler)        // New logout endpoint
-		authRoutes.POST("mfa/verify", utils.RateLimitMiddleware(authLimiter), h.verifyMFA)
+		authRoutes.POST("/:provider/start", securityLimiter.Middleware("oidc-start", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.thirdPartyAuthStart)
+		authRoutes.POST("refresh", securityLimiter.Middleware("refresh", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "refresh_token"}), authHandler.RefreshTokenHandler)
+		authRoutes.POST("logout", securityLimiter.Middleware("logout", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "refresh_token"}), authHandler.LogoutHandler)
+		authRoutes.POST("mfa/verify", securityLimiter.Middleware("mfa-login", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "sessionToken"}), utils.RateLimitMiddleware(authLimiter), h.verifyMFA)
 
 		// Password-based auth (signup, login, password reset). When
 		// disable_password_auth is set the instance is SSO-only, so these
@@ -1970,11 +1971,11 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		if cfg.DisablePasswordAuth {
 			pwAuth.Use(passwordAuthDisabled())
 		}
-		pwAuth.POST("/", utils.RateLimitMiddleware(authLimiter), h.signUp)
-		pwAuth.POST("login", utils.RateLimitMiddleware(authLimiter), authHandler.EnhancedLoginHandler)
-		pwAuth.POST("login/legacy", utils.RateLimitMiddleware(authLimiter), jwtAuth.LoginHandler)
-		pwAuth.POST("reset", utils.RateLimitMiddleware(recoveryLimiter), h.resetPassword)
-		pwAuth.POST("password", utils.RateLimitMiddleware(authLimiter), h.updateUserPassword)
+		pwAuth.POST("/", securityLimiter.Middleware("signup", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "username", CaseInsensitive: true}, authlimit.AccountField{Name: "email", CaseInsensitive: true}), utils.RateLimitMiddleware(authLimiter), h.signUp)
+		pwAuth.POST("login", securityLimiter.Middleware("login", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "username", CaseInsensitive: true}), utils.RateLimitMiddleware(authLimiter), authHandler.EnhancedLoginHandler)
+		pwAuth.POST("login/legacy", securityLimiter.Middleware("legacy-login", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "username", CaseInsensitive: true}), utils.RateLimitMiddleware(authLimiter), jwtAuth.LoginHandler)
+		pwAuth.POST("reset", securityLimiter.Middleware("recovery-request", cfg.Server.RateLimitRecoveryPeriod, int64(cfg.Server.RateLimitRecovery), authlimit.AccountField{Name: "email", CaseInsensitive: true}), utils.RateLimitMiddleware(recoveryLimiter), h.resetPassword)
+		pwAuth.POST("password", securityLimiter.Middleware("recovery-redeem", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "code"}), utils.RateLimitMiddleware(authLimiter), h.updateUserPassword)
 	}
 
 	// Protected auth routes (require JWT)

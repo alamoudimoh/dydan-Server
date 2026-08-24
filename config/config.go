@@ -159,6 +159,7 @@ type ServerConfig struct {
 	RateLimitAuth                 int           `mapstructure:"rate_limit_auth" yaml:"rate_limit_auth" default:"10"`
 	RateLimitRecoveryPeriod       time.Duration `mapstructure:"rate_limit_recovery_period" yaml:"rate_limit_recovery_period" default:"1h"`
 	RateLimitRecovery             int           `mapstructure:"rate_limit_recovery" yaml:"rate_limit_recovery" default:"5"`
+	RateLimitMaxActiveBuckets     int           `mapstructure:"rate_limit_max_active_buckets" yaml:"rate_limit_max_active_buckets" default:"100000"`
 
 	// TrustedProxies lists the proxies allowed to set forwarding headers
 	// (X-Forwarded-Proto, X-Forwarded-Host, X-Forwarded-For). Entries are IPs
@@ -320,6 +321,7 @@ func NewConfig() *Config {
 			RateLimitAuth:                 10,
 			RateLimitRecoveryPeriod:       time.Hour,
 			RateLimitRecovery:             5,
+			RateLimitMaxActiveBuckets:     100000,
 			TrustedProxies:                []string{"127.0.0.1/8", "::1/128"},
 		},
 		SchedulerJobs: SchedulerConfig{
@@ -429,6 +431,7 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("server.rate_limit_auth", cfg.Server.RateLimitAuth)
 	v.SetDefault("server.rate_limit_recovery_period", cfg.Server.RateLimitRecoveryPeriod)
 	v.SetDefault("server.rate_limit_recovery", cfg.Server.RateLimitRecovery)
+	v.SetDefault("server.rate_limit_max_active_buckets", cfg.Server.RateLimitMaxActiveBuckets)
 	v.SetDefault("server.read_timeout", cfg.Server.ReadTimeout)
 	v.SetDefault("server.write_timeout", cfg.Server.WriteTimeout)
 	v.SetDefault("server.webhook_timeout", cfg.Server.WebhookTimeout)
@@ -612,6 +615,9 @@ func validateSecurityConfig(cfg *Config) error {
 	}
 	if cfg.Server.RateLimitRecoveryPeriod <= 0 || cfg.Server.RateLimitRecovery <= 0 {
 		return fmt.Errorf("recovery rate period and limit must be positive")
+	}
+	if cfg.Server.RateLimitMaxActiveBuckets <= 0 {
+		return fmt.Errorf("authentication rate-limit max active buckets must be positive")
 	}
 	mail := cfg.EmailConfig
 	provider := strings.ToLower(strings.TrimSpace(mail.Provider))

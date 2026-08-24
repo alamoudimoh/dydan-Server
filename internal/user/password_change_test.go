@@ -137,8 +137,8 @@ func TestPasswordChangeRejectsWrongCurrentPassword(t *testing.T) {
 func TestPasswordChangeSucceedsWithCorrectCurrentPasswordAndRevokesOtherSessions(t *testing.T) {
 	th := newPasswordChangeHarness(t)
 
-	mine := th.newSession(t)      // stays alive
-	other := th.newSession(t)     // must die
+	mine := th.newSession(t)  // stays alive
+	other := th.newSession(t) // must die
 	_ = other
 
 	w := th.put(t, map[string]string{
@@ -167,5 +167,12 @@ func TestPasswordChangeSucceedsWithCorrectCurrentPasswordAndRevokesOtherSessions
 	}
 	if liveFor(other) != 0 {
 		t.Fatal("other sessions must be revoked by a password change")
+	}
+	var updated uModel.User
+	if err := th.db.First(&updated, th.user.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if updated.CredentialVersion != th.user.CredentialVersion+1 {
+		t.Fatalf("credential version=%d want=%d", updated.CredentialVersion, th.user.CredentialVersion+1)
 	}
 }

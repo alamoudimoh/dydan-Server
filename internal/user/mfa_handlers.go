@@ -89,7 +89,8 @@ func (h *Handler) confirmMFA(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "MFA enabled successfully"})
+	auth.ClearRefreshSessionCookie(c)
+	c.JSON(http.StatusOK, gin.H{"message": "MFA enabled successfully; sign in again"})
 }
 
 // disableMFA disables MFA for the current user
@@ -146,7 +147,8 @@ func (h *Handler) disableMFA(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "MFA disabled successfully"})
+	auth.ClearRefreshSessionCookie(c)
+	c.JSON(http.StatusOK, gin.H{"message": "MFA disabled successfully; sign in again"})
 }
 
 // verifyMFA verifies MFA code during login process
