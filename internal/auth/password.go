@@ -1,12 +1,12 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"math/big"
 
 	"github.com/alamoudimoh/daydan-server/logging"
-	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -40,7 +40,7 @@ func GenerateRandomPassword(length int) string {
 	return string(buffer)
 }
 
-func GenerateEmailResetToken(c *gin.Context) (string, error) {
+func GenerateEmailResetToken(c context.Context) (string, error) {
 	logger := logging.FromContext(c)
 	// Define the length of the token (in bytes). For example, 32 bytes will result in a 44-character base64-encoded token.
 	tokenLength := 32

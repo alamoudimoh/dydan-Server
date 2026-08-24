@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,6 +155,10 @@ type ServerConfig struct {
 	// brute-forced from a fast connection.
 	RateLimitPasswordChangePeriod time.Duration `mapstructure:"rate_limit_password_change_period" yaml:"rate_limit_password_change_period" default:"60s"`
 	RateLimitPasswordChange       int           `mapstructure:"rate_limit_password_change" yaml:"rate_limit_password_change" default:"10"`
+	RateLimitAuthPeriod           time.Duration `mapstructure:"rate_limit_auth_period" yaml:"rate_limit_auth_period" default:"60s"`
+	RateLimitAuth                 int           `mapstructure:"rate_limit_auth" yaml:"rate_limit_auth" default:"10"`
+	RateLimitRecoveryPeriod       time.Duration `mapstructure:"rate_limit_recovery_period" yaml:"rate_limit_recovery_period" default:"1h"`
+	RateLimitRecovery             int           `mapstructure:"rate_limit_recovery" yaml:"rate_limit_recovery" default:"5"`
 
 	// TrustedProxies lists the proxies allowed to set forwarding headers
 	// (X-Forwarded-Proto, X-Forwarded-Host, X-Forwarded-For). Entries are IPs
@@ -219,7 +224,7 @@ type EmailConfig struct {
 	Key       string `mapstructure:"key"`
 	Host      string `mapstructure:"host"`
 	Port      int    `mapstructure:"port"`
-	AppHost   string `mapstructure:"appHost"`
+	AppHost   string `mapstructure:"app_host" yaml:"app_host"`
 	LogRawURL bool   `mapstructure:"log_raw_url" yaml:"log_raw_url"`
 	// Provider selects which email sender implementation to use.
 	// "smtp" (default, empty also means smtp) uses host/port/user/key as SMTP creds.
@@ -231,16 +236,17 @@ type EmailConfig struct {
 }
 
 type OAuth2Config struct {
-	ClientID      string   `mapstructure:"client_id" yaml:"client_id"`
-	ClientSecret  string   `mapstructure:"client_secret" yaml:"client_secret"`
-	RedirectURL   string   `mapstructure:"redirect_url" yaml:"redirect_url"`
-	Scopes        []string `mapstructure:"scopes" yaml:"scopes"`
-	AuthURL       string   `mapstructure:"auth_url" yaml:"auth_url"`
-	TokenURL      string   `mapstructure:"token_url" yaml:"token_url"`
-	UserInfoURL   string   `mapstructure:"user_info_url" yaml:"user_info_url"`
-	Name          string   `mapstructure:"name" yaml:"name"`
-	AdminGroups   []string `mapstructure:"admin_groups" yaml:"admin_groups"`
-	ManagerGroups []string `mapstructure:"manager_groups" yaml:"manager_groups"`
+	ClientID            string   `mapstructure:"client_id" yaml:"client_id"`
+	ClientSecret        string   `mapstructure:"client_secret" yaml:"client_secret"`
+	RedirectURL         string   `mapstructure:"redirect_url" yaml:"redirect_url"`
+	AllowedRedirectURLs []string `mapstructure:"allowed_redirect_urls" yaml:"allowed_redirect_urls"`
+	Scopes              []string `mapstructure:"scopes" yaml:"scopes"`
+	AuthURL             string   `mapstructure:"auth_url" yaml:"auth_url"`
+	TokenURL            string   `mapstructure:"token_url" yaml:"token_url"`
+	UserInfoURL         string   `mapstructure:"user_info_url" yaml:"user_info_url"`
+	Name                string   `mapstructure:"name" yaml:"name"`
+	AdminGroups         []string `mapstructure:"admin_groups" yaml:"admin_groups"`
+	ManagerGroups       []string `mapstructure:"manager_groups" yaml:"manager_groups"`
 	// AllowLegacyOAuthState permits OAuth2 callbacks whose state has no
 	// matching server-side pending transaction (clients predating the
 	// server-enforced state/PKCE flow, e.g. un-updated native apps). This
@@ -310,6 +316,10 @@ func NewConfig() *Config {
 
 			RateLimitPasswordChangePeriod: 60 * time.Second,
 			RateLimitPasswordChange:       10,
+			RateLimitAuthPeriod:           60 * time.Second,
+			RateLimitAuth:                 10,
+			RateLimitRecoveryPeriod:       time.Hour,
+			RateLimitRecovery:             5,
 			TrustedProxies:                []string{"127.0.0.1/8", "::1/128"},
 		},
 		SchedulerJobs: SchedulerConfig{
@@ -415,6 +425,10 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("server.rate_limit", cfg.Server.RateLimit)
 	v.SetDefault("server.rate_limit_password_change_period", cfg.Server.RateLimitPasswordChangePeriod)
 	v.SetDefault("server.rate_limit_password_change", cfg.Server.RateLimitPasswordChange)
+	v.SetDefault("server.rate_limit_auth_period", cfg.Server.RateLimitAuthPeriod)
+	v.SetDefault("server.rate_limit_auth", cfg.Server.RateLimitAuth)
+	v.SetDefault("server.rate_limit_recovery_period", cfg.Server.RateLimitRecoveryPeriod)
+	v.SetDefault("server.rate_limit_recovery", cfg.Server.RateLimitRecovery)
 	v.SetDefault("server.read_timeout", cfg.Server.ReadTimeout)
 	v.SetDefault("server.write_timeout", cfg.Server.WriteTimeout)
 	v.SetDefault("server.webhook_timeout", cfg.Server.WebhookTimeout)
@@ -563,7 +577,13 @@ func LoadConfigE() (*Config, error) {
 	}
 
 	configEnvironmentOverrides(&config)
+	if config.EmailConfig.AppHost == "" {
+		config.EmailConfig.AppHost = v.GetString("email.appHost")
+	}
 	if err := initializePersistentRuntime(&config); err != nil {
+		return nil, err
+	}
+	if err := validateSecurityConfig(&config); err != nil {
 		return nil, err
 	}
 
@@ -578,6 +598,53 @@ func LoadConfigE() (*Config, error) {
 	time.Local, _ = time.LoadLocation(os.Getenv("TZ"))
 
 	return &config, nil
+}
+
+func validateSecurityConfig(cfg *Config) error {
+	if cfg.Server.RatePeriod <= 0 || cfg.Server.RateLimit <= 0 {
+		return fmt.Errorf("server rate period and limit must be positive")
+	}
+	if cfg.Server.RateLimitPasswordChangePeriod <= 0 || cfg.Server.RateLimitPasswordChange <= 0 {
+		return fmt.Errorf("password-change rate period and limit must be positive")
+	}
+	if cfg.Server.RateLimitAuthPeriod <= 0 || cfg.Server.RateLimitAuth <= 0 {
+		return fmt.Errorf("authentication rate period and limit must be positive")
+	}
+	if cfg.Server.RateLimitRecoveryPeriod <= 0 || cfg.Server.RateLimitRecovery <= 0 {
+		return fmt.Errorf("recovery rate period and limit must be positive")
+	}
+	mail := cfg.EmailConfig
+	provider := strings.ToLower(strings.TrimSpace(mail.Provider))
+	cfg.EmailConfig.Provider = provider
+	configured := mail.Email != "" || mail.User != "" || mail.Key != "" || mail.Host != "" || mail.Port != 0 || mail.AppHost != "" || provider != "" || mail.ResetPasswordTemplateID != "" || mail.VerifyTemplateID != ""
+	if mail.LogRawURL {
+		return fmt.Errorf("email.log_raw_url is not supported; configure email delivery instead")
+	}
+	if configured {
+		parsed, err := url.Parse(mail.AppHost)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return fmt.Errorf("email.app_host must be an absolute HTTP(S) URL")
+		}
+		switch provider {
+		case "", "smtp":
+			if mail.Email == "" || mail.Host == "" || mail.Port <= 0 {
+				return fmt.Errorf("SMTP email delivery requires email, host, port, and app_host")
+			}
+		case "smtp2go":
+			if mail.Email == "" || mail.Key == "" || mail.ResetPasswordTemplateID == "" || mail.VerifyTemplateID == "" {
+				return fmt.Errorf("SMTP2Go delivery requires email, key, verify_template_id, reset_password_template_id, and app_host")
+			}
+		default:
+			return fmt.Errorf("unsupported email provider %q", mail.Provider)
+		}
+	}
+	for _, redirect := range cfg.OAuth2Config.AllowedRedirectURLs {
+		parsed, err := url.Parse(redirect)
+		if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" {
+			return fmt.Errorf("oauth2.allowed_redirect_urls contains invalid URL %q", redirect)
+		}
+	}
+	return nil
 }
 
 func initializePersistentRuntime(config *Config) error {

@@ -24,6 +24,10 @@ server:
   write_timeout: 10s
   rate_period: 60s
   rate_limit: 300
+  rate_limit_auth_period: 60s
+  rate_limit_auth: 10
+  rate_limit_recovery_period: 1h
+  rate_limit_recovery: 5
   cors_allow_origins:
     - "http://localhost:5173"
     - "http://localhost:7926"
@@ -50,7 +54,7 @@ email:
   key:
   email:
   user: # optional, will be filled with email.email if not set.
-  appHost:
+  app_host:
   log_raw_url: false # never expose live password-reset links in normal self-hosted logs
 oauth2:
   client_id:
@@ -59,6 +63,9 @@ oauth2:
   token_url:
   user_info_url:
   redirect_url:
+  # Exact additional browser callback URLs; CORS origins are not trusted as
+  # OAuth redirect destinations.
+  allowed_redirect_urls: []
   name:
   # OIDC group-based role mapping (optional).
   # Users in these groups get the corresponding role on every OIDC login.

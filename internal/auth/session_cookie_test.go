@@ -187,11 +187,10 @@ func TestCSRFConfiguredOriginAllowed(t *testing.T) {
 	}
 }
 
-func TestCSRFMissingOriginAllowed(t *testing.T) {
-	// Native apps and API clients send no Origin header.
+func TestCSRFMissingOriginRejected(t *testing.T) {
 	w := doCSRFRequest(nil, http.MethodPost, "", "api.example.com")
-	if w.Code != http.StatusOK {
-		t.Fatalf("requests without Origin must be allowed, got %d", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("cookie-authenticated requests without Origin must be rejected, got %d", w.Code)
 	}
 }
 

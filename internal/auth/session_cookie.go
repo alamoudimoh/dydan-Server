@@ -118,7 +118,7 @@ func CSRFOriginCheck(allowedOrigins []string, trustedProxies []string) gin.Handl
 		}
 		raw := c.GetHeader("Origin")
 		if raw == "" {
-			c.Next()
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Origin required for cookie authentication"})
 			return
 		}
 		parsed, err := url.Parse(raw)

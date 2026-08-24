@@ -52,7 +52,7 @@ func NewSMTP2GoSender(conf *config.Config) *SMTP2GoSender {
 	}
 }
 
-func (s *SMTP2GoSender) sendTemplate(to, subject, templateID string, templateData interface{}) error {
+func (s *SMTP2GoSender) sendTemplate(ctx context.Context, to, subject, templateID string, templateData interface{}) error {
 	requestBody := smtp2goTemplateRequest{
 		Sender:       s.fromMail,
 		To:           []string{to},
@@ -65,7 +65,7 @@ func (s *SMTP2GoSender) sendTemplate(to, subject, templateID string, templateDat
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", smtp2goEndpoint, bytes.NewBuffer(jsonBytes))
+	req, err := http.NewRequestWithContext(ctx, "POST", smtp2goEndpoint, bytes.NewBuffer(jsonBytes))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -102,13 +102,13 @@ func (s *SMTP2GoSender) sendTemplate(to, subject, templateID string, templateDat
 }
 
 func (s *SMTP2GoSender) SendResetPasswordEmail(c context.Context, to, code string) error {
-	fullURL := fmt.Sprintf("%s/password/update?c=%s", s.appHost, encodeEmailAndCode(to, code))
+	fullURL := fmt.Sprintf("%s/password/update#c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
-	return s.sendTemplate(to, "DayDan! Password Reset", s.resetTemplateID, templateData)
+	return s.sendTemplate(c, to, "DayDan! Password Reset", s.resetTemplateID, templateData)
 }
 
 func (s *SMTP2GoSender) SendVerificationEmail(to, code string) error {
 	fullURL := fmt.Sprintf("%s/verify?c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
-	return s.sendTemplate(to, "DayDan! Verify your email", s.verifyTemplateID, templateData)
+	return s.sendTemplate(context.Background(), to, "DayDan! Verify your email", s.verifyTemplateID, templateData)
 }

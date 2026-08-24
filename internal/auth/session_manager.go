@@ -95,41 +95,13 @@ func (s *TokenService) RevokeUserSessionFamily(ctx context.Context, userID int, 
 	if familyID == "" {
 		return false, nil
 	}
-	rows, err := s.userRepo.GetLiveUserSessions(ctx, userID)
-	if err != nil {
-		return false, err
-	}
-	owned := false
-	for _, row := range rows {
-		if row.FamilyID == familyID {
-			owned = true
-			break
-		}
-	}
-	if !owned {
-		return false, nil
-	}
-	return true, s.userRepo.RevokeSessionFamily(ctx, familyID)
+	return s.userRepo.RevokeUserSessionFamily(ctx, userID, familyID)
 }
 
-// RevokeOtherUserFamilies revokes every live family of the user except
-// keepFamilyID. An empty keepFamilyID revokes everything.
+// RevokeOtherUserFamilies revokes every live family of the user except the
+// identified current family.
 func (s *TokenService) RevokeOtherUserFamilies(ctx context.Context, userID int, keepFamilyID string) error {
-	rows, err := s.userRepo.GetLiveUserSessions(ctx, userID)
-	if err != nil {
-		return err
-	}
-	seen := map[string]bool{}
-	for _, row := range rows {
-		if row.FamilyID == keepFamilyID || seen[row.FamilyID] {
-			continue
-		}
-		seen[row.FamilyID] = true
-		if err := s.userRepo.RevokeSessionFamily(ctx, row.FamilyID); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.userRepo.RevokeOtherUserSessionFamilies(ctx, userID, keepFamilyID)
 }
 
 // SessionRefForToken resolves both the session row and its family behind a
