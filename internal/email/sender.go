@@ -7,15 +7,13 @@ import (
 	"strings"
 
 	"github.com/alamoudimoh/daydan-server/config"
-	"github.com/alamoudimoh/daydan-server/logging"
 	gomail "gopkg.in/gomail.v2"
 )
 
 type EmailSender struct {
-	client    *gomail.Dialer
-	appHost   string
-	fromMail  string
-	logRawURL bool
+	client   *gomail.Dialer
+	appHost  string
+	fromMail string
 }
 
 // Sender is the interface consumed by callers so the concrete implementation
@@ -25,9 +23,24 @@ type Sender interface {
 	SendVerificationEmail(to, code string) error
 }
 
+var ErrDeliveryDisabled = fmt.Errorf("email delivery is disabled")
+
+type DisabledSender struct{}
+
+func (DisabledSender) SendResetPasswordEmail(context.Context, string, string) error {
+	return ErrDeliveryDisabled
+}
+
+func (DisabledSender) SendVerificationEmail(string, string) error {
+	return ErrDeliveryDisabled
+}
+
 // NewSender picks the email implementation based on email.provider.
 // Defaults to the SMTP sender so self-hosted behavior is unchanged.
 func NewSender(conf *config.Config) Sender {
+	if conf.EmailConfig.Email == "" && conf.EmailConfig.Host == "" && conf.EmailConfig.Key == "" {
+		return DisabledSender{}
+	}
 	switch conf.EmailConfig.Provider {
 	case "smtp2go":
 		return NewSMTP2GoSender(conf)
@@ -49,10 +62,9 @@ func NewEmailSender(conf *config.Config) *EmailSender {
 
 	// auth := smtp.PlainAuth("", conf.EmailConfig.Email, conf.EmailConfig.Password, host)
 	return &EmailSender{
-		fromMail:  conf.EmailConfig.Email,
-		client:    client,
-		appHost:   conf.EmailConfig.AppHost,
-		logRawURL: conf.EmailConfig.LogRawURL,
+		fromMail: conf.EmailConfig.Email,
+		client:   client,
+		appHost:  conf.EmailConfig.AppHost,
 	}
 }
 
@@ -497,7 +509,7 @@ func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string
 		
 	</body></html>
 `
-	u := es.appHost + "/password/update?c=" + encodeEmailAndCode(to, code)
+	u := es.appHost + "/password/update#c=" + encodeEmailAndCode(to, code)
 
 	htmlBody = strings.Replace(htmlBody, "{{verifyURL}}", u, 1)
 
@@ -505,10 +517,6 @@ func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string
 
 	err := es.client.DialAndSend(msg)
 	if err != nil {
-		if es.logRawURL {
-			logging.FromContext(c).Infof("\n\n\n=== PASSWORD RESET LINK ===\nUser: %s\nURL:  %s\n==================================================\n\n\n", to, u)
-			return nil
-		}
 		return err
 	}
 	return nil

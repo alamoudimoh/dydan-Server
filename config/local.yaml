@@ -27,6 +27,10 @@ server:
   write_timeout: 10s
   rate_period: 60s
   rate_limit: 300
+  rate_limit_auth_period: 60s
+  rate_limit_auth: 10
+  rate_limit_recovery_period: 1h
+  rate_limit_recovery: 5
   cors_allow_origins:
     - "http://localhost:5173"
     - "http://localhost:7926"
@@ -54,8 +58,8 @@ email:
   key:
   email:
   user:
-  appHost:
-  log_raw_url: true # log password reset URL to console (useful when email is not configured)
+  app_host:
+  log_raw_url: false
 mfa:
   session_timeout: 10m
   backup_code_count: 8

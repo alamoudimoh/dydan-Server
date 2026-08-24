@@ -2,8 +2,12 @@ package user
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
@@ -13,7 +17,17 @@ import (
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/alamoudimoh/daydan-server/logging"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+var ErrInvalidPasswordResetToken = errors.New("invalid password reset token")
+
+const passwordResetLifetime = time.Hour
+
+func passwordResetTokenHash(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
 
 type IUserRepository interface {
 	GetUserByUsername(username string) (*uModel.UserDetails, error)
@@ -40,7 +54,7 @@ type IUserRepository interface {
 	GetActiveDeviceTokens(c context.Context, userID int) ([]*uModel.UserDeviceToken, error)
 	UpdateDeviceTokenActivity(c context.Context, userID int, deviceID string) error
 	// UserSession methods for refresh token management
-	CreateUserSession(c context.Context, session *uModel.UserSession) error
+	CreateUserSession(c context.Context, session *uModel.UserSession, credentialVersion int) error
 	GetUserSessionByTokenHash(c context.Context, tokenHash string) (*uModel.UserSession, error)
 	GetLiveUserSessions(c context.Context, userID int) ([]*uModel.UserSession, error)
 	MarkSessionUsed(c context.Context, sessionID string) error
@@ -78,6 +92,7 @@ func (r *UserRepository) GetAllUsersForSystemOnly(c context.Context) ([]*uModel.
 	return users, nil
 }
 func (r *UserRepository) CreateUser(c context.Context, user *uModel.User) (*uModel.User, error) {
+	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
 	if err := r.db.WithContext(c).Create(user).Error; err != nil {
 		return nil, err
 	}
@@ -88,6 +103,7 @@ func (r *UserRepository) CreateUser(c context.Context, user *uModel.User) (*uMod
 // membership as one unit. A child without that membership cannot be used and
 // must never be left behind after a partial failure.
 func (r *UserRepository) CreateChildWithMembership(c context.Context, user *uModel.User, membership *cModel.UserCircle) (*uModel.User, error) {
+	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
 	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(user).Error; err != nil {
 			return err
@@ -192,11 +208,18 @@ func (r *UserRepository) UpdateUserCircle(c context.Context, userID, circleID in
 }
 
 func (r *UserRepository) FindByEmail(c context.Context, email string) (*uModel.UserDetails, error) {
-	var user *uModel.UserDetails
-	if err := r.db.WithContext(c).Table("users u").Select("u.*, c.webhook_url as webhook_url").Joins("left join circles c on c.id = u.circle_id").Where("email = ?", email).First(&user).Error; err != nil {
+	var users []uModel.UserDetails
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	if err := r.db.WithContext(c).Table("users u").Select("u.*, c.webhook_url as webhook_url").Joins("left join circles c on c.id = u.circle_id").Where("LOWER(email) = ?", normalized).Limit(2).Find(&users).Error; err != nil {
 		return nil, err
 	}
-	return user, nil
+	if len(users) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	if len(users) > 1 {
+		return nil, fmt.Errorf("multiple accounts use the same normalized email")
+	}
+	return &users[0], nil
 }
 
 func (r *UserRepository) SetPasswordResetToken(c context.Context, email, token string) error {
@@ -205,38 +228,54 @@ func (r *UserRepository) SetPasswordResetToken(c context.Context, email, token s
 	if err != nil {
 		return err
 	}
-	// save new token:
-	if err := r.db.WithContext(c).Model(&uModel.UserPasswordReset{}).Save(&uModel.UserPasswordReset{
-		UserID:         user.ID,
-		Token:          token,
-		Email:          email,
-		ExpirationDate: time.Now().UTC().Add(time.Hour * 24),
-	}).Error; err != nil {
-		return err
-	}
-	return nil
+	now := time.Now().UTC()
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", user.ID).Delete(&uModel.UserPasswordReset{}).Error; err != nil {
+			return err
+		}
+		return tx.Create(&uModel.UserPasswordReset{
+			UserID:         user.ID,
+			Token:          passwordResetTokenHash(token),
+			Email:          strings.ToLower(strings.TrimSpace(user.Email)),
+			CreatedAt:      now,
+			ExpirationDate: now.Add(passwordResetLifetime),
+		}).Error
+	})
+}
+
+func (r *UserRepository) DeletePasswordResetToken(c context.Context, token string) error {
+	return r.db.WithContext(c).Where("token IN ?", []string{token, passwordResetTokenHash(token)}).Delete(&uModel.UserPasswordReset{}).Error
+}
+
+func (r *UserRepository) CleanupExpiredPasswordResets(c context.Context) error {
+	return r.db.WithContext(c).Where("expiration_date <= ?", time.Now().UTC()).Delete(&uModel.UserPasswordReset{}).Error
 }
 
 func (r *UserRepository) UpdatePasswordByToken(ctx context.Context, email string, token string, password string) error {
 	logger := logging.FromContext(ctx)
 
-	logger.Debugw("account.db.UpdatePasswordByToken", "email", email)
+	logger.Debug("account.db.UpdatePasswordByToken")
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var reset uModel.UserPasswordReset
-		if err := tx.Where("email = ? AND token = ? AND expiration_date > ?", email, token, time.Now().UTC()).First(&reset).Error; err != nil {
-			return fmt.Errorf("invalid token")
+		normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+		acceptedTokens := []string{token, passwordResetTokenHash(token)}
+		if err := tx.Where("LOWER(email) = ? AND token IN ? AND expiration_date > ?", normalizedEmail, acceptedTokens, time.Now().UTC()).First(&reset).Error; err != nil {
+			return ErrInvalidPasswordResetToken
 		}
 		// Conditional delete is the serialization point: concurrent redemption
 		// attempts may both read the row, but only one can consume it.
-		deleted := tx.Where("id = ? AND token = ?", reset.ID, token).Delete(&uModel.UserPasswordReset{})
+		deleted := tx.Where("token = ?", reset.Token).Delete(&uModel.UserPasswordReset{})
 		if deleted.Error != nil {
 			return deleted.Error
 		}
 		if deleted.RowsAffected != 1 {
-			return fmt.Errorf("invalid token")
+			return ErrInvalidPasswordResetToken
 		}
 
-		chain := tx.Model(&uModel.User{}).Where("id = ? AND email = ?", reset.UserID, email).Update("password", password)
+		chain := tx.Model(&uModel.User{}).Where("id = ? AND LOWER(email) = ?", reset.UserID, normalizedEmail).Updates(map[string]interface{}{
+			"password":           password,
+			"credential_version": gorm.Expr("credential_version + 1"),
+		})
 		if chain.Error != nil {
 			return chain.Error
 		}
@@ -248,6 +287,9 @@ func (r *UserRepository) UpdatePasswordByToken(ctx context.Context, email string
 		if err := tx.Model(&uModel.UserSession{}).
 			Where("user_id = ? AND revoked_at IS NULL", reset.UserID).
 			Update("revoked_at", now).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("user_id = ?", reset.UserID).Delete(&uModel.MFASession{}).Error; err != nil {
 			return err
 		}
 		return nil
@@ -322,6 +364,26 @@ func (r *UserRepository) UpdateNotificationTargetForAllNotifications(c context.C
 func (r *UserRepository) UpdatePasswordByUserId(c context.Context, userID int, password string) error {
 	return r.db.WithContext(c).Model(&uModel.User{}).Where("id = ?", userID).Update("password", password).Error
 }
+
+func (r *UserRepository) ChangePasswordAndRevokeOtherFamilies(c context.Context, userID int, password, keepFamilyID string) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		updated := tx.Model(&uModel.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+			"password":           password,
+			"credential_version": gorm.Expr("credential_version + 1"),
+		})
+		if updated.Error != nil {
+			return updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		query := tx.Model(&uModel.UserSession{}).Where("user_id = ? AND revoked_at IS NULL", userID)
+		if keepFamilyID != "" {
+			query = query.Where("family_id <> ?", keepFamilyID)
+		}
+		return query.Update("revoked_at", time.Now().UTC()).Error
+	})
+}
 func (r *UserRepository) UpdateUserImage(c context.Context, userID int, image string) error {
 	return r.db.WithContext(c).Model(&uModel.User{}).Where("id = ?", userID).Update("image", image).Error
 }
@@ -384,6 +446,50 @@ func (r *UserRepository) DeleteMFASession(c context.Context, sessionToken string
 	return r.db.WithContext(c).Where("session_token = ?", sessionToken).Delete(&uModel.MFASession{}).Error
 }
 
+func (r *UserRepository) ConsumeMFASession(c context.Context, sessionToken string, userID int, expectedUsedCodes, newUsedCodes string) (bool, error) {
+	consumed := false
+	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		res := tx.Where(
+			"session_token = ? AND user_id = ? AND verified = ? AND expires_at > ?",
+			sessionToken, userID, false, time.Now().UTC(),
+		).Delete(&uModel.MFASession{})
+		if res.Error != nil || res.RowsAffected != 1 {
+			return res.Error
+		}
+		if newUsedCodes != expectedUsedCodes {
+			res = tx.Model(&uModel.User{}).
+				Where("id = ? AND mfa_recovery_codes_used = ?", userID, expectedUsedCodes).
+				Update("mfa_recovery_codes_used", newUsedCodes)
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected != 1 {
+				return gorm.ErrRecordNotFound
+			}
+		}
+		consumed = true
+		return nil
+	})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	return consumed, err
+}
+
+func (r *UserRepository) ReserveMFAAttempt(c context.Context, sessionToken string, maxAttempts int) (int, bool, error) {
+	res := r.db.WithContext(c).Model(&uModel.MFASession{}).
+		Where("session_token = ? AND verified = ? AND expires_at > ? AND attempts < ?", sessionToken, false, time.Now().UTC(), maxAttempts).
+		UpdateColumn("attempts", gorm.Expr("attempts + 1"))
+	if res.Error != nil || res.RowsAffected != 1 {
+		return 0, false, res.Error
+	}
+	var session uModel.MFASession
+	if err := r.db.WithContext(c).Select("attempts").Where("session_token = ?", sessionToken).First(&session).Error; err != nil {
+		return 0, false, err
+	}
+	return session.Attempts, true, nil
+}
+
 // CleanupExpiredMFASessions removes expired MFA sessions
 func (r *UserRepository) CleanupExpiredMFASessions(c context.Context) error {
 	return r.db.WithContext(c).Where("expires_at < ?", time.Now().UTC()).Delete(&uModel.MFASession{}).Error
@@ -392,8 +498,25 @@ func (r *UserRepository) CleanupExpiredMFASessions(c context.Context) error {
 // UserSession methods for refresh token management
 
 // CreateUserSession creates a new user session (refresh token)
-func (r *UserRepository) CreateUserSession(c context.Context, session *uModel.UserSession) error {
-	return r.db.WithContext(c).Create(session).Error
+func lockUserSessionWrites(tx *gorm.DB, userID int) (*uModel.User, error) {
+	var user uModel.User
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id", "credential_version").First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) CreateUserSession(c context.Context, session *uModel.UserSession, credentialVersion int) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		user, err := lockUserSessionWrites(tx, session.UserID)
+		if err != nil {
+			return err
+		}
+		if user.CredentialVersion != credentialVersion {
+			return fmt.Errorf("credentials changed during authentication")
+		}
+		return tx.Create(session).Error
+	})
 }
 
 // GetUserSessionByTokenHash retrieves a user session by token hash
@@ -422,6 +545,30 @@ func (r *UserRepository) MarkSessionUsedIfUnused(c context.Context, sessionID st
 	return res.RowsAffected > 0, res.Error
 }
 
+func (r *UserRepository) RotateUserSession(c context.Context, oldSessionID string, next *uModel.UserSession) (bool, error) {
+	won := false
+	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if _, err := lockUserSessionWrites(tx, next.UserID); err != nil {
+			return err
+		}
+		res := tx.Model(&uModel.UserSession{}).
+			Where("id = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?", oldSessionID, time.Now().UTC()).
+			Update("used_at", time.Now().UTC())
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected != 1 {
+			return nil
+		}
+		if err := tx.Create(next).Error; err != nil {
+			return err
+		}
+		won = true
+		return nil
+	})
+	return won, err
+}
+
 // GetLatestFamilySession returns the newest live (non-revoked, unexpired)
 // session in a rotation family, i.e. the current head of the chain.
 func (r *UserRepository) GetLatestFamilySession(c context.Context, familyID string) (*uModel.UserSession, error) {
@@ -447,6 +594,21 @@ func (r *UserRepository) RevokeSessionFamily(c context.Context, familyID string)
 	return r.db.WithContext(c).Model(&uModel.UserSession{}).Where("family_id = ? AND revoked_at IS NULL", familyID).Update("revoked_at", now).Error
 }
 
+func (r *UserRepository) RevokeUserSessionFamily(c context.Context, userID int, familyID string) (bool, error) {
+	found := false
+	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if _, err := lockUserSessionWrites(tx, userID); err != nil {
+			return err
+		}
+		res := tx.Model(&uModel.UserSession{}).
+			Where("user_id = ? AND family_id = ? AND revoked_at IS NULL", userID, familyID).
+			Update("revoked_at", time.Now().UTC())
+		found = res.RowsAffected > 0
+		return res.Error
+	})
+	return found, err
+}
+
 // GetLiveUserSessions returns every non-revoked, unexpired refresh session
 // belonging to a user, oldest first. Rows carry the raw TokenHash; callers
 // presenting these sessions to users must project them onto safe metadata
@@ -463,18 +625,37 @@ func (r *UserRepository) GetLiveUserSessions(c context.Context, userID int) ([]*
 
 // RevokeAllUserSessions revokes all sessions for a user (logout from all devices)
 func (r *UserRepository) RevokeAllUserSessions(c context.Context, userID int) error {
-	now := time.Now().UTC()
-	return r.db.WithContext(c).Model(&uModel.UserSession{}).Where("user_id = ? AND revoked_at IS NULL", userID).Update("revoked_at", now).Error
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if _, err := lockUserSessionWrites(tx, userID); err != nil {
+			return err
+		}
+		return tx.Model(&uModel.UserSession{}).Where("user_id = ? AND revoked_at IS NULL", userID).Update("revoked_at", time.Now().UTC()).Error
+	})
 }
 
 // RevokeOtherUserSessions revokes every live session of a user except the
 // given one. Used after a password change so the device that performed the
 // change keeps its session while every other refresh family dies.
 func (r *UserRepository) RevokeOtherUserSessions(c context.Context, userID int, keepSessionID string) error {
-	now := time.Now().UTC()
-	return r.db.WithContext(c).Model(&uModel.UserSession{}).
-		Where("user_id = ? AND revoked_at IS NULL AND id <> ?", userID, keepSessionID).
-		Update("revoked_at", now).Error
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if _, err := lockUserSessionWrites(tx, userID); err != nil {
+			return err
+		}
+		return tx.Model(&uModel.UserSession{}).
+			Where("user_id = ? AND revoked_at IS NULL AND id <> ?", userID, keepSessionID).
+			Update("revoked_at", time.Now().UTC()).Error
+	})
+}
+
+func (r *UserRepository) RevokeOtherUserSessionFamilies(c context.Context, userID int, keepFamilyID string) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if _, err := lockUserSessionWrites(tx, userID); err != nil {
+			return err
+		}
+		return tx.Model(&uModel.UserSession{}).
+			Where("user_id = ? AND revoked_at IS NULL AND family_id <> ?", userID, keepFamilyID).
+			Update("revoked_at", time.Now().UTC()).Error
+	})
 }
 
 // CleanupExpiredSessions removes expired and revoked sessions

@@ -24,13 +24,14 @@ type User struct {
 	ParentUserID *int     `json:"parentUserId,omitempty" gorm:"column:parent_user_id;index"`
 	UserType     UserType `json:"userType" gorm:"column:user_type;default:0"`
 	// MFA fields
-	MFAEnabled      bool      `json:"mfaEnabled" gorm:"column:mfa_enabled;default:false;not null"`    // MFA enabled status
-	MFASecret       string    `json:"-" gorm:"column:mfa_secret;type:text"`                           // TOTP secret (hidden from JSON)
-	MFABackupCodes  string    `json:"-" gorm:"column:mfa_backup_codes;type:text"`                     // JSON array of backup codes
-	MFARecoveryUsed string    `json:"-" gorm:"column:mfa_recovery_codes_used;type:text;default:'[]'"` // JSON array of used recovery codes
-	CreatedAt       time.Time `json:"created_at" gorm:"column:created_at"`                            // Created at
-	UpdatedAt       time.Time `json:"updated_at" gorm:"column:updated_at"`                            // Updated at
-	Disabled        bool      `json:"disabled" gorm:"column:disabled"`                                // Disabled
+	MFAEnabled        bool      `json:"mfaEnabled" gorm:"column:mfa_enabled;default:false;not null"`    // MFA enabled status
+	MFASecret         string    `json:"-" gorm:"column:mfa_secret;type:text"`                           // TOTP secret (hidden from JSON)
+	MFABackupCodes    string    `json:"-" gorm:"column:mfa_backup_codes;type:text"`                     // JSON array of backup codes
+	MFARecoveryUsed   string    `json:"-" gorm:"column:mfa_recovery_codes_used;type:text;default:'[]'"` // JSON array of used recovery codes
+	CreatedAt         time.Time `json:"created_at" gorm:"column:created_at"`                            // Created at
+	UpdatedAt         time.Time `json:"updated_at" gorm:"column:updated_at"`                            // Updated at
+	CredentialVersion int       `json:"-" gorm:"column:credential_version;not null;default:0"`
+	Disabled          bool      `json:"disabled" gorm:"column:disabled"` // Disabled
 	// Email    string `json:"email" gorm:"column:email"`       // Email
 	CustomerID              *string                `gorm:"column:customer_id;<-:false"`                      // read only column
 	Subscription            *string                `json:"subscription" gorm:"column:subscription;<-:false"` // read only column
@@ -43,11 +44,11 @@ type UserDetails struct {
 }
 
 type UserPasswordReset struct {
-	ID             int       `gorm:"column:id"`
-	UserID         int       `gorm:"column:user_id"`
+	UserID         int       `gorm:"column:user_id;index"`
 	Email          string    `gorm:"column:email"`
-	Token          string    `gorm:"column:token"`
-	ExpirationDate time.Time `gorm:"column:expiration_date"`
+	Token          string    `gorm:"column:token;primaryKey"` // SHA-256 for new rows; legacy rows may contain raw tokens until expiry.
+	CreatedAt      time.Time `gorm:"column:created_at;index"`
+	ExpirationDate time.Time `gorm:"column:expiration_date;index"`
 }
 
 type APIToken struct {

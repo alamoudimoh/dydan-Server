@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -33,6 +34,7 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/oauth2/v1"
 	"google.golang.org/api/option"
+	"gorm.io/gorm"
 )
 
 type Handler struct {
@@ -57,7 +59,7 @@ type Handler struct {
 	oauthTransactions      *auth.OAuthTransactionStore
 	singleCircleInstance   bool
 	mfaMaxAttempts         int
-	proxyTrust             *auth.ProxyTrust
+	oauthRedirectURLs      []string
 }
 
 func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
@@ -67,6 +69,10 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 	signer storage.URLSigner, storageRepo *storageRepo.StorageRepository,
 	appleService *apple.AppleService,
 	deletionService *DeletionService, mfaService *mfa.MFAService, config *config.Config) *Handler {
+	oauthRedirectURLs := append([]string{}, config.OAuth2Config.AllowedRedirectURLs...)
+	if config.Server.PublicHost != "" {
+		oauthRedirectURLs = append(oauthRedirectURLs, strings.TrimRight(config.Server.PublicHost, "/")+"/auth/oauth2")
+	}
 	return &Handler{
 		userRepo:               ur,
 		circleRepo:             cr,
@@ -89,7 +95,7 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		oauthTransactions:      auth.NewOAuthTransactionStore(),
 		singleCircleInstance:   config.SingleCircleInstance,
 		mfaMaxAttempts:         config.MFAConfig.MaxVerificationAttempts,
-		proxyTrust:             auth.NewProxyTrust(config.Server.TrustedProxies),
+		oauthRedirectURLs:      oauthRedirectURLs,
 	}
 }
 
@@ -259,7 +265,7 @@ func (h *Handler) syncOIDCRole(c *gin.Context, userID, circleID int, groups []st
 		logger.Errorw("OIDC role sync: failed to update role", "userID", userID, "circleID", circleID, "resolvedRole", resolvedRole, "err", err)
 		return
 	}
-	logger.Infow("OIDC role sync", "userID", userID, "circleID", circleID, "oldRole", currentRole, "newRole", resolvedRole, "groups", groups)
+	logger.Infow("OIDC role sync", "userID", userID, "circleID", circleID, "oldRole", currentRole, "newRole", resolvedRole)
 }
 
 // nativeOAuthRedirectURIs are the fixed deep-link callbacks used by the
@@ -269,33 +275,23 @@ var nativeOAuthRedirectURIs = []string{
 	"donetick://auth/oauth2",
 }
 
-// requestOrigin derives the scheme://origin of this request from trusted
-// forwarding headers (set by the same-origin reverse proxy) or the browser's
-// Origin/Referer headers. It is used to derive the same-origin OAuth callback
-// URL server-side instead of trusting an arbitrary redirect URI.
-func (h *Handler) requestOrigin(c *gin.Context) string {
-	host := auth.RequestHost(c, h.proxyTrust)
-	if host == "" {
-		return ""
-	}
-	return auth.RequestScheme(c, h.proxyTrust) + "://" + host
-}
-
 // allowedOAuthRedirectURIs returns the strict allowlist of permitted OAuth2
 // callback URLs for this deployment:
 //   - the configured oauth2.redirect_url (operator-controlled)
-//   - the same-origin /auth/oauth2 callback derived from trusted headers
+//   - explicitly configured additional redirect URLs and the public host
 //   - the fixed native deep-link callbacks
 //
 // Anything else supplied by a client is rejected, preventing open-redirect or
 // authorization-code exfiltration via a browser-supplied redirect_uri.
-func (h *Handler) allowedOAuthRedirectURIs(c *gin.Context) map[string]bool {
+func (h *Handler) allowedOAuthRedirectURIs() map[string]bool {
 	allowed := make(map[string]bool)
 	if h.oauth2Config.RedirectURL != "" {
 		allowed[h.oauth2Config.RedirectURL] = true
 	}
-	if origin := h.requestOrigin(c); origin != "" {
-		allowed[origin+"/auth/oauth2"] = true
+	for _, redirect := range h.oauthRedirectURLs {
+		if redirect != "" {
+			allowed[redirect] = true
+		}
 	}
 	for _, uri := range nativeOAuthRedirectURIs {
 		allowed[uri] = true
@@ -328,15 +324,15 @@ func (h *Handler) thirdPartyAuthStart(c *gin.Context) {
 	if redirect == "" {
 		if h.oauth2Config.RedirectURL != "" {
 			redirect = h.oauth2Config.RedirectURL
-		} else if origin := h.requestOrigin(c); origin != "" {
-			redirect = origin + "/auth/oauth2"
+		} else if len(h.oauthRedirectURLs) > 0 {
+			redirect = h.oauthRedirectURLs[0]
 		}
 	}
 	if redirect == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No usable redirect URI: configure oauth2.redirect_url"})
 		return
 	}
-	allowed := h.allowedOAuthRedirectURIs(c)
+	allowed := h.allowedOAuthRedirectURIs()
 	if !allowed[redirect] {
 		logger.Warnw("oauth2 start rejected unapproved redirect_uri")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unapproved redirect URI"})
@@ -398,7 +394,6 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			})
 			return
 		}
-		logger.Infow("account.handler.thirdPartyAuthCallback", "tokenInfo", tokenInfo)
 		if tokenInfo.Audience != h.DayDanCloudConfig.GoogleClientID && tokenInfo.Audience != h.DayDanCloudConfig.GoogleIOSClientID && tokenInfo.Audience != h.DayDanCloudConfig.GoogleAndroidClientID {
 			logger.Errorw("account.handler.thirdPartyAuthCallback token audience mismatch", "audience", tokenInfo.Audience)
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -407,7 +402,6 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			return
 		}
 		userinfo, err := service.Userinfo.Get().Do(googleapi.QueryParameter("access_token", body.Token))
-		logger.Infow("account.handler.thirdPartyAuthCallback", "tokenInfo", userinfo)
 		if err != nil {
 			logger.Errorw("account.handler.thirdPartyAuthCallback failed to get token info", "err", err)
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -417,6 +411,11 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 		}
 
 		acc, err := h.userRepo.FindByEmail(c, userinfo.Email)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Errorw("account.handler.thirdPartyAuthCallback failed to resolve account", "err", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to resolve user account"})
+			return
+		}
 
 		if err != nil {
 			// create a random password for the user using crypto/rand:
@@ -532,7 +531,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			return
 		}
 		auth.SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.RefreshTokenExpiry())
-		c.JSON(http.StatusOK, tokenResponse)
+		auth.WriteTokenResponse(c, http.StatusOK, tokenResponse)
 		return
 	case "apple":
 		c.Set("auth_provider", "3rdPartyAuth")
@@ -580,10 +579,13 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			return
 		}
 
-		logger.Infow("account.handler.thirdPartyAuthCallback (apple)", "userInfo", userInfo)
-
 		// Check if user exists
 		acc, err := h.userRepo.FindByEmail(c, userInfo.Email)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Errorw("account.handler.thirdPartyAuthCallback (apple) failed to resolve account", "err", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to resolve user account"})
+			return
+		}
 
 		if err != nil {
 			// Create user account
@@ -713,7 +715,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			return
 		}
 		auth.SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.RefreshTokenExpiry())
-		c.JSON(http.StatusOK, tokenResponse)
+		auth.WriteTokenResponse(c, http.StatusOK, tokenResponse)
 		return
 	case "oauth2":
 		c.Set("auth_provider", "3rdPartyAuth")
@@ -742,7 +744,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 		// The redirect URI must come from a strict server-side allowlist
 		// (configured redirect_url + same-origin derived callback + native
 		// deep links). A browser-supplied arbitrary value is never trusted.
-		allowedRedirects := h.allowedOAuthRedirectURIs(c)
+		allowedRedirects := h.allowedOAuthRedirectURIs()
 		exchangeRedirect := req.RedirectURI
 		if exchangeRedirect == "" {
 			exchangeRedirect = h.oauth2Config.RedirectURL
@@ -791,7 +793,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 		token, err := h.identityProvider.ExchangeToken(c, req.Code, exchangeRedirect, codeVerifier)
 
 		if err != nil {
-			logger.Errorw("account.handler.thirdPartyAuthCallback (oauth2) failed to exchange token", "err", err, "code", req.Code[:min(len(req.Code), 10)]+"...")
+			logger.Errorw("account.handler.thirdPartyAuthCallback (oauth2) failed to exchange token", "err", err)
 			// Return a more specific error message based on the OAuth2 error
 			if strings.Contains(err.Error(), "invalid_grant") {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -826,12 +828,17 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 		}
 
 		existingAccount, findErr := h.userRepo.FindByEmail(c, claims.Email)
+		if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
+			logger.Errorw("account.handler.thirdPartyAuthCallback (oauth2) failed to resolve account", "err", findErr)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to resolve user account"})
+			return
+		}
 		if findErr == nil {
 			// Linking an existing account by email requires a verified email
 			// claim. Providers that do not expose email_verified are not
 			// allowed to silently take over an existing password account.
 			if claims.EmailVerified == nil || !*claims.EmailVerified {
-				logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) refusing unverified link to existing account", "username", existingAccount.Username)
+				logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) refusing unverified link to existing account")
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "The identity provider did not confirm your email address. Contact your administrator to enable sign-in.",
 				})
@@ -839,7 +846,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			}
 		}
 
-		acc, err := h.userRepo.FindByEmail(c, claims.Email)
+		acc, err := existingAccount, findErr
 		if err != nil {
 			// Create user
 			password := auth.GenerateRandomPassword(12)
@@ -1004,7 +1011,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			return
 		}
 		auth.SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.RefreshTokenExpiry())
-		c.JSON(http.StatusOK, tokenResponse)
+		auth.WriteTokenResponse(c, http.StatusOK, tokenResponse)
 		return
 	}
 }
@@ -1021,68 +1028,39 @@ func (h *Handler) resetPassword(c *gin.Context) {
 		})
 		return
 	}
-	user, err := h.userRepo.FindByEmail(c, req.Email)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{})
-		log.Error("account.handler.resetPassword failed to find user")
-		return
-	}
-	if user.Provider != 0 {
-		// user create account thought login with Gmail. they can reset the password they just need to login with google again
-		c.JSON(
-			http.StatusForbidden,
-			gin.H{
-				"error": "User account created with google login. Please login with google",
-			},
-		)
-		return
-	}
-	// generate a random password:
-	token, err := auth.GenerateEmailResetToken(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Unable to generate token",
-		})
-		return
-	}
-
-	err = h.userRepo.SetPasswordResetToken(c, req.Email, token)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Unable to generate password",
-		})
-		return
-	}
-	// send an email to the user with the new password:
-	err = h.email.SendResetPasswordEmail(c, req.Email, token)
-	if err != nil {
-		log.Errorw("account.handler.resetPassword failed to send email", "err", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Unable to send email",
-		})
-		return
-	}
-
-	// send an email to the user with the new password:
-	c.JSON(http.StatusOK, gin.H{})
+	const responseMessage = "If the account can be recovered, password reset instructions will be sent."
+	normalizedEmail := strings.ToLower(strings.TrimSpace(req.Email))
+	c.JSON(http.StatusAccepted, gin.H{"message": responseMessage})
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		user, err := h.userRepo.FindByEmail(ctx, normalizedEmail)
+		if err != nil || user.Provider != uModel.AuthProviderDayDan {
+			return
+		}
+		token, err := auth.GenerateEmailResetToken(ctx)
+		if err != nil {
+			log.Errorw("account.handler.resetPassword failed to generate credential", "err", err)
+			return
+		}
+		if err := h.userRepo.SetPasswordResetToken(ctx, normalizedEmail, token); err != nil {
+			log.Errorw("account.handler.resetPassword failed to persist credential", "err", err)
+			return
+		}
+		if err := h.email.SendResetPasswordEmail(ctx, normalizedEmail, token); err != nil {
+			log.Errorw("account.handler.resetPassword failed to send email", "err", err)
+			if cleanupErr := h.userRepo.DeletePasswordResetToken(ctx, token); cleanupErr != nil {
+				log.Errorw("account.handler.resetPassword failed to invalidate undelivered credential", "err", cleanupErr)
+			}
+		}
+	}()
 }
 
 func (h *Handler) updateUserPassword(c *gin.Context) {
 	logger := logging.FromContext(c)
-	// read the code from query param:
-	code := c.Query("c")
-	email, code, err := email.DecodeEmailAndCode(code)
-	if err != nil {
-		logger.Errorw("account.handler.verify failed to decode email and code", "err", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid code",
-		})
-		return
-
-	}
-	// read password from body:
 	type RequestBody struct {
 		Password string `json:"password" binding:"required,min=8,max=64"`
+		Code     string `json:"code"`
 	}
 	var body RequestBody
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -1093,6 +1071,14 @@ func (h *Handler) updateUserPassword(c *gin.Context) {
 		return
 
 	}
+	if body.Code == "" {
+		body.Code = c.Query("c") // Legacy links created before fragment-based recovery.
+	}
+	emailAddress, code, err := email.DecodeEmailAndCode(body.Code)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid code"})
+		return
+	}
 	password, err := auth.EncodePassword(body.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -1101,12 +1087,14 @@ func (h *Handler) updateUserPassword(c *gin.Context) {
 		return
 	}
 
-	err = h.userRepo.UpdatePasswordByToken(c.Request.Context(), email, code, password)
+	err = h.userRepo.UpdatePasswordByToken(c.Request.Context(), emailAddress, code, password)
 	if err != nil {
-		logger.Errorw("account.handler.resetAccountPassword failed to reset password", "err", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Unable to reset password",
-		})
+		if errors.Is(err, uRepo.ErrInvalidPasswordResetToken) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired password reset link"})
+			return
+		}
+		logger.Errorw("account.handler.resetAccountPassword failed", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to reset password"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
@@ -1369,25 +1357,19 @@ func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
 		return
 	}
 
-	err = h.userRepo.UpdatePasswordByUserId(c.Request.Context(), currentUser.ID, password)
-	if err != nil {
-		logger.Errorw("account.handler.changePassword failed to reset password", "err", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Unable to reset password",
-		})
-		return
-	}
-
 	// Preserve the authenticated access token's family, not one particular
 	// refresh row: rotation may already have replaced the cookie/body ancestor.
 	_, keepFamilyID := auth.SessionRefFromClaims(map[string]interface{}(jwt.ExtractClaims(c)))
 	if keepFamilyID == "" && body.RefreshToken != "" {
 		_, keepFamilyID = h.tokenService.SessionRefForToken(c.Request.Context(), body.RefreshToken)
 	}
-	if err := h.tokenService.RevokeOtherUserFamilies(c.Request.Context(), currentUser.ID, keepFamilyID); err != nil {
-		// The password itself was changed successfully; log revocation issues
-		// instead of failing the request.
-		logger.Errorw("account.handler.changePassword could not revoke other sessions", "err", err)
+	err = h.userRepo.ChangePasswordAndRevokeOtherFamilies(c.Request.Context(), currentUser.ID, password, keepFamilyID)
+	if err != nil {
+		logger.Errorw("account.handler.changePassword failed to reset password", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Unable to reset password",
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{})
@@ -1891,63 +1873,6 @@ func (h *Handler) getChildUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"res": response})
 }
 
-// RefreshRequest represents a refresh token request
-type RefreshRequest struct {
-	RefreshToken string `json:"refreshToken"`
-}
-
-// logout handles user logout by clearing cookies and revoking refresh tokens
-func (h *Handler) logout(c *gin.Context) {
-	logger := logging.FromContext(c)
-
-	// Try to get refresh token from cookie first (httpOnly), fallback to body
-	refreshToken, err := c.Cookie(auth.RefreshTokenCookieName)
-	if err != nil {
-		// Fallback to JSON body for backward compatibility
-		var req RefreshRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			// No token provided, but logout should still succeed
-			refreshToken = ""
-		} else {
-			refreshToken = req.RefreshToken
-		}
-	}
-
-	// Revoke the refresh token if we have one
-	if refreshToken != "" {
-		// Hash the refresh token before looking it up (tokens are stored hashed)
-		tokenHash := hashToken(refreshToken)
-
-		// Get the session by token hash
-		session, err := h.userRepo.GetUserSessionByTokenHash(c.Request.Context(), tokenHash)
-		if err != nil {
-			logger.Infow("Refresh token session not found during logout", "note", "Token may already be expired or invalid")
-			// Don't return error - logout should always succeed from client perspective
-		} else {
-			// Revoke the session
-			if err := h.userRepo.RevokeSession(c.Request.Context(), session.ID); err != nil {
-				logger.Errorw("Failed to revoke session during logout", "error", err)
-				// Don't return error - logout should always succeed from client perspective
-			}
-		}
-	}
-
-	// Clear the httpOnly cookie (current and legacy paths) plus any stale
-	// access-token cookie from older builds
-	auth.ClearRefreshSessionCookie(c)
-	c.SetCookie("access_token", "", 0, "/", "", true, true)
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Logged out successfully",
-	})
-}
-
-// hashToken creates a SHA-256 hash of the token for database lookup
-func hashToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(hash[:])
-}
-
 // passwordAuthDisabled rejects password-based auth requests (signup, login,
 // password reset) when the instance is configured as SSO-only via
 // disable_password_auth (#438).
@@ -1986,6 +1911,10 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 	// bucket, so brute-forcing the current-password check is impractical even
 	// from a fast connection.
 	pwChangeLimiter := utils.NewBoundedRateLimiter(cfg.Server.RateLimitPasswordChangePeriod, int64(cfg.Server.RateLimitPasswordChange))
+	authLimiter := utils.NewBoundedRateLimiter(cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth))
+	recoveryLimiter := utils.NewBoundedRateLimiter(cfg.Server.RateLimitRecoveryPeriod, int64(cfg.Server.RateLimitRecovery))
+	authHandler := auth.NewAuthHandler(h.tokenService, h.userRepo, jwtAuth, h.mfaService)
+	authHandler.SetCSRFCheck(csrfCheck)
 
 	userRoutes := router.Group("api/v1/users")
 	userRoutes.Use(jwtAuth.MiddlewareFunc(), utils.RateLimitMiddleware(limiter))
@@ -2001,7 +1930,7 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.PUT("change_password", utils.RateLimitMiddleware(pwChangeLimiter), h.updateUserPasswordLoggedInOnly)
 		userRoutes.POST("profile_photo", h.updateProfilePhoto)
 		userRoutes.GET("storage", h.getStorageUsage)
-		userRoutes.POST("/logout", csrfCheck, h.logout) // Logout endpoint to clear cookies and expire refresh tokens
+		userRoutes.POST("/logout", authHandler.LogoutHandler)
 
 		// MFA endpoints
 		userRoutes.GET("/mfa/status", h.requirePermission(auth.PermissionManageAccount), h.getMFAStatus)
@@ -2021,9 +1950,6 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.DELETE("/subaccounts/:id", h.requirePermission(auth.PermissionManageSubaccounts), h.deleteChildUser)
 	}
 
-	// Create new auth handler for enhanced token management
-	authHandler := auth.NewAuthHandler(h.tokenService, h.userRepo, jwtAuth, h.mfaService)
-
 	authRoutes := router.Group("api/v1/auth")
 	authRoutes.Use(utils.RateLimitMiddleware(limiter))
 	{
@@ -2033,9 +1959,9 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		// same ":provider" segment as /callback because gin's router tree does
 		// not allow mixing static and param segments at the same depth.
 		authRoutes.POST("/:provider/start", h.thirdPartyAuthStart)
-		authRoutes.POST("refresh", csrfCheck, authHandler.RefreshTokenHandler) // Changed from GET to POST
-		authRoutes.POST("logout", csrfCheck, authHandler.LogoutHandler)        // New logout endpoint
-		authRoutes.POST("mfa/verify", h.verifyMFA)                             // Add MFA verification endpoint
+		authRoutes.POST("refresh", authHandler.RefreshTokenHandler) // Changed from GET to POST
+		authRoutes.POST("logout", authHandler.LogoutHandler)        // New logout endpoint
+		authRoutes.POST("mfa/verify", utils.RateLimitMiddleware(authLimiter), h.verifyMFA)
 
 		// Password-based auth (signup, login, password reset). When
 		// disable_password_auth is set the instance is SSO-only, so these
@@ -2044,11 +1970,11 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		if cfg.DisablePasswordAuth {
 			pwAuth.Use(passwordAuthDisabled())
 		}
-		pwAuth.POST("/", h.signUp)
-		pwAuth.POST("login", authHandler.EnhancedLoginHandler) // Enhanced login with refresh tokens
-		pwAuth.POST("login/legacy", jwtAuth.LoginHandler)      // Legacy login for backward compatibility
-		pwAuth.POST("reset", h.resetPassword)
-		pwAuth.POST("password", h.updateUserPassword)
+		pwAuth.POST("/", utils.RateLimitMiddleware(authLimiter), h.signUp)
+		pwAuth.POST("login", utils.RateLimitMiddleware(authLimiter), authHandler.EnhancedLoginHandler)
+		pwAuth.POST("login/legacy", utils.RateLimitMiddleware(authLimiter), jwtAuth.LoginHandler)
+		pwAuth.POST("reset", utils.RateLimitMiddleware(recoveryLimiter), h.resetPassword)
+		pwAuth.POST("password", utils.RateLimitMiddleware(authLimiter), h.updateUserPassword)
 	}
 
 	// Protected auth routes (require JWT)

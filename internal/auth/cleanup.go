@@ -38,6 +38,9 @@ func (s *CleanupService) Start(ctx context.Context) {
 				} else {
 					logger.Debug("Successfully cleaned up expired user sessions")
 				}
+				if err := s.userRepo.CleanupExpiredPasswordResets(ctx); err != nil {
+					logger.Errorw("Failed to cleanup expired password resets", "error", err)
+				}
 			}
 		}
 	}()

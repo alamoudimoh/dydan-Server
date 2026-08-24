@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/alamoudimoh/daydan-server/internal/mfa"
@@ -51,14 +52,13 @@ func (h *AuthHandler) requireCSRF(c *gin.Context) bool {
 
 // RefreshTokenHandler handles POST /auth/refresh
 func (h *AuthHandler) RefreshTokenHandler(c *gin.Context) {
-	// Cookie-authenticated endpoint: validate the Origin before doing work so
-	// cross-site requests cannot ride the refresh credential.
-	if !h.requireCSRF(c) {
-		return
-	}
 	// Try to get refresh token from cookie first (httpOnly), fallback to body (legacy)
 	refreshToken, err := c.Cookie(RefreshTokenCookieName)
-	if err != nil {
+	if err == nil {
+		if !h.requireCSRF(c) {
+			return
+		}
+	} else {
 		// Fallback to JSON body for backward compatibility
 		var req RefreshRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -98,17 +98,17 @@ func (h *AuthHandler) RefreshTokenHandler(c *gin.Context) {
 	// Set new refresh token as httpOnly cookie
 	SetRefreshSessionCookie(c, tokenResponse.RefreshToken, time.Until(tokenResponse.RefreshTokenExpiry))
 
-	c.JSON(http.StatusOK, tokenResponse)
+	WriteTokenResponse(c, http.StatusOK, tokenResponse)
 }
 
 // LogoutHandler handles POST /auth/logout
 func (h *AuthHandler) LogoutHandler(c *gin.Context) {
-	// Cookie-authenticated endpoint: validate the Origin before doing work.
-	if !h.requireCSRF(c) {
-		return
-	}
 	refreshToken, err := c.Cookie(RefreshTokenCookieName)
-	if err != nil {
+	if err == nil {
+		if !h.requireCSRF(c) {
+			return
+		}
+	} else {
 		// Fallback to JSON body for backward compatibility
 		var req RefreshRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -229,7 +229,7 @@ func (h *AuthHandler) EnhancedLoginHandler(c *gin.Context) {
 		return
 	}
 	SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.refreshTokenExpiry)
-	c.JSON(http.StatusOK, tokenResponse)
+	WriteTokenResponse(c, http.StatusOK, tokenResponse)
 }
 
 // authenticateUser performs user authentication (extracted from JWT middleware)
@@ -262,7 +262,29 @@ func (h *AuthHandler) EnhancedLoginResponse(c *gin.Context, code int, token stri
 		return
 	}
 
-	c.JSON(code, tokenResponse)
+	WriteTokenResponse(c, code, tokenResponse)
+}
+
+// WriteTokenResponse keeps browser refresh credentials confined to the
+// HttpOnly cookie while preserving the JSON contract for native/API clients.
+func WriteTokenResponse(c *gin.Context, code int, response *TokenResponse) {
+	originHeader := c.GetHeader("Origin")
+	origin, err := url.Parse(originHeader)
+	// Capacitor's fixed WebView origins are native credential transports, not
+	// browser deployments. Android uses https://localhost; iOS uses the custom
+	// capacitor scheme. Other HTTP(S) origins receive cookie-only refresh data.
+	nativeWebView := originHeader == "capacitor://localhost" || originHeader == "https://localhost"
+	if !nativeWebView && err == nil && (origin.Scheme == "http" || origin.Scheme == "https") {
+		c.JSON(code, gin.H{
+			"access_token":        response.AccessToken,
+			"access_token_expiry": response.AccessTokenExpiry,
+			"token_type":          response.TokenType,
+			"token":               response.Token,
+			"expire":              response.Expire,
+		})
+		return
+	}
+	c.JSON(code, response)
 }
 
 // CleanupExpiredSessions runs periodic cleanup of expired sessions
@@ -323,6 +345,7 @@ func (h *AuthHandler) RevokeSessionHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Session id required"})
 		return
 	}
+	_, currentFamily := h.currentSessionRef(c)
 
 	found, err := h.tokenService.RevokeUserSessionFamily(c.Request.Context(), currentUser.ID, familyID)
 	if err != nil {
@@ -336,7 +359,6 @@ func (h *AuthHandler) RevokeSessionHandler(c *gin.Context) {
 	}
 
 	// Revoking your own current session is a logout: drop the refresh cookie.
-	_, currentFamily := h.currentSessionRef(c)
 	if currentFamily == familyID {
 		ClearRefreshSessionCookie(c)
 	}
@@ -352,6 +374,10 @@ func (h *AuthHandler) RevokeOtherSessionsHandler(c *gin.Context) {
 		return
 	}
 	_, currentFamily := h.currentSessionRef(c)
+	if currentFamily == "" {
+		c.JSON(http.StatusConflict, gin.H{"error": "Current session cannot be identified"})
+		return
+	}
 
 	if err := h.tokenService.RevokeOtherUserFamilies(c.Request.Context(), currentUser.ID, currentFamily); err != nil {
 		logging.FromContext(c).Errorw("Failed to revoke other sessions", "error", err, "userID", currentUser.ID)

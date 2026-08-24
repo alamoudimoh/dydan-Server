@@ -41,9 +41,9 @@ type TokenService struct {
 // TokenResponse represents the response containing both access and refresh tokens
 type TokenResponse struct {
 	AccessToken        string    `json:"access_token"`
-	RefreshToken       string    `json:"refresh_token"`
+	RefreshToken       string    `json:"refresh_token,omitempty"`
 	AccessTokenExpiry  time.Time `json:"access_token_expiry"`
-	RefreshTokenExpiry time.Time `json:"refresh_token_expiry"`
+	RefreshTokenExpiry time.Time `json:"refresh_token_expiry,omitempty"`
 	TokenType          string    `json:"token_type"`
 
 	// Legacy fields for backward compatibility
@@ -110,7 +110,7 @@ func (s *TokenService) GenerateTokens(ctx context.Context, user *uModel.UserDeta
 		ExpiresAt: refreshTokenExpiry,
 	}
 
-	if err := s.userRepo.CreateUserSession(ctx, userSession); err != nil {
+	if err := s.userRepo.CreateUserSession(ctx, userSession, user.CredentialVersion); err != nil {
 		return nil, fmt.Errorf("failed to store refresh token: %w", err)
 	}
 
@@ -205,18 +205,6 @@ func (s *TokenService) RefreshTokens(ctx context.Context, refreshToken string) (
 		return s.handleAlreadyUsedSession(ctx, session)
 	}
 
-	// Atomically claim the single-use rotation slot for this token.
-	won, err := s.userRepo.MarkSessionUsedIfUnused(ctx, session.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to mark token as used: %w", err)
-	}
-	if !won {
-		// Another request claimed it between our read and write; approximate
-		// its consumption time with now for the grace-window comparison.
-		session.UsedAt = &[]time.Time{time.Now().UTC()}[0]
-		return s.handleAlreadyUsedSession(ctx, session)
-	}
-
 	return s.rotateFromSession(ctx, session)
 }
 
@@ -227,7 +215,7 @@ func (s *TokenService) handleAlreadyUsedSession(ctx context.Context, session *uM
 	if !time.Now().UTC().After(session.UsedAt.Add(s.refreshGraceWindow)) {
 		return nil, ErrRefreshRetry
 	}
-	_ = s.userRepo.RevokeSessionFamily(ctx, session.FamilyID)
+	_, _ = s.userRepo.RevokeUserSessionFamily(ctx, session.UserID, session.FamilyID)
 	return nil, fmt.Errorf("token reuse detected - please login again")
 }
 
@@ -240,7 +228,7 @@ func (s *TokenService) rotateFromSession(ctx context.Context, session *uModel.Us
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if userData.Disabled {
-		_ = s.userRepo.RevokeSessionFamily(ctx, session.FamilyID)
+		_, _ = s.userRepo.RevokeUserSessionFamily(ctx, session.UserID, session.FamilyID)
 		return nil, fmt.Errorf("account disabled")
 	}
 
@@ -266,11 +254,6 @@ func (s *TokenService) rotateFromSession(ctx context.Context, session *uModel.Us
 		CreatedAt: now,
 		ExpiresAt: refreshTokenExpiry,
 	}
-
-	if err := s.userRepo.CreateUserSession(ctx, newSession); err != nil {
-		return nil, fmt.Errorf("failed to store new refresh token: %w", err)
-	}
-
 	accessToken, err := s.mintAccessToken(user, accessTokenTime{
 		ttl:      s.accessTokenTime,
 		session:  newSession.ID,
@@ -278,6 +261,16 @@ func (s *TokenService) rotateFromSession(ctx context.Context, session *uModel.Us
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	won, err := s.userRepo.RotateUserSession(ctx, session.ID, newSession)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store new refresh token: %w", err)
+	}
+	if !won {
+		now := time.Now().UTC()
+		session.UsedAt = &now
+		return s.handleAlreadyUsedSession(ctx, session)
 	}
 
 	return &TokenResponse{
@@ -292,14 +285,15 @@ func (s *TokenService) rotateFromSession(ctx context.Context, session *uModel.Us
 	}, nil
 }
 
-// RevokeToken revokes a specific refresh token
+// RevokeToken revokes the entire login family behind a refresh token.
 func (s *TokenService) RevokeToken(ctx context.Context, refreshToken string) error {
 	tokenHash := s.hashToken(refreshToken)
 	session, err := s.userRepo.GetUserSessionByTokenHash(ctx, tokenHash)
 	if err != nil {
 		return nil // Token not found - already invalid
 	}
-	return s.userRepo.RevokeSession(ctx, session.ID)
+	_, err = s.userRepo.RevokeUserSessionFamily(ctx, session.UserID, session.FamilyID)
+	return err
 }
 
 // RevokeAllUserTokens revokes all tokens for a user (logout from all devices)

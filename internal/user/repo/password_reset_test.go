@@ -2,11 +2,13 @@ package user
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -18,7 +20,7 @@ func passwordResetRepo(t *testing.T) (*UserRepository, *gorm.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&uModel.User{}, &uModel.UserPasswordReset{}, &uModel.UserSession{}); err != nil {
+	if err := db.AutoMigrate(&cModel.Circle{}, &uModel.User{}, &uModel.UserPasswordReset{}, &uModel.UserSession{}, &uModel.MFASession{}); err != nil {
 		t.Fatal(err)
 	}
 	return NewUserRepository(db, &config.Config{IsDayDanCloud: false}), db
@@ -33,6 +35,9 @@ func TestUpdatePasswordByTokenRevokesAllRefreshSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := db.Create(&uModel.UserPasswordReset{UserID: user.ID, Token: "valid-token", Email: user.Email, ExpirationDate: now.Add(time.Hour)}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&uModel.MFASession{SessionToken: "pending-mfa", UserID: user.ID, AuthMethod: "password", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}).Error; err != nil {
 		t.Fatal(err)
 	}
 	for _, id := range []string{"session-a", "session-b"} {
@@ -53,6 +58,96 @@ func TestUpdatePasswordByTokenRevokesAllRefreshSessions(t *testing.T) {
 	db.Model(&uModel.UserPasswordReset{}).Where("token = ?", "valid-token").Count(&resetRows)
 	if resetRows != 0 {
 		t.Fatal("reset token was not consumed transactionally")
+	}
+	var mfaRows int64
+	db.Model(&uModel.MFASession{}).Where("user_id = ?", user.ID).Count(&mfaRows)
+	if mfaRows != 0 {
+		t.Fatal("password reset left a pending MFA login alive")
+	}
+	var updated uModel.User
+	db.First(&updated, user.ID)
+	if updated.CredentialVersion != 1 {
+		t.Fatalf("credential version = %d, want 1", updated.CredentialVersion)
+	}
+}
+
+func TestSetPasswordResetTokenStoresHashAndSupersedesPriorLink(t *testing.T) {
+	r, db := passwordResetRepo(t)
+	ctx := context.Background()
+	user := &uModel.User{ID: 1, Username: "alice", Email: "alice@example.com", Password: "old"}
+	if err := db.Create(user).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := r.SetPasswordResetToken(ctx, user.Email, "first-secret"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.SetPasswordResetToken(ctx, user.Email, "second-secret"); err != nil {
+		t.Fatal(err)
+	}
+
+	var rows []uModel.UserPasswordReset
+	if err := db.Find(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("reset rows = %d, want 1", len(rows))
+	}
+	if rows[0].Token == "second-secret" || rows[0].Token != passwordResetTokenHash("second-secret") {
+		t.Fatal("new reset credential was not hashed at rest")
+	}
+	if rows[0].ExpirationDate.After(rows[0].CreatedAt.Add(passwordResetLifetime + time.Second)) {
+		t.Fatal("reset credential lifetime exceeds policy")
+	}
+	if err := r.UpdatePasswordByToken(ctx, user.Email, "first-secret", "nope"); !errors.Is(err, ErrInvalidPasswordResetToken) {
+		t.Fatalf("superseded link should be invalid: %v", err)
+	}
+}
+
+func TestCleanupExpiredPasswordResets(t *testing.T) {
+	r, db := passwordResetRepo(t)
+	now := time.Now().UTC()
+	rows := []uModel.UserPasswordReset{
+		{Token: "expired", ExpirationDate: now.Add(-time.Minute)},
+		{Token: "live", ExpirationDate: now.Add(time.Minute)},
+	}
+	if err := db.Create(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := r.CleanupExpiredPasswordResets(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var count int64
+	db.Model(&uModel.UserPasswordReset{}).Count(&count)
+	if count != 1 {
+		t.Fatalf("reset rows after cleanup = %d, want 1", count)
+	}
+}
+
+func TestPasswordResetSchemaUpgradesLegacyTable(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE user_password_resets (
+		user_id integer,
+		email text,
+		token text PRIMARY KEY,
+		expiration_date datetime
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("INSERT INTO user_password_resets (user_id, email, token, expiration_date) VALUES (?, ?, ?, ?)", 1, "legacy@example.com", "legacy-token", time.Now().UTC().Add(time.Hour)).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&uModel.UserPasswordReset{}); err != nil {
+		t.Fatal(err)
+	}
+	if !db.Migrator().HasColumn(&uModel.UserPasswordReset{}, "created_at") {
+		t.Fatal("legacy reset table was not upgraded with created_at")
+	}
+	var row uModel.UserPasswordReset
+	if err := db.Where("token = ?", "legacy-token").First(&row).Error; err != nil {
+		t.Fatalf("legacy reset row was not preserved: %v", err)
 	}
 }
 

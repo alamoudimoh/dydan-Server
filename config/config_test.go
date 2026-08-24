@@ -17,8 +17,58 @@ func clearConfigSelection(t *testing.T) {
 		"DT_ENV", "DT_CONFIG_FILE", "TASKIER_CONFIG_FILE", "DT_JWT_SECRET",
 		"TASKIER_JWT_SECRET", "DT_SQLITE_PATH", "TASKIER_SQLITE_PATH",
 		"DT_SERVER_PORT", "DT_REALTIME_ENABLED", "DT_IS_USER_CREATION_DISABLED",
+		"DT_EMAIL_HOST", "DT_EMAIL_PORT", "DT_EMAIL_EMAIL", "DT_EMAIL_APP_HOST",
 	} {
 		t.Setenv(name, "")
+	}
+}
+
+func TestEmailAppHostEnvironmentMapping(t *testing.T) {
+	clearConfigSelection(t)
+	t.Setenv("TASKIER_DATA_DIR", t.TempDir())
+	t.Setenv("DT_EMAIL_HOST", "smtp.example.com")
+	t.Setenv("DT_EMAIL_PORT", "587")
+	t.Setenv("DT_EMAIL_EMAIL", "sender@example.com")
+	t.Setenv("DT_EMAIL_APP_HOST", "https://app.example.com")
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.EmailConfig.AppHost != "https://app.example.com" {
+		t.Fatalf("email app host = %q", cfg.EmailConfig.AppHost)
+	}
+}
+
+func TestValidateSecurityConfigRejectsPartialEmailConfiguration(t *testing.T) {
+	cfg := NewConfig()
+	cfg.EmailConfig = EmailConfig{Provider: "smtp", Email: "sender@example.com"}
+	if err := validateSecurityConfig(cfg); err == nil {
+		t.Fatal("partial SMTP configuration should fail")
+	}
+}
+
+func TestValidateSecurityConfigNormalizesProviderAndValidatesRedirects(t *testing.T) {
+	cfg := NewConfig()
+	cfg.EmailConfig = EmailConfig{
+		Provider:                " SMTP2GO ",
+		Email:                   "sender@example.com",
+		Key:                     "secret",
+		AppHost:                 "https://app.example",
+		VerifyTemplateID:        "verify",
+		ResetPasswordTemplateID: "reset",
+	}
+	cfg.OAuth2Config.AllowedRedirectURLs = []string{"https://app.example/auth/oauth2"}
+	if err := validateSecurityConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.EmailConfig.Provider != "smtp2go" {
+		t.Fatalf("provider was not normalized: %q", cfg.EmailConfig.Provider)
+	}
+
+	cfg.OAuth2Config.AllowedRedirectURLs = []string{"https://user@app.example/auth/oauth2"}
+	if err := validateSecurityConfig(cfg); err == nil {
+		t.Fatal("redirect URL with userinfo should fail")
 	}
 }
 

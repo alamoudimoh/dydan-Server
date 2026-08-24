@@ -68,6 +68,7 @@ func newOAuthHarness(t *testing.T, userInfo map[string]any, allowLegacy bool) *o
 	cfg.Jwt.SessionTime = time.Hour
 	cfg.Jwt.MaxRefresh = 24 * time.Hour
 	cfg.Jwt.Secret = "test-secret-that-is-long-enough-1234"
+	cfg.Server.PublicHost = "https://daydan.example.com"
 	cfg.OAuth2Config = config.OAuth2Config{
 		ClientID:              "test-client",
 		ClientSecret:          "test-secret",
@@ -91,7 +92,7 @@ func newOAuthHarness(t *testing.T, userInfo map[string]any, allowLegacy bool) *o
 		identityProvider:  auth.NewIdentityProvider(cfg),
 		oauthTransactions: auth.NewOAuthTransactionStore(),
 		oauth2Config:      cfg.OAuth2Config,
-		proxyTrust:        auth.NewProxyTrust([]string{"192.0.2.1"}),
+		oauthRedirectURLs: []string{sameOriginRedirect},
 	}
 
 	r := gin.New()
@@ -167,10 +168,8 @@ func TestOAuthStartUnapprovedRedirectRejected(t *testing.T) {
 	}
 }
 
-func TestOAuthStartAcceptsSameOriginDerivedRedirect(t *testing.T) {
+func TestOAuthStartAcceptsConfiguredPublicRedirect(t *testing.T) {
 	th := newOAuthHarness(t, map[string]any{}, false)
-	// The harness sends X-Forwarded-* headers so the server derives
-	// https://daydan.example.com/auth/oauth2 as the same-origin callback.
 	w := th.post(t, "/api/v1/auth/oauth2/start", map[string]any{
 		"redirect_uri": sameOriginRedirect,
 	})
@@ -179,9 +178,9 @@ func TestOAuthStartAcceptsSameOriginDerivedRedirect(t *testing.T) {
 	}
 }
 
-func TestOAuthStartRejectsSpoofedForwardedOrigin(t *testing.T) {
+func TestOAuthStartRejectsUnconfiguredForwardedOrigin(t *testing.T) {
 	th := newOAuthHarness(t, map[string]any{}, false)
-	payload, _ := json.Marshal(map[string]any{"redirect_uri": sameOriginRedirect})
+	payload, _ := json.Marshal(map[string]any{"redirect_uri": "https://evil.example.com/auth/oauth2"})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oauth2/start", strings.NewReader(string(payload)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Forwarded-Proto", "https")
@@ -190,7 +189,7 @@ func TestOAuthStartRejectsSpoofedForwardedOrigin(t *testing.T) {
 	w := httptest.NewRecorder()
 	th.router.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("untrusted forwarding headers must not authorize redirect, got %d (%s)", w.Code, w.Body.String())
+		t.Fatalf("forwarding headers must not authorize an unconfigured redirect, got %d (%s)", w.Code, w.Body.String())
 	}
 }
 

@@ -165,6 +165,21 @@ func (h *Handler) verifyMFA(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired session"})
 		return
 	}
+	maxAttempts := h.mfaMaxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = 5
+	}
+	attempts, reserved, err := h.userRepo.ReserveMFAAttempt(c, req.SessionToken, maxAttempts)
+	if err != nil {
+		logger.Errorw("Failed to reserve MFA verification attempt", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate code"})
+		return
+	}
+	if !reserved {
+		_ = h.userRepo.DeleteMFASession(c, req.SessionToken)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Too many failed verification attempts. Please sign in again."})
+		return
+	}
 
 	// Get user details
 	user, err := h.userRepo.GetUserByUsername(c, mfaSession.UserData) // Assuming UserData contains username
@@ -189,44 +204,29 @@ func (h *Handler) verifyMFA(c *gin.Context) {
 	}
 
 	if !valid {
-		// Count failed verification attempts and destroy the session once the
-		// configured limit is reached, so TOTP codes cannot be brute-forced by
-		// repeatedly re-submitting the session token.
-		mfaSession.Attempts++
-		maxAttempts := h.mfaMaxAttempts
-		if maxAttempts <= 0 {
-			maxAttempts = 5
-		}
-		if mfaSession.Attempts >= maxAttempts {
+		if attempts >= maxAttempts {
 			if err := h.userRepo.DeleteMFASession(c, req.SessionToken); err != nil {
 				logger.Errorw("Failed to delete exhausted MFA session", "error", err)
 			}
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Too many failed verification attempts. Please sign in again."})
 			return
 		}
-		if err := h.userRepo.UpdateMFASession(c, mfaSession); err != nil {
-			logger.Errorw("Failed to record MFA verification attempt", "error", err)
-		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code"})
 		return
 	}
 
-	// Update used codes if a backup code was used
-	if newUsedCodes != user.MFARecoveryUsed {
-		if err := h.userRepo.UpdateMFARecoveryCodes(c, user.ID, newUsedCodes); err != nil {
-			logger.Errorw("Failed to update recovery codes", "error", err)
-		}
-	}
-
-	mfaSession.Verified = true
-	if err := h.userRepo.UpdateMFASession(c, mfaSession); err != nil {
-		logger.Errorw("Failed to update MFA session", "error", err)
+	// Consume the temporary session and, for backup-code authentication, the
+	// one-time recovery code in the same transaction.
+	consumed, err := h.userRepo.ConsumeMFASession(c, req.SessionToken, user.ID, user.MFARecoveryUsed, newUsedCodes)
+	if err != nil {
+		logger.Errorw("Failed to consume MFA session", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete verification"})
 		return
 	}
-
-	// Clean up MFA session
-	h.userRepo.DeleteMFASession(c, req.SessionToken)
+	if !consumed {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired session"})
+		return
+	}
 
 	// Generate tokens including refresh token
 	tokenResponse, err := h.tokenService.GenerateTokens(c.Request.Context(), user)
@@ -236,7 +236,7 @@ func (h *Handler) verifyMFA(c *gin.Context) {
 		return
 	}
 	auth.SetRefreshSessionCookie(c, tokenResponse.RefreshToken, h.tokenService.RefreshTokenExpiry())
-	c.JSON(http.StatusOK, tokenResponse)
+	auth.WriteTokenResponse(c, http.StatusOK, tokenResponse)
 }
 
 // getMFAStatus returns the current MFA status for the user
