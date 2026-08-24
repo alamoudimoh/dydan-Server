@@ -38,3 +38,39 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Compose and fresh/restart container behavior
         run: bash scripts/verify-container.sh
+
+  postgres-security:
+    name: PostgreSQL security regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        # Ephemeral per-job instance: no external database, no shared state,
+        # nothing persists beyond this run.
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: daydan
+          POSTGRES_PASSWORD: daydan
+          POSTGRES_DB: daydan_test
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U daydan -d daydan_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Restore dependencies
+        run: go mod download
+      - name: Run PostgreSQL security regression suite
+        env:
+          DAYDAN_TEST_POSTGRES_DSN: host=localhost port=54329 user=daydan password=daydan dbname=daydan_test sslmode=disable
+        # Focused job on top of (not duplicating) the core suite: only tests
+        # that exercise PostgreSQL-specific semantics. Race detector included.
+        run: |
+          go test ./internal/user/repo/ -run 'Postgres' -count=1 -race -v
