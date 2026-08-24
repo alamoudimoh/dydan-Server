@@ -23,6 +23,29 @@ type Connection struct {
 	mu           sync.RWMutex
 	closed       bool
 	logger       *zap.SugaredLogger
+	// authRevalidate, when set, re-checks the authoritative authentication
+	// state of this connection's original claims against the database. It is
+	// invoked on the write-pump ping tick so a revoked session cannot keep an
+	// authenticated WebSocket open longer than one ping interval.
+	authRevalidate func() error
+}
+
+// wsRevalidationTimeout bounds each auth probe so a slow database can never
+// stall the write pump indefinitely.
+const wsRevalidationTimeout = 5 * time.Second
+
+// wsPingInterval controls the WebSocket server-ping cadence. It is also the
+// maximum interval at which auth revalidation runs, i.e. the worst-case bound
+// between an authoritative revocation commit and the connection being torn
+// down.
+var wsPingInterval = 54 * time.Second
+
+// SetAuthRevalidator attaches the periodic security-state check used by the
+// write pump. Passing nil disables revalidation.
+func (c *Connection) SetAuthRevalidator(fn func() error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.authRevalidate = fn
 }
 
 // NewConnection creates a new WebSocket or SSE connection
@@ -155,7 +178,7 @@ func (c *Connection) StartReadPump(pool *ConnectionPool) {
 
 // StartWritePump starts the write pump for sending outgoing messages
 func (c *Connection) StartWritePump() {
-	ticker := time.NewTicker(54 * time.Second) // Send ping every 54 seconds
+	ticker := time.NewTicker(wsPingInterval) // Send ping every 54 seconds
 	defer func() {
 		ticker.Stop()
 		c.Close()
@@ -184,6 +207,25 @@ func (c *Connection) StartWritePump() {
 			}
 
 		case <-ticker.C:
+			// Bounded auth revalidation: every ping tick re-checks the
+			// authoritative session/credential state. A committed revocation
+			// (session, family, global, or credential-version bump) therefore
+			// terminates this connection within at most one ping interval.
+			c.mu.RLock()
+			revalidate := c.authRevalidate
+			c.mu.RUnlock()
+			if revalidate != nil {
+				if err := revalidate(); err != nil {
+					c.logger.Infow("WebSocket authentication state revoked, closing connection",
+						"connectionId", c.ID,
+						"userId", c.UserID,
+						"error", err)
+					c.Conn.SetWriteDeadline(time.Now().UTC().Add(10 * time.Second))
+					closeMsg := websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "authentication revoked")
+					c.Conn.WriteMessage(websocket.CloseMessage, closeMsg)
+					return
+				}
+			}
 			c.Conn.SetWriteDeadline(time.Now().UTC().Add(10 * time.Second))
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				c.logger.Errorw("Failed to write ping", "error", err, "connectionId", c.ID)

@@ -267,3 +267,51 @@ func TestLegacyAccessTokenStillManagesSessions(t *testing.T) {
 	}
 
 }
+
+// TestRevokeSessionByIDEndpointKillsOnlyThatSession proves the DELETE
+// /auth/sessions/:id surface accepts an individual refresh-session row ID and
+// revokes only that row: the revoked session's access JWT dies immediately,
+// while sibling sessions in the same family keep working.
+func TestRevokeSessionByIDEndpointKillsOnlyThatSession(t *testing.T) {
+	r, svc, db, userA, _ := newSessionsTestRouter(t)
+
+	first := loginFor(t, svc, userA)
+	second := loginFor(t, svc, userA)
+	third := loginFor(t, svc, userA)
+
+	sidA, famA := svc.SessionRefForToken(context.Background(), first.RefreshToken)
+	sidB, famB := svc.SessionRefForToken(context.Background(), second.RefreshToken)
+	sidC, famC := svc.SessionRefForToken(context.Background(), third.RefreshToken)
+	if famA == famB || famB == famC || famA == famC {
+		t.Fatal("each login must create its own rotation family")
+	}
+	if sidA == "" || sidB == "" || sidC == "" {
+		t.Fatal("session ids must resolve")
+	}
+
+	// Revoke session B by its row id through the HTTP endpoint.
+	w := doAuthed(r, http.MethodDelete, "/api/v1/auth/sessions/"+sidB, third.AccessToken)
+	if w.Code != http.StatusOK {
+		t.Fatalf("revoke by session id: got %d: %s", w.Code, w.Body.String())
+	}
+
+	if _, _, ok := liveSessionRows(t, db, sidB); ok {
+		t.Fatal("session B row still live after endpoint revoke")
+	}
+	for name, tok := range map[string]string{"A": first.AccessToken, "C": third.AccessToken} {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/sessions", nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("sibling session %s wrongly rejected after granular revoke: %d", name, rec.Code)
+		}
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/sessions", nil)
+	req.Header.Set("Authorization", "Bearer "+second.AccessToken)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code == http.StatusOK {
+		t.Fatal("revoked session B JWT still accepted after endpoint revoke")
+	}
+}

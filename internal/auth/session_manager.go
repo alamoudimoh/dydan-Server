@@ -98,6 +98,18 @@ func (s *TokenService) RevokeUserSessionFamily(ctx context.Context, userID int, 
 	return s.userRepo.RevokeUserSessionFamily(ctx, userID, familyID)
 }
 
+// RevokeUserSessionByID revokes exactly one refresh session row after
+// verifying ownership. The session's already-issued access JWTs stop working
+// immediately (validation checks the exact row), while sibling sessions in
+// the same rotation family remain live. Returns false when no such live
+// session exists for this user.
+func (s *TokenService) RevokeUserSessionByID(ctx context.Context, userID int, sessionID string) (bool, error) {
+	if sessionID == "" {
+		return false, nil
+	}
+	return s.userRepo.RevokeUserSessionByID(ctx, userID, sessionID)
+}
+
 // RevokeOtherUserFamilies revokes every live family of the user except the
 // identified current family.
 func (s *TokenService) RevokeOtherUserFamilies(ctx context.Context, userID int, keepFamilyID string) error {
