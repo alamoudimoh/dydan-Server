@@ -48,6 +48,25 @@ func TestValidateSecurityConfigRejectsPartialEmailConfiguration(t *testing.T) {
 	}
 }
 
+// TestValidateSecurityConfigRejectsWildcardCORSOrigin pins the CORS hygiene
+// rule: browser auth always sends credential-bearing cookies, so a wildcard
+// origin would reflect every site's Origin with Allow-Credentials and must
+// fail startup instead of silently weakening isolation.
+func TestValidateSecurityConfigRejectsWildcardCORSOrigin(t *testing.T) {
+	for _, bad := range []string{"*", " * "} {
+		cfg := NewConfig()
+		cfg.Server.CorsAllowOrigins = []string{"https://app.example", bad}
+		if err := validateSecurityConfig(cfg); err == nil {
+			t.Fatalf("wildcard cors_allow_origins entry %q should fail validation", bad)
+		}
+	}
+	cfg := NewConfig()
+	cfg.Server.CorsAllowOrigins = []string{"https://app.example", "capacitor://localhost"}
+	if err := validateSecurityConfig(cfg); err != nil {
+		t.Fatalf("explicit origin list must remain valid: %v", err)
+	}
+}
+
 func TestValidateSecurityConfigNormalizesProviderAndValidatesRedirects(t *testing.T) {
 	cfg := NewConfig()
 	cfg.EmailConfig = EmailConfig{

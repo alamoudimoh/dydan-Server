@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
 	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
@@ -260,4 +261,54 @@ func TestAPITokenJSONNeverExposesSecretOrDigest(t *testing.T) {
 		t.Fatalf("serialization leaked secret/digest material: %s", blob)
 	}
 	_ = db
+}
+
+func TestCountLegacyPlaintextAPITokens(t *testing.T) {
+	db, repo := newTokenHashHarness(t)
+	owner := seedTokenOwner(t, repo)
+
+	// Fresh state: everything hashed (or nothing stored) must report 0.
+	if n, err := CountLegacyPlaintextAPITokens(context.Background(), db); err != nil || n != 0 {
+		t.Fatalf("clean state must report 0 legacy rows, got %d err=%v", n, err)
+	}
+
+	legacyA := "aaaa0000bbbb1111cccc2222dddd3333eeee4444ffff55556666777788889999"
+	legacyB := "bbbb0000cccc1111dddd2222eeee3333ffff444455556666777788889999aaaa"
+	hashed := APITokenSecretHash("eeee0000bbbb1111cccc2222dddd3333eeee4444ffff55556666777788889999")
+	for name, tok := range map[string]string{
+		"legacy-a": legacyA,
+		"legacy-b": legacyB,
+		"hashed":   hashed,
+	} {
+		if err := db.Create(&uModel.APIToken{UserID: owner.ID, Name: name, Token: tok}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	// An empty-token row can never authenticate and is skipped by the sweep;
+	// it must not be reported as pending migration work.
+	if err := db.Exec("INSERT INTO api_tokens (user_id, name, token, created_at) VALUES (?, ?, '', ?)",
+		owner.ID, "empty", time.Now().UTC()).Error; err != nil {
+		t.Fatalf("seed empty row: %v", err)
+	}
+
+	n, err := CountLegacyPlaintextAPITokens(context.Background(), db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("expected exactly 2 legacy plaintext rows, got %d", n)
+	}
+
+	if _, err := HashLegacyAPITokenRows(context.Background(), db); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := CountLegacyPlaintextAPITokens(context.Background(), db); err != nil || n != 0 {
+		t.Fatalf("post-sweep state must report 0, got %d err=%v", n, err)
+	}
+
+	// The counter exposes no material: exercise it through the exported
+	// surface only — there is deliberately no API returning the rows.
+	if _, err := repo.GetUserByToken(context.Background(), legacyA); err != nil {
+		t.Fatalf("credential lost by migration: %v", err)
+	}
 }

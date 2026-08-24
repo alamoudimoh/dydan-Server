@@ -650,6 +650,16 @@ func validateSecurityConfig(cfg *Config) error {
 			return fmt.Errorf("oauth2.allowed_redirect_urls contains invalid URL %q", redirect)
 		}
 	}
+	// Browser auth uses credential-bearing cookies, so CORS is always
+	// credentials-enabled. A wildcard origin combined with Allow-Credentials
+	// lets any website make authenticated requests against the instance;
+	// reflect-everything CORS is not a supported configuration, fail fast at
+	// startup instead of silently weakening browser isolation.
+	for _, origin := range cfg.Server.CorsAllowOrigins {
+		if strings.TrimSpace(origin) == "*" {
+			return fmt.Errorf(`server.cors_allow_origins wildcard "*" is not allowed because credentials are always enabled; list explicit origins instead`)
+		}
+	}
 	return nil
 }
 

@@ -212,3 +212,158 @@ func TestPostgresLegacyTokenMigrationSweep(t *testing.T) {
 		t.Fatalf("legacy credential broken after sweep: %v", err)
 	}
 }
+
+// TestPostgresLegacyTokenObservabilityCounter verifies the plaintext-migration
+// counter against real PostgreSQL semantics (NOT LIKE over a live table) and
+// that it drains to zero after a sweep.
+func TestPostgresLegacyTokenObservabilityCounter(t *testing.T) {
+	db := postgresTestDB(t)
+	repo := NewUserRepository(db, config4Test())
+
+	suffix := randomSuffix(t) + "c"
+	owner, err := repo.CreateUser(context.Background(), &uModel.User{
+		Username: "pgcount" + suffix, Email: "pgcount" + suffix + "@example.com",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf := make([]byte, 32)
+	if _, err := cryptorand.Read(buf); err != nil {
+		t.Fatal(err)
+	}
+	legacy := hex.EncodeToString(buf)
+	if err := db.Create(&uModel.APIToken{UserID: owner.ID, Name: "pg-count-legacy-" + suffix, Token: legacy}).Error; err != nil {
+		t.Fatal(err)
+	}
+	buf2 := make([]byte, 32)
+	if _, err := cryptorand.Read(buf2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.StoreAPIToken(context.Background(), owner.ID, "hashed", hex.EncodeToString(buf2)); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err := CountLegacyPlaintextAPITokens(context.Background(), db)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n < 1 {
+		t.Fatalf("seeded legacy row must be counted as pending, got %d", n)
+	}
+
+	if _, err := HashLegacyAPITokenRows(context.Background(), db); err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	n, err = CountLegacyPlaintextAPITokens(context.Background(), db)
+	if err != nil {
+		t.Fatalf("post-sweep count: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("counter must drain to 0 after sweep on postgres, got %d", n)
+	}
+}
+
+// TestPostgresConcurrentLazyUpgrade pins concurrent authentication of the same
+// legacy credential during lazy upgrade: every request authenticates and the
+// row ends in digest form exactly once.
+func TestPostgresConcurrentLazyUpgrade(t *testing.T) {
+	db := postgresTestDB(t)
+	repo := NewUserRepository(db, config4Test())
+
+	suffix := randomSuffix(t) + "l"
+	owner, err := repo.CreateUser(context.Background(), &uModel.User{
+		Username: "pglazy" + suffix, Email: "pglazy" + suffix + "@example.com",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf := make([]byte, 32)
+	if _, err := cryptorand.Read(buf); err != nil {
+		t.Fatal(err)
+	}
+	legacy := hex.EncodeToString(buf)
+	if err := db.Create(&uModel.APIToken{UserID: owner.ID, Name: "pg-lazy-" + suffix, Token: legacy}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	const workers = 8
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			user, err := repo.GetUserByToken(context.Background(), legacy)
+			if err != nil {
+				errs <- err
+			} else if user.ID != owner.ID {
+				errs <- errors.New("wrong user authenticated")
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatalf("concurrent legacy auth failed on postgres: %v", err)
+	}
+
+	var row uModel.APIToken
+	if err := db.Where("name = ?", "pg-lazy-"+suffix).First(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.Token != APITokenSecretHash(legacy) {
+		t.Fatalf("row must end in digest form, got %q", row.Token)
+	}
+}
+
+// TestPostgresConcurrentEmailSignupSingleWinner drives the partial unique
+// email index through the real race path.
+func TestPostgresConcurrentEmailSignupSingleWinner(t *testing.T) {
+	db := postgresTestDB(t)
+	repo := NewUserRepository(db, config4Test())
+
+	const workers = 8
+	email := "pg-email-race-" + randomSuffix(t) + "@example.com"
+	start := make(chan struct{})
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			<-start
+			_, err := repo.CreateUser(context.Background(), &uModel.User{
+				Username: "pgemailrace" + strconv.FormatInt(int64(n), 10) + randomSuffix(t),
+				Email:    email,
+			})
+			errs <- err
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+
+	successes := 0
+	for err := range errs {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, ErrUserAlreadyExists):
+		default:
+			t.Fatalf("unexpected email-race loser error on postgres: %v", err)
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("exactly one email signup must win, got %d", successes)
+	}
+	var count int64
+	db.Model(&uModel.User{}).Where("email = ?", email).Count(&count)
+	if count != 1 {
+		t.Fatalf("expected exactly one row for raced email, got %d", count)
+	}
+}
