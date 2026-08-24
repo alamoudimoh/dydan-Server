@@ -96,10 +96,18 @@ forwards raw client headers through to DayDan unmodified (do not enable the
 | Legacy login JWT                        | `jwt.session_time`      | 24h     | `/api/v1/auth/login/legacy` only |
 | Refresh session (rotating family)       | `jwt.max_refresh`       | 60d absolute | Both browser cookie and native body flow |
 
-Interactive access tokens are short-lived on purpose: logout and session
-revocation take full effect within minutes even if a bearer token was copied
-beforehand. Browsers restore sessions transparently via the HttpOnly refresh
-cookie, so no UX change is expected. Long-lived machine credentials are
+Every JWT carries a `cv` credential-version claim. Each authenticated request
+reloads the user from the database and rejects a stale version. Interactive
+JWTs also carry `sid` and `fam` and are accepted only while that user's family
+is live, unrevoked, and unexpired. Logout, family revocation, revoke-others,
+and refresh-replay revocation therefore reject access JWTs immediately after
+the database commit, including on another replica and after restart. There is
+no cache or process-local denylist.
+
+Legacy login JWTs carry `cv` but intentionally have no refresh family, keeping
+integration behavior compatible. Tokens issued by older releases without
+`cv` are rejected after this deployment, so upgrading logs out existing JWT
+clients. Browsers restore ordinary sessions through refresh rotation. Long-lived machine credentials are
 completely separate: `/api/v1/users/tokens` issues opaque API keys checked by
 their own middleware and are unaffected by all JWT lifetime settings.
 
@@ -127,5 +135,37 @@ window revokes every descendant in the family.
 An authenticated password change preserves the caller's current refresh
 session and revokes all other interactive sessions. Password recovery revokes
 all interactive refresh sessions transactionally with the password update.
-Already-issued access JWTs remain usable only for their configured short
-`jwt.access_token_time`; DayDan does not maintain an access-token blacklist.
+Both operations increment `cv`, immediately invalidating prior access JWTs;
+the preserved family can refresh to obtain a JWT with the new version. Child
+password changes also increment `cv` and revoke every child session in the same
+transaction.
+
+Enabling or disabling MFA is stricter: it increments `cv` and revokes every
+refresh family atomically, including the caller's family. The response clears
+the refresh cookie and the user must sign in again. SSE tickets retain the JWT
+security state present when minted and revalidate it at consumption.
+
+## Distributed authentication rate limits
+
+Security-sensitive authentication routes use fixed-window buckets in the
+application database. Buckets are shared by all replicas using that database;
+keys are SHA-256 hashes and never persist usernames, email addresses, session
+tokens, refresh tokens, or raw client IPs. Usernames and emails are trimmed and
+case-folded, token values are trimmed but remain case-sensitive, IPv4 is
+canonicalized with `net.ParseIP`, and IPv6 sources are grouped by `/64`. Gin's
+`ClientIP` remains the source, so configure trusted proxies as described above.
+
+The defaults are 10 attempts per 60 seconds for login, signup, legacy login,
+refresh, logout, OIDC start/callback, MFA login/confirm/disable, and recovery
+redemption; recovery requests allow 5 per hour; password changes allow 10 per
+60 seconds. Both IP and exposed account identifiers consume independent
+buckets. Responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and
+`X-RateLimit-Reset`; rejected requests return `429` with `Retry-After`.
+
+`server.rate_limit_max_active_buckets` defaults to 100000. Expired rows have an
+expiry index and are deleted before admitting a new key. Capacity exhaustion
+or any database error fails closed with `503 AUTH_RATE_LIMIT_UNAVAILABLE`.
+SQLite is suitable for one application node and uses WAL/busy timeout; replicas
+must use one shared PostgreSQL database for cross-node atomic increments. The
+general `server.rate_limit` API limiter is still process-local and is not a
+distributed security control.

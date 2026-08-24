@@ -15,6 +15,7 @@ import (
 	"github.com/alamoudimoh/daydan-server/internal/auth"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/alamoudimoh/daydan-server/logging"
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -100,7 +101,12 @@ func (h *PollingHandler) HandleSSETicket(c *gin.Context) {
 		return
 	}
 
-	ticket, err := h.authMiddleware.ticketStore.Issue(user.ID)
+	claims := jwt.ExtractClaims(c)
+	ticketClaims := make(map[string]interface{}, len(claims))
+	for key, value := range claims {
+		ticketClaims[key] = value
+	}
+	ticket, err := h.authMiddleware.ticketStore.Issue(user.ID, ticketClaims)
 	if err != nil {
 		logger.Errorw("Failed to issue SSE ticket", "userID", user.ID, "error", err)
 		if errors.Is(err, ErrTicketStoreFull) {
@@ -147,6 +153,22 @@ func (h *PollingHandler) HandleSSE(c *gin.Context) {
 
 	user := userInterface.(*uModel.User)
 	circleID := user.CircleID
+	securityState, ok := c.Get("accessSecurityClaims")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication state is unavailable",
+			"code":  "AUTH_REQUIRED",
+		})
+		return
+	}
+	claims, ok := securityState.(map[string]interface{})
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication state is invalid",
+			"code":  "AUTH_REQUIRED",
+		})
+		return
+	}
 
 	// Validate the request parameters
 	if err := h.validateSSERequest(c, user); err != nil {
@@ -259,7 +281,7 @@ func (h *PollingHandler) HandleSSE(c *gin.Context) {
 
 	// Start the main SSE event loop
 	h.logger.Infow("Starting SSE event loop", "connectionId", connectionID)
-	h.sseEventLoop(ctx, c, sseConn, circleID)
+	h.sseEventLoop(ctx, c, sseConn, circleID, claims)
 }
 
 // setSSEHeaders sets the necessary headers for Server-Sent Events
@@ -331,7 +353,7 @@ func (h *PollingHandler) heartbeatLoop(ctx context.Context, c *gin.Context, circ
 }
 
 // sseEventLoop manages the main event loop for SSE connections
-func (h *PollingHandler) sseEventLoop(ctx context.Context, c *gin.Context, conn *Connection, circleID int) {
+func (h *PollingHandler) sseEventLoop(ctx context.Context, c *gin.Context, conn *Connection, circleID int, claims map[string]interface{}) {
 	ticker := time.NewTicker(h.config.RealTimeConfig.HeartbeatInterval)
 	defer ticker.Stop()
 
@@ -362,6 +384,10 @@ func (h *PollingHandler) sseEventLoop(ctx context.Context, c *gin.Context, conn 
 			h.logger.Debugw("SSE event sent successfully", "connectionId", conn.ID, "eventType", event.Type)
 
 		case <-ticker.C:
+			if _, err := auth.ValidateAccessClaims(ctx, h.authMiddleware.userRepo, claims); err != nil {
+				h.logger.Infow("SSE authentication state revoked, closing connection", "connectionId", conn.ID)
+				return
+			}
 			if conn.IsClosed() { // Check if connection was marked as closed (e.g. buffer full)
 				h.logger.Infow("SSE connection marked as closed, stopping heartbeat and event loop.", "connectionId", conn.ID)
 				return

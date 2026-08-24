@@ -155,6 +155,7 @@ func (s *TokenService) mintAccessToken(user *uModel.UserDetails, p accessTokenTi
 	now := time.Now().UTC()
 	claims := jwtstd.MapClaims{
 		identityKey: user.Username,
+		"cv":        user.CredentialVersion,
 		"orig_iat":  now.Unix(),
 		"exp":       now.Add(p.ttl).Unix(),
 	}

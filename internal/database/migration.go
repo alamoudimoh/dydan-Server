@@ -9,6 +9,7 @@ import (
 
 	"github.com/alamoudimoh/daydan-server/config"
 	sModel "github.com/alamoudimoh/daydan-server/external/payment/model"
+	"github.com/alamoudimoh/daydan-server/internal/authlimit"
 	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
 	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
 	filterModel "github.com/alamoudimoh/daydan-server/internal/filter/model"
@@ -18,9 +19,9 @@ import (
 	pModel "github.com/alamoudimoh/daydan-server/internal/points"
 	progressModel "github.com/alamoudimoh/daydan-server/internal/progress"
 	projModel "github.com/alamoudimoh/daydan-server/internal/project/model"
-	slModel "github.com/alamoudimoh/daydan-server/internal/shoppinglist/model"
 	rewardModel "github.com/alamoudimoh/daydan-server/internal/reward"
 	routineModel "github.com/alamoudimoh/daydan-server/internal/routine"
+	slModel "github.com/alamoudimoh/daydan-server/internal/shoppinglist/model"
 	storageModel "github.com/alamoudimoh/daydan-server/internal/storage/model"
 	stModel "github.com/alamoudimoh/daydan-server/internal/subtask/model"
 	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
@@ -80,6 +81,8 @@ func Migration(db *gorm.DB) error {
 		routineModel.Pack{},
 		routineModel.Item{},
 		routineModel.Application{},
+		authlimit.Bucket{},
+		authlimit.CapacityGuard{},
 	); err != nil {
 		return err
 	}

@@ -55,6 +55,7 @@ func NewAuthMiddleware(cfg *config.Config, userRepo *uRepo.UserRepository, mfaSe
 			if u, ok := data.(*uModel.UserDetails); ok {
 				return jwt.MapClaims{
 					identityKey: u.Username,
+					"cv":        u.CredentialVersion,
 				}
 			}
 			return jwt.MapClaims{}
@@ -65,8 +66,8 @@ func NewAuthMiddleware(cfg *config.Config, userRepo *uRepo.UserRepository, mfaSe
 			if !ok {
 				return nil
 			}
-			user, err := userRepo.GetUserByUsername(c.Request.Context(), username)
-			if err != nil || user.Disabled {
+			user, err := ValidateAccessClaims(c.Request.Context(), userRepo, map[string]interface{}(claims))
+			if err != nil || user.Username != username {
 				return nil
 			}
 			return user
@@ -125,14 +126,15 @@ func NewAuthMiddleware(cfg *config.Config, userRepo *uRepo.UserRepository, mfaSe
 
 				return &uModel.UserDetails{
 					User: uModel.User{
-						ID:        user.ID,
-						Username:  user.Username,
-						Password:  "",
-						Image:     user.Image,
-						CreatedAt: user.CreatedAt,
-						UpdatedAt: user.UpdatedAt,
-						Disabled:  user.Disabled,
-						CircleID:  user.CircleID,
+						ID:                user.ID,
+						Username:          user.Username,
+						Password:          "",
+						Image:             user.Image,
+						CreatedAt:         user.CreatedAt,
+						UpdatedAt:         user.UpdatedAt,
+						Disabled:          user.Disabled,
+						CircleID:          user.CircleID,
+						CredentialVersion: user.CredentialVersion,
 					},
 					WebhookURL: user.WebhookURL,
 				}, nil

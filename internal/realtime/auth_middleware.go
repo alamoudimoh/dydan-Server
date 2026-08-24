@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alamoudimoh/daydan-server/config"
+	daydanAuth "github.com/alamoudimoh/daydan-server/internal/auth"
 	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
@@ -13,7 +14,6 @@ import (
 	ginJWT "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
-	"go.uber.org/zap"
 )
 
 // AuthMiddleware handles WebSocket authentication
@@ -51,18 +51,19 @@ func (am *AuthMiddleware) AuthenticateConnection(c *gin.Context) (*uModel.User, 
 	// single-use ticket passed as a query parameter. Prefer the ticket when
 	// present so we never fall through to JWT validation for it.
 	if ticket := c.Query("ticket"); ticket != "" {
-		userID, ok := am.ticketStore.Consume(ticket)
+		securityState, ok := am.ticketStore.Consume(ticket)
 		if !ok {
 			return nil, 0, ErrInvalidToken
 		}
 
-		user, err := am.userRepo.GetUserByID(c.Request.Context(), userID)
-		if err != nil {
-			logger.Errorw("Failed to get user for SSE ticket", "userID", userID, "error", err)
+		user, err := daydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, securityState.claims)
+		if err != nil || user.ID != securityState.userID {
+			logger.Errorw("SSE ticket security state is no longer valid", "error", err)
 			return nil, 0, ErrInvalidToken
 		}
+		c.Set("accessSecurityClaims", securityState.claims)
 
-		return user, user.CircleID, nil
+		return &user.User, user.CircleID, nil
 	}
 
 	// Extract token from query parameter or header
@@ -84,21 +85,14 @@ func (am *AuthMiddleware) AuthenticateConnection(c *gin.Context) (*uModel.User, 
 		return nil, 0, ErrInvalidToken
 	}
 
-	// Extract user ID from claims
-	userID, err := am.extractUserIDFromClaims(c, claims, logger)
+	user, err := daydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, map[string]interface{}(claims))
 	if err != nil {
-		logger.Errorw("Invalid user ID in token", "error", err)
+		logger.Errorw("JWT security state is no longer valid", "error", err)
 		return nil, 0, ErrInvalidToken
 	}
+	c.Set("accessSecurityClaims", map[string]interface{}(claims))
 
-	// Get user from database
-	user, err := am.userRepo.GetUserByID(c.Request.Context(), userID)
-	if err != nil || user.Disabled {
-		logger.Errorw("Failed to get user", "userID", userID, "error", err)
-		return nil, 0, ErrInvalidToken
-	}
-
-	return user, user.CircleID, nil
+	return &user.User, user.CircleID, nil
 }
 
 // extractToken extracts the JWT token from the request
@@ -156,33 +150,6 @@ func (am *AuthMiddleware) validateToken(tokenString string) (jwt.MapClaims, erro
 	}
 
 	return claims, nil
-}
-
-// extractUserIDFromClaims extracts the user ID from JWT claims
-func (am *AuthMiddleware) extractUserIDFromClaims(c *gin.Context, claims jwt.MapClaims, logger *zap.SugaredLogger) (int, error) {
-	// The JWT token stores the username in the "id" field, not the numeric user ID
-	usernameInterface, exists := claims["id"]
-	if !exists {
-		return 0, ErrInvalidToken
-	}
-
-	username, ok := usernameInterface.(string)
-	if !ok {
-		return 0, ErrInvalidToken
-	}
-
-	// Look up the user by username to get the numeric user ID
-	// Use request context for proper cancellation and tracing
-	user, err := am.userRepo.GetUserByUsername(c.Request.Context(), username)
-	if err != nil {
-		logger.Errorw("Failed to get user by username",
-			"username", "[REDACTED]", // Don't log actual username for security
-			"error", err,
-			"remote_addr", c.ClientIP())
-		return 0, ErrInvalidToken
-	}
-
-	return user.ID, nil
 }
 
 // CheckCircleAccess verifies if a user has access to a specific circle

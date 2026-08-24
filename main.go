@@ -14,6 +14,7 @@ import (
 	"github.com/alamoudimoh/daydan-server/frontend"
 	auth "github.com/alamoudimoh/daydan-server/internal/auth"
 	"github.com/alamoudimoh/daydan-server/internal/auth/apple"
+	"github.com/alamoudimoh/daydan-server/internal/authlimit"
 	"github.com/alamoudimoh/daydan-server/internal/chore"
 	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
 	"github.com/alamoudimoh/daydan-server/internal/circle"
@@ -126,6 +127,7 @@ func main() {
 
 		// Rate limiter
 		fx.Provide(utils.NewRateLimiter),
+		fx.Provide(authlimit.New),
 
 		// add email sender (implementation selected by email.provider config):
 		fx.Provide(email.NewSender),
@@ -326,6 +328,9 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 				if err := database.MigrationScripts(db, cfg); err != nil {
 					return fmt.Errorf("automatic SQL migration: %w", err)
 				}
+			}
+			if !db.Migrator().HasTable(&authlimit.Bucket{}) || !db.Migrator().HasTable(&authlimit.CapacityGuard{}) {
+				return fmt.Errorf("authentication rate-limit tables are missing; enable database migrations")
 			}
 			notifier.Start(context.Background())
 			eventProducer.Start(context.Background())
