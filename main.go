@@ -86,6 +86,10 @@ func main() {
 		// datasets the backfill migrations take well over fx's 15s default,
 		// which would abort startup and crash-loop. Give them room to finish.
 		fx.StartTimeout(15*time.Minute),
+		// Graceful shutdown runs realtime stop + HTTP drain + webhook drain
+		// sequentially; give the whole OnStop chain room to finish instead of
+		// fx's 5s default cutting it off mid-drain.
+		fx.StopTimeout(30*time.Second),
 		fx.Supply(cfg),
 		fx.Supply(logging.DefaultLogger().Desugar()),
 
@@ -328,16 +332,25 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 	var stopWebhooks context.CancelFunc
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			if cfg.Database.Migration {
-				if err := database.Migration(db); err != nil {
-					return fmt.Errorf("automatic schema migration: %w", err)
+			// Serialize the migration phase across replicas (PostgreSQL gets a
+			// session advisory lock; SQLite single-writer needs none) so two
+			// instances booting concurrently cannot race check-then-apply
+			// migrations.
+			if err := database.WithMigrationLock(db, func() error {
+				if cfg.Database.Migration {
+					if err := database.Migration(db); err != nil {
+						return fmt.Errorf("automatic schema migration: %w", err)
+					}
+					if err := migrations.Run(context.Background(), db); err != nil {
+						return fmt.Errorf("automatic data migration: %w", err)
+					}
+					if err := database.MigrationScripts(db, cfg); err != nil {
+						return fmt.Errorf("automatic SQL migration: %w", err)
+					}
 				}
-				if err := migrations.Run(context.Background(), db); err != nil {
-					return fmt.Errorf("automatic data migration: %w", err)
-				}
-				if err := database.MigrationScripts(db, cfg); err != nil {
-					return fmt.Errorf("automatic SQL migration: %w", err)
-				}
+				return nil
+			}); err != nil {
+				return err
 			}
 			// Operator observability for the API-token plaintext migration:
 			// one startup line while legacy rows remain, count only. This is
@@ -385,6 +398,10 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
+			// Stop accepting new scheduled work first so no webhook or
+			// notification work is queued after the drain steps below.
+			notifier.Stop()
+
 			// Stop real-time service first with timeout
 			done := make(chan error, 1)
 			go func() {

@@ -21,7 +21,8 @@ func NewDraftCleanupService(storage Storage, repo *storageRepo.StorageRepository
 		storage:     storage,
 		storageRepo: repo,
 		ticker:      time.NewTicker(24 * time.Hour),
-		done:        make(chan bool),
+		// Buffered so Stop never blocks while a cleanup job is mid-run.
+		done:        make(chan bool, 1),
 	}
 }
 

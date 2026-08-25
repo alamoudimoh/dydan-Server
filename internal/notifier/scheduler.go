@@ -2,7 +2,10 @@ package notifier
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
@@ -23,19 +26,23 @@ const (
 type Scheduler struct {
 	choreRepo        *chRepo.ChoreRepository
 	userRepo         *uRepo.UserRepository
-	stopChan         chan bool
 	notifier         *Notifier
 	eventsProducer   *events.EventsProducer
 	notificationRepo *nRepo.NotificationRepository
 	inbox            *nService.InboxService
 	SchedulerJobs    config.SchedulerConfig
+
+	// Lifecycle: cancel stops both scheduler loops; stopped closes once all
+	// of them have exited so Stop can wait for a bounded graceful shutdown.
+	cancel  context.CancelFunc
+	stopped chan struct{}
+	wg      sync.WaitGroup
 }
 
 func NewScheduler(cfg *config.Config, ur *uRepo.UserRepository, cr *chRepo.ChoreRepository, n *Notifier, nr *nRepo.NotificationRepository, inbox *nService.InboxService, ep *events.EventsProducer) *Scheduler {
 	return &Scheduler{
 		choreRepo:        cr,
 		userRepo:         ur,
-		stopChan:         make(chan bool),
 		notifier:         n,
 		notificationRepo: nr,
 		inbox:            inbox,
@@ -47,8 +54,22 @@ func NewScheduler(cfg *config.Config, ur *uRepo.UserRepository, cr *chRepo.Chore
 func (s *Scheduler) Start(c context.Context) {
 	log := logging.FromContext(c)
 	log.Debug("Scheduler started")
-	go s.runScheduler(c, " NOTIFICATION_SCHEDULER ", s.loadAndSendNotificationJob, 3*time.Minute)
-	go s.runScheduler(c, " NOTIFICATION_CLEANUP ", s.cleanupSentNotifications, 24*time.Hour*30)
+	ctx, cancel := context.WithCancel(c)
+	s.cancel = cancel
+	s.stopped = make(chan struct{})
+	s.wg.Add(2)
+	go func() {
+		defer s.wg.Done()
+		s.runScheduler(ctx, " NOTIFICATION_SCHEDULER ", s.loadAndSendNotificationJob, 3*time.Minute)
+	}()
+	go func() {
+		defer s.wg.Done()
+		s.runScheduler(ctx, " NOTIFICATION_CLEANUP ", s.cleanupSentNotifications, 24*time.Hour*30)
+	}()
+	go func() {
+		s.wg.Wait()
+		close(s.stopped)
+	}()
 }
 func (s *Scheduler) cleanupSentNotifications(c context.Context) (time.Duration, error) {
 	log := logging.FromContext(c)
@@ -92,26 +113,61 @@ func (s *Scheduler) loadAndSendNotificationJob(c context.Context) (time.Duration
 	s.notificationRepo.MarkNotificationsAsSent(getAllPendingNotifications)
 	return time.Since(startTime), nil
 }
+// runScheduler runs `job` sequentially every `interval`, measured from the
+// start of each run (a run longer than the interval never overlaps itself —
+// the next tick simply fires immediately). Cancellation is honored between
+// and during ticks: ctx.Done replaces the old non-cancellable time.Sleep, so
+// shutdown can no longer strand these goroutines for up to a full interval.
 func (s *Scheduler) runScheduler(c context.Context, jobName string, job func(c context.Context) (time.Duration, error), interval time.Duration) {
+	log := logging.FromContext(c)
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
 	for {
-		logging.FromContext(c).Debug("Scheduler running ", jobName, " time", time.Now().UTC().String())
-
 		select {
-		case <-s.stopChan:
-			log.Println("Scheduler stopped")
+		case <-c.Done():
 			return
-		default:
-			elapsedTime, err := job(c)
-			if err != nil {
-				logging.FromContext(c).Error("Error running scheduler job", err)
-			}
-			logging.FromContext(c).Debug("Scheduler job completed", jobName, " time: ", elapsedTime.String())
+		case <-timer.C:
 		}
-		time.Sleep(interval)
+
+		started := time.Now().UTC()
+		if err := s.runOnce(c, jobName, job); err != nil {
+			log.Errorw("Error running scheduler job", "job", jobName, "error", err)
+		}
+
+		delay := interval - time.Since(started)
+		if delay < 0 {
+			delay = 0
+		}
+		timer.Reset(delay)
 	}
 }
 
+// runOnce executes one scheduler tick with panic isolation: a panicking job
+// must not kill the loop or the sibling scheduler.
+func (s *Scheduler) runOnce(c context.Context, jobName string, job func(c context.Context) (time.Duration, error)) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.FromContext(c).Errorw("Scheduler job panicked", "job", jobName, "panic", r)
+			err = fmt.Errorf("scheduler job %s panicked", strings.TrimSpace(jobName))
+		}
+	}()
+	elapsedTime, err := job(c)
+	logging.FromContext(c).Debugw("Scheduler job completed", "job", jobName, "elapsed", elapsedTime.String())
+	return err
+}
+
+// Stop cancels both scheduler loops and waits (bounded) for them to exit, so
+// shutdown cannot leak notification workers. Safe to call multiple times and
+// safe when Start was never called.
 func (s *Scheduler) Stop() {
-	s.stopChan <- true
+	if s.cancel == nil {
+		return
+	}
+	s.cancel()
+	select {
+	case <-s.stopped:
+	case <-time.After(3 * time.Second):
+		log.Println("notification scheduler shutdown timeout; abandoning wait")
+	}
 }

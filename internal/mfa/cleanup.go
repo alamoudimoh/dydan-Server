@@ -18,7 +18,8 @@ func NewCleanupService(userRepo *uRepo.UserRepository) *CleanupService {
 	return &CleanupService{
 		userRepo: userRepo,
 		ticker:   time.NewTicker(60 * time.Minute),
-		done:     make(chan bool),
+		// Buffered so Stop never blocks while a cleanup job is mid-run.
+		done:     make(chan bool, 1),
 	}
 }
 

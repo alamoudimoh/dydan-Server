@@ -76,7 +76,11 @@ func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 
 	switch cfg.Database.Type {
 	case "postgres":
-		dsn := fmt.Sprintf("host=%s port=%v user=%s password=%s dbname=%s sslmode=disable TimeZone=Asia/Shanghai", cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Name)
+		// Session timezone is pinned to UTC: the application stores and
+		// compares UTC instants everywhere, so a server-side timezone like
+		// Asia/Shanghai would only skew date/time rendering and any
+		// timezone-sensitive server-side expressions.
+		dsn := fmt.Sprintf("host=%s port=%v user=%s password=%s dbname=%s sslmode=disable TimeZone=UTC", cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Name)
 		for i := 0; i <= 30; i++ {
 			db, err = gorm.Open(postgres.Open(dsn), &gormConfig)
 			if err == nil {
@@ -95,10 +99,56 @@ func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	applyPoolLimits(db, &cfg.Database)
+
 	// Add OpenTelemetry tracing to GORM
 	if err := db.Use(tracing.NewPlugin()); err != nil {
 		logging.DefaultLogger().Warnf("failed to enable OpenTelemetry tracing for GORM: %v", err)
 	}
 
 	return db, nil
+}
+
+// Pool limits: without an explicit ceiling, database/sql opens unbounded
+// connections under load — on PostgreSQL that can exhaust the server's
+// max_connections and take the whole deployment down. The defaults are sized
+// for DayDan's family-scale deployments; operators can override every value
+// via config (database.max_open_conns etc.). Zero/negative values in config
+// fall back to the defaults rather than silently disabling the cap.
+const (
+	defaultMaxOpenConns    = 25
+	defaultMaxIdleConns    = 5
+	defaultConnMaxLifetime = time.Hour
+	defaultConnMaxIdleTime = 10 * time.Minute
+)
+
+func applyPoolLimits(db *gorm.DB, cfg *config.DatabaseConfig) {
+	sqlDB, err := db.DB()
+	if err != nil {
+		logging.DefaultLogger().Warnf("failed to configure connection pool: %v", err)
+		return
+	}
+	maxOpen := cfg.MaxOpenConns
+	if maxOpen <= 0 {
+		maxOpen = defaultMaxOpenConns
+	}
+	maxIdle := cfg.MaxIdleConns
+	if maxIdle <= 0 {
+		maxIdle = defaultMaxIdleConns
+	}
+	if maxIdle > maxOpen {
+		maxIdle = maxOpen
+	}
+	sqlDB.SetMaxOpenConns(maxOpen)
+	sqlDB.SetMaxIdleConns(maxIdle)
+	lifetime := cfg.ConnMaxLifetime
+	if lifetime <= 0 {
+		lifetime = defaultConnMaxLifetime
+	}
+	sqlDB.SetConnMaxLifetime(lifetime)
+	idleTime := cfg.ConnMaxIdleTime
+	if idleTime <= 0 {
+		idleTime = defaultConnMaxIdleTime
+	}
+	sqlDB.SetConnMaxIdleTime(idleTime)
 }
