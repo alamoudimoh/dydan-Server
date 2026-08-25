@@ -24,6 +24,26 @@ func NewEventBroadcaster(service *RealTimeService, config *config.Config) *Event
 	}
 }
 
+// broadcastChoreEvent delivers a chore event to the chore's circle. Private
+// chores are delivered only to the creator, assignees, and the current
+// assignee target — the same participant set the REST/sync visibility rules
+// (chModel.Chore.CanView) admit — so a full private-chore payload never fans
+// out to every circle connection.
+func (b *EventBroadcaster) broadcastChoreEvent(chore *chModel.Chore, event *Event) {
+	if !chore.IsPrivate {
+		b.service.BroadcastToCircle(chore.CircleID, event)
+		return
+	}
+	allowed := map[int]bool{chore.CreatedBy: true}
+	for _, assignee := range chore.Assignees {
+		allowed[assignee.UserID] = true
+	}
+	if chore.AssignedTo != nil && *chore.AssignedTo != 0 {
+		allowed[*chore.AssignedTo] = true
+	}
+	b.service.BroadcastToUsers(chore.CircleID, allowed, event)
+}
+
 // BroadcastChoreCreated broadcasts a chore creation event
 func (b *EventBroadcaster) BroadcastChoreCreated(chore *chModel.Chore, user *uModel.User) {
 	if !b.service.config.Enabled {
@@ -34,7 +54,7 @@ func (b *EventBroadcaster) BroadcastChoreCreated(chore *chModel.Chore, user *uMo
 	event.ID = b.generateEventID()
 	event.SyncVersion = chore.SyncVersion
 
-	b.service.BroadcastToCircle(chore.CircleID, event)
+	b.broadcastChoreEvent(chore, event)
 }
 
 // BroadcastChoreUpdated broadcasts a chore update event
@@ -47,20 +67,22 @@ func (b *EventBroadcaster) BroadcastChoreUpdated(chore *chModel.Chore, user *uMo
 	event.ID = b.generateEventID()
 	event.SyncVersion = chore.SyncVersion
 
-	b.service.BroadcastToCircle(chore.CircleID, event)
+	b.broadcastChoreEvent(chore, event)
 }
 
-// BroadcastChoreDeleted broadcasts a chore deletion event
-func (b *EventBroadcaster) BroadcastChoreDeleted(choreID int, choreName string, circleID int, user *uModel.User, syncVersion int64) {
+// BroadcastChoreDeleted broadcasts a chore deletion event. The event carries
+// the chore name, so for private chores it is restricted to the creator and
+// assignees like all other chore events.
+func (b *EventBroadcaster) BroadcastChoreDeleted(chore *chModel.Chore, user *uModel.User, syncVersion int64) {
 	if !b.service.config.Enabled {
 		return
 	}
 
-	event := NewChoreDeletedEvent(choreID, choreName, circleID, user)
+	event := NewChoreDeletedEvent(chore.ID, chore.Name, chore.CircleID, user)
 	event.ID = b.generateEventID()
 	event.SyncVersion = syncVersion
 
-	b.service.BroadcastToCircle(circleID, event)
+	b.broadcastChoreEvent(chore, event)
 }
 
 // BroadcastChoreCompleted broadcasts a chore completion event
@@ -76,7 +98,7 @@ func (b *EventBroadcaster) BroadcastChoreCompleted(chore *chModel.Chore, user *u
 		event.SyncVersion = history.SyncVersion
 	}
 
-	b.service.BroadcastToCircle(chore.CircleID, event)
+	b.broadcastChoreEvent(chore, event)
 }
 
 // BroadcastChoreStarted broadcasts a chore start event
@@ -89,7 +111,7 @@ func (b *EventBroadcaster) BroadcastChoreStatus(chore *chModel.Chore, user *uMod
 	event.ID = b.generateEventID()
 	event.SyncVersion = chore.SyncVersion
 
-	b.service.BroadcastToCircle(chore.CircleID, event)
+	b.broadcastChoreEvent(chore, event)
 }
 
 // BroadcastChoreSkipped broadcasts a chore skip event
@@ -105,33 +127,38 @@ func (b *EventBroadcaster) BroadcastChoreSkipped(chore *chModel.Chore, user *uMo
 		event.SyncVersion = history.SyncVersion
 	}
 
-	b.service.BroadcastToCircle(chore.CircleID, event)
+	b.broadcastChoreEvent(chore, event)
 }
 
 // BroadcastSubtaskUpdated broadcasts a subtask update event
-func (b *EventBroadcaster) BroadcastSubtaskUpdated(choreID, subtaskID int, completedAt *time.Time, user *uModel.User, circleID int, syncVersion int64) {
+// BroadcastSubtaskUpdated broadcasts a subtask update event. Subtask events
+// reference their parent chore, so for private chores they are restricted to
+// the same participant set as chore events — otherwise the event would leak
+// the private chore's existence and activity cadence circle-wide.
+func (b *EventBroadcaster) BroadcastSubtaskUpdated(chore *chModel.Chore, subtaskID int, completedAt *time.Time, user *uModel.User, syncVersion int64) {
 	if !b.service.config.Enabled {
 		return
 	}
 
-	event := NewSubtaskUpdatedEvent(choreID, subtaskID, completedAt, user, circleID)
+	event := NewSubtaskUpdatedEvent(chore.ID, subtaskID, completedAt, user, chore.CircleID)
 	event.ID = b.generateEventID()
 	event.SyncVersion = syncVersion
 
-	b.service.BroadcastToCircle(circleID, event)
+	b.broadcastChoreEvent(chore, event)
 }
 
-// BroadcastSubtaskCompleted broadcasts a subtask completion event
-func (b *EventBroadcaster) BroadcastSubtaskCompleted(choreID, subtaskID int, completedAt *time.Time, user *uModel.User, circleID int, syncVersion int64) {
+// BroadcastSubtaskCompleted broadcasts a subtask completion event with the
+// same privacy scoping as BroadcastSubtaskUpdated.
+func (b *EventBroadcaster) BroadcastSubtaskCompleted(chore *chModel.Chore, subtaskID int, completedAt *time.Time, user *uModel.User, syncVersion int64) {
 	if !b.service.config.Enabled {
 		return
 	}
 
-	event := NewSubtaskCompletedEvent(choreID, subtaskID, completedAt, user, circleID)
+	event := NewSubtaskCompletedEvent(chore.ID, subtaskID, completedAt, user, chore.CircleID)
 	event.ID = b.generateEventID()
 	event.SyncVersion = syncVersion
 
-	b.service.BroadcastToCircle(circleID, event)
+	b.broadcastChoreEvent(chore, event)
 }
 
 // generateEventID generates a unique event ID

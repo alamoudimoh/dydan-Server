@@ -173,6 +173,25 @@ func (s *RealTimeService) BroadcastToCircle(circleID int, event *Event) {
 	}
 }
 
+// BroadcastToUsers sends an event to a restricted set of users within a
+// circle. Used for privacy-scoped chore events.
+func (s *RealTimeService) BroadcastToUsers(circleID int, userIDs map[int]bool, event *Event) {
+	if !s.started || !s.config.Enabled || len(userIDs) == 0 {
+		return
+	}
+
+	s.mu.RLock()
+	pool, exists := s.connectionPools[circleID]
+	s.mu.RUnlock()
+
+	if exists {
+		pool.BroadcastToUsers(userIDs, event)
+		s.stats.mu.Lock()
+		s.stats.EventsPublished++
+		s.stats.mu.Unlock()
+	}
+}
+
 // GetStats returns current service statistics
 func (s *RealTimeService) GetStats() ServiceStats {
 	s.stats.mu.RLock()
