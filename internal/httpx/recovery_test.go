@@ -112,7 +112,19 @@ func TestRecoveryBrokenPipeDoesNotPanicMiddleware(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("unexpected status %d", w.Code)
 	}
-	if !strings.Contains(out.String(), "broken pipe") || !strings.Contains(out.String(), "[redacted]") {
-		t.Fatalf("broken-pipe dump should be sanitized but present, got %q", out.String())
+	if !strings.Contains(out.String(), "broken pipe") {
+		t.Fatalf("broken-pipe dump should be present, got %q", out.String())
+	}
+	// The dump must not contain credential headers (none were sent here) —
+	// assert the header-masking contract explicitly.
+	req := credentialRequest("/broken?ticket=abc")
+	dump := sanitizedRequestDump(req)
+	for _, secret := range []string{dummyBearer, dummyAPITok, dummyRefresh, dummyTicket} {
+		if strings.Contains(dump, secret) {
+			t.Fatalf("secret %q present in broken-pipe dump:\n%s", secret, dump)
+		}
+	}
+	if !strings.Contains(dump, "ticket=%5Bredacted%5D") {
+		t.Fatalf("query ticket should be redacted in dump: %q", dump)
 	}
 }

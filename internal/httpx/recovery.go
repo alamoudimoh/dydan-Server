@@ -106,15 +106,19 @@ func RecoveryWithWriter(out io.Writer) gin.HandlerFunc {
 }
 
 // sanitizedRequestDump renders the request with credential headers masked and
-// the query string removed from the request line. Defensive against nil URL:
-// this runs inside a panic handler and must never panic itself.
+// sensitive query-parameter values redacted (path and harmless query
+// parameters are preserved for debugging). Defensive against nil URL: this
+// runs inside a panic handler and must never panic itself.
 func sanitizedRequestDump(r *http.Request) string {
 	dumpCopy := r.Clone(context.Background())
 	if dumpCopy.URL == nil {
 		dumpCopy.URL = &url.URL{}
 	}
+	dumpCopy.RequestURI = RedactURL(dumpCopy.URL)
+	// DumpRequest renders the request line from RequestURI, so strip userinfo
+	// and re-derive the query from the already-redacted form.
 	dumpCopy.URL.RawQuery = ""
-	dumpCopy.RequestURI = dumpCopy.URL.Path + "?" + redacted
+	dumpCopy.URL.User = nil
 	httpRequest, _ := httputil.DumpRequest(dumpCopy, false)
 	lines := strings.Split(string(httpRequest), "\r\n")
 	for i, line := range lines {
