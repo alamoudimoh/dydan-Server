@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
+	"math/rand"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
@@ -53,12 +55,86 @@ type ChoreData struct {
 	Note        string         `json:"note"`
 }
 
+// EventsProducer delivers DayDan-generated webhooks to external consumer
+// URLs.
+//
+// Architecture (Phase 8):
+//
+//	inbound queue (global bound: QueueSize, drop-on-full backpressure)
+//	  → dispatcher goroutine
+//	    → per-tenant FIFO buckets (one per destination URL, bounded,
+//	      single-flight per destination — tenant isolation)
+//	      → worker goroutines (global fan-out capped at Workers)
+//	        → signed delivery with bounded retries/backoff
+//
+// Ordering within one destination is FIFO best-effort (drops and retries can
+// reorder); there are no cross-destination ordering guarantees.
 type EventsProducer struct {
 	client *outbound.Client
 	queue  chan Event
 	logger *zap.SugaredLogger
 	base   context.Context
+
+	// Dispatcher state.
+	mu      sync.Mutex
+	buckets []*tenantBucket // round-robin ring of active destinations
+	byKey   map[string]*tenantBucket
+	cursor  int
+	sem     chan struct{} // global concurrency slots
+	idleMu  sync.Mutex
+	idleCond *sync.Cond
+	inflight int
+	wake    chan struct{}
+
+	// Delivery policy.
+	signer        *webhookSigner
+	maxAttempts   int
+	backoffInit   time.Duration
+	backoffMax    time.Duration
+	perTenantCap_ int
+	timeout       time.Duration
+
+	// Injectable clocks for deterministic tests.
+	nowFn  func() time.Time
+	sleepF func(context.Context, time.Duration) error
 }
+
+func (p *EventsProducer) perTenantLimit() int {
+	if p.perTenantCap_ > 0 {
+		return p.perTenantCap_
+	}
+	return cap(p.queue) // default: same bound as the global queue
+}
+
+func (p *EventsProducer) notify() {
+	select {
+	case p.wake <- struct{}{}:
+	default:
+	}
+}
+
+func (p *EventsProducer) now() time.Time {
+	if p.nowFn != nil {
+		return p.nowFn().UTC()
+	}
+	return time.Now().UTC()
+}
+
+func (p *EventsProducer) sleep(ctx context.Context, d time.Duration) error {
+	if p.sleepF != nil {
+		return p.sleepF(ctx, d)
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func redacted(url string) string { return httpx.RedactURLString(url) }
 
 func (p *EventsProducer) Start(ctx context.Context) {
 
@@ -66,10 +142,14 @@ func (p *EventsProducer) Start(ctx context.Context) {
 	p.base = ctx
 
 	go func() {
-		for event := range p.queue {
-			p.processEvent(event)
-		}
+		<-ctx.Done()
+		// Graceful shutdown: stop accepting new work (dispatcher exits on
+		// ctx.Done) and let in-flight deliveries finish. Each delivery is
+		// already bounded by the outbound client timeout, so this wait is
+		// finite.
+		p.waitForIdle()
 	}()
+	go p.dispatchLoop(ctx)
 }
 
 func NewEventsProducer(cfg *config.Config) *EventsProducer {
@@ -77,13 +157,43 @@ func NewEventsProducer(cfg *config.Config) *EventsProducer {
 	if timeout <= 0 {
 		timeout = 5 * time.Second
 	}
-	return &EventsProducer{
+	maxAttempts := cfg.WebhookConfig.MaxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = 1
+	}
+	workers := cfg.WebhookConfig.Workers
+	if workers <= 0 {
+		workers = 8
+	}
+	signingSecret := cfg.WebhookConfig.SigningSecret
+	if signingSecret == "" {
+		// Config resolution normally guarantees a secret; an empty value in
+		// unit tests must still produce deterministic (unsigned-safe)
+		// behavior without panicking.
+		signingSecret = "daydan-webhook-unsigned-dev-fallback"
+	}
+	queueSize := cfg.WebhookConfig.QueueSize
+	if queueSize <= 0 {
+		queueSize = 100
+	}
+	p := &EventsProducer{
 		client: outbound.NewClient(outbound.ClientOptions{
 			Timeout:              timeout,
 			AllowPrivateNetworks: cfg.WebhookConfig.AllowPrivateNetworks,
 		}),
-		queue: make(chan Event, cfg.WebhookConfig.QueueSize),
+		queue: make(chan Event, queueSize),
+		byKey: make(map[string]*tenantBucket),
+		sem:   make(chan struct{}, workers),
+		wake:  make(chan struct{}, 1),
+
+		signer:      newWebhookSigner(signingSecret),
+		maxAttempts: maxAttempts,
+		backoffInit: cfg.WebhookConfig.BackoffInitial,
+		backoffMax:  cfg.WebhookConfig.BackoffMax,
+		timeout:     timeout,
 	}
+	p.idleCond = sync.NewCond(&p.idleMu)
+	return p
 }
 
 func (p *EventsProducer) publishEvent(event Event) {
@@ -91,7 +201,10 @@ func (p *EventsProducer) publishEvent(event Event) {
 	case p.queue <- event:
 		// Successfully added to queue
 	default:
-		log.Println("Webhook queue is full, dropping event")
+		if p.logger != nil {
+			p.logger.Warnw("Webhook queue is full, dropping event",
+				"type", string(event.Type), "url", redacted(event.URL))
+		}
 	}
 }
 
@@ -116,9 +229,45 @@ func (p *EventsProducer) sanitizeWebhookChore(data ChoreData) ChoreData {
 // interpreted, so an unbounded drain would only be an exhaustion vector.
 const maxWebhookResponseDrain = 64 << 10
 
+// processEvent performs a synchronous signed delivery of one event,
+// including the bounded retry loop. Retained as the direct entry point for
+// callers/tests that bypass the dispatcher.
 func (p *EventsProducer) processEvent(event Event) {
-	redactedURL := httpx.RedactURLString(event.URL)
-	p.logger.Debugw("Sending webhook event", "type", event.Type, "url", redactedURL)
+	ctx := p.base
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	p.deliverWithRetries(ctx, event)
+}
+
+// processEventContext delivers one event under an explicit context,
+// bypassing the dispatcher (used by cancellation tests).
+func (p *EventsProducer) processEventContext(ctx context.Context, event Event) {
+	p.deliverWithRetries(ctx, event)
+}
+
+// slotOps hands the global concurrency slot to the delivery loop so it can
+// be released while backing off: sleeping retriers must not consume delivery
+// capacity that other tenants are waiting for. Nil for direct synchronous
+// callers (which hold no slot).
+type slotOps struct {
+	acquire func(context.Context) bool
+	release func()
+}
+
+// deliverWithRetries signs and delivers one event under the retry contract
+// documented in retry.go.
+func (p *EventsProducer) deliverWithRetries(ctx context.Context, event Event) {
+	p.deliverWithRetriesSlot(ctx, event, nil)
+}
+
+func (p *EventsProducer) deliverWithRetriesSlot(ctx context.Context, event Event, slot *slotOps) {
+	redactedURL := redacted(event.URL)
+	if p.logger != nil {
+		p.logger.Debugw("Sending webhook event", "type", event.Type, "url", redactedURL)
+	} else {
+		p.logger = logging.FromContext(ctx)
+	}
 
 	if choreData, ok := event.Data.(ChoreData); ok {
 		event.Data = p.sanitizeWebhookChore(choreData)
@@ -129,30 +278,118 @@ func (p *EventsProducer) processEvent(event Event) {
 		return
 	}
 
-	ctx := p.base
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	req, err := http.NewRequestWithContext(ctx, METHOD_POST, event.URL, bytes.NewReader(eventJSON))
-	if err != nil {
-		p.logger.Errorw("Failed to create webhook request", "error", err)
-		return
-	}
-	req.Header.Set(HEAD_CONTENT_TYPE, CONTENT_TYPE_JSON)
+	sigHeader, tsHeader, _ := p.signer.signatureHeader(p.now(), eventJSON)
 
-	resp, err := p.client.Do(req)
-	if err != nil {
-		p.logger.Debugw("Failed to send webhook event", "url", redactedURL, "error", err)
-		return
-	}
-	defer resp.Body.Close()
+	// Graceful-shutdown semantics: the retry LOOP honours ctx cancellation,
+	// but an HTTP request already in flight finishes on a detached,
+	// timeout-bounded context instead of being torn down mid-flight when the
+	// server shuts down. The detached context is still bounded by the
+	// outbound client's own timeout policy.
+	reqCtx := context.WithoutCancel(ctx)
 
-	_, _ = io.CopyN(io.Discard, resp.Body, maxWebhookResponseDrain)
+	for attempt := 0; ; attempt++ {
+		req, err := http.NewRequestWithContext(reqCtx, METHOD_POST, event.URL, bytes.NewReader(eventJSON))
+		if err != nil {
+			// Malformed destination: never retryable.
+			p.logger.Errorw("Failed to create webhook request", "url", redactedURL, "error", err)
+			return
+		}
+		req.Header.Set(HEAD_CONTENT_TYPE, CONTENT_TYPE_JSON)
+		req.Header.Set(signatureHeaderName, sigHeader)
+		req.Header.Set(timestampHeaderName, tsHeader)
 
-	if resp.StatusCode >= 400 {
-		p.logger.Errorw("Webhook request failed", "status", resp.StatusCode)
-		return
+		resp, err := p.client.Do(req)
+		if err != nil {
+			if classifyError(err) == outcomePermanent {
+				p.logger.Errorw("Webhook destination rejected", "url", redactedURL, "error", err.Error())
+				return
+			}
+			if !p.retryOrFailSlot(ctx, event, attempt, redactedURL, 0, slot) {
+				return
+			}
+			continue
+		}
+
+		status := resp.StatusCode
+		retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"), p.now(), p.backoffMax)
+		_, _ = io.CopyN(io.Discard, resp.Body, maxWebhookResponseDrain)
+		resp.Body.Close()
+
+		switch classifyStatus(status) {
+		case outcomeSuccess:
+			p.logger.Debugw("Webhook delivered", "type", string(event.Type), "url", redactedURL, "status", status)
+			return
+		case outcomePermanent:
+			p.logger.Errorw("Webhook request permanently rejected by receiver",
+				"type", string(event.Type), "url", redactedURL, "status", status)
+			return
+		default:
+			if !p.retryOrFailSlot(ctx, event, attempt, redactedURL, retryAfter, slot) {
+				return
+			}
+		}
 	}
+}
+
+// retryOrFailSlot releases the global slot while sleeping (so backoff never
+// consumes delivery capacity), reacquires it afterwards, and reports whether
+// another attempt should run. It returns false when attempts are exhausted,
+// the context was cancelled, or the reacquire was aborted.
+func (p *EventsProducer) retryOrFailSlot(ctx context.Context, event Event, attempt int, redactedURL string, retryAfter time.Duration, slot *slotOps) bool {
+	next := attempt + 1
+	if next >= p.maxAttempts {
+		p.logger.Errorw("Webhook delivery abandoned after final attempt",
+			"type", string(event.Type), "url", redactedURL, "attempts", p.maxAttempts)
+		return false
+	}
+	delay := backoffDelay(p.backoffInit, p.backoffMax, next, rand.Float64())
+	if retryAfter > delay {
+		delay = retryAfter
+	}
+	p.logger.Warnw("Webhook delivery failed; retrying",
+		"type", string(event.Type), "url", redactedURL,
+		"next_attempt", next+1, "delay_ms", delay.Milliseconds())
+	release := slot != nil && slot.release != nil
+	if release {
+		slot.release()
+	}
+	if err := sleepBackoff(ctx, p.sleepF, delay); err != nil {
+		// Shutting down: drop the retry rather than block shutdown.
+		p.logger.Warnw("Webhook retries cancelled during shutdown", "url", redactedURL)
+		if release {
+			slot.acquire(ctx)
+		}
+		return false
+	}
+	if release && !slot.acquire(ctx) {
+		// Shutdown raced the reacquire: abandon the retry.
+		return false
+	}
+	return true
+}
+
+// classifyError separates permanent destination-policy failures (SSRF guard,
+// invalid URL — these will fail identically forever) from transient network
+// errors worth retrying.
+func classifyError(err error) outcome {
+	msg := err.Error()
+	for _, marker := range []string{
+		"refusing to connect",
+		"is not allowed",
+		"unsupported scheme",
+		"invalid URL",
+		"URL has no host",
+		"URL credentials",
+		"URL fragment",
+		"cross-host redirect",
+		"stopped after",
+		"no addresses for",
+	} {
+		if strings.Contains(msg, marker) {
+			return outcomePermanent
+		}
+	}
+	return outcomeTransient
 }
 
 // private chore data must not leave for a destination only circle admins

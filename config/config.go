@@ -112,6 +112,11 @@ type StorageConfig struct {
 	// presignatures; shorter values are safe because clients re-sign via
 	// /api/v1/files/sign whenever a URL is expired.
 	SignedURLTTL time.Duration `mapstructure:"signed_url_ttl" yaml:"signed_url_ttl"`
+	// S3OperationTimeout is the per-operation deadline the storage client
+	// applies to every S3 API call (uploads, deletes), including SDK
+	// retries. It bounds stalled S3/MinIO endpoints; caller cancellation
+	// still wins immediately. Zero means the built-in default (2 minutes).
+	S3OperationTimeout time.Duration `mapstructure:"s3_operation_timeout" yaml:"s3_operation_timeout"`
 	// AllowLegacyMediaSignatures keeps accepting media URLs signed directly
 	// with the raw JWT secret (the pre-phase-6 scheme). This is a bounded
 	// compatibility window: such URLs already expire at most 7 days after
@@ -213,6 +218,19 @@ type StripeConfig struct {
 	Prices         []StripePrices `mapstructure:"prices"`
 	SuccessURL     string         `mapstructure:"success_url"`
 	CancelURL      string         `mapstructure:"cancel_url"`
+	// WebhookSecret is the signing secret of the Stripe webhook endpoint
+	// (whsec_...). It is required for /webhooks/stripe to accept any event:
+	// without it the endpoint fails closed (503) instead of trusting the
+	// legacy IP allowlist alone. IP restrictions remain as optional
+	// defense-in-depth when configured.
+	WebhookSecret string `mapstructure:"webhook_secret" yaml:"webhook_secret"`
+	// WebhookSecretFile is an alternative to webhook_secret: a file holding
+	// the endpoint secret, mirroring jwt.secret_file semantics.
+	WebhookSecretFile string `mapstructure:"webhook_secret_file" yaml:"webhook_secret_file"`
+	// WebhookTolerance is the maximum accepted age/future-skew of a signed
+	// Stripe event. Defaults to Stripe's 5-minute recommendation; values
+	// above 24h are rejected at startup.
+	WebhookTolerance time.Duration `mapstructure:"webhook_tolerance" yaml:"webhook_tolerance"`
 }
 
 type StripePrices struct {
@@ -295,6 +313,26 @@ type WebhookConfig struct {
 	// into internal infrastructure (SSRF); self-hosted deployments whose
 	// consumers legitimately live on the LAN can enable it explicitly.
 	AllowPrivateNetworks bool `mapstructure:"allow_private_networks" yaml:"allow_private_networks"`
+	// Workers bounds global webhook delivery concurrency across all tenants
+	// (destinations). Each destination additionally has at most one delivery
+	// in flight, so a slow tenant cannot consume more than its own slot while
+	// other tenants share the remaining workers.
+	Workers int `mapstructure:"workers" yaml:"workers" default:"8"`
+	// MaxAttempts is the bounded number of delivery attempts per webhook
+	// event (1 = no retries).
+	MaxAttempts int `mapstructure:"max_attempts" yaml:"max_attempts" default:"4"`
+	// BackoffInitial is the base delay for exponential backoff between retry
+	// attempts. Actual delays add ±20% jitter and are capped at BackoffMax.
+	BackoffInitial time.Duration `mapstructure:"backoff_initial" yaml:"backoff_initial" default:"1s"`
+	BackoffMax     time.Duration `mapstructure:"backoff_max" yaml:"backoff_max" default:"30s"`
+	// SigningSecret is the HMAC-SHA256 key used to sign every outbound
+	// DayDan-generated webhook payload. It is deliberately separate from
+	// jwt.secret and storage.media_secret; when unset it is auto-created as
+	// a random secret file (or HKDF-derived from jwt.secret when no data dir
+	// is writable — see resolveWebhookSigningKey). Receivers verify with
+	// docs/webhook-signing.md.
+	SigningSecret     string `mapstructure:"signing_secret" yaml:"signing_secret"`
+	SigningSecretFile string `mapstructure:"signing_secret_file" yaml:"signing_secret_file"`
 }
 
 type RealTimeConfig struct {
@@ -383,7 +421,14 @@ func NewConfig() *Config {
 			AllowedOrigins:        []string{"http://localhost:5173", "http://localhost:7926", "http://localhost", "https://localhost", "capacitor://localhost"},
 			MaxSSETickets:         10000,
 		},
-		WebhookConfig: WebhookConfig{Timeout: 5 * time.Second, QueueSize: 100},
+		WebhookConfig: WebhookConfig{
+			Timeout:        5 * time.Second,
+			QueueSize:      100,
+			Workers:        8,
+			MaxAttempts:    4,
+			BackoffInitial: time.Second,
+			BackoffMax:     30 * time.Second,
+		},
 		MFAConfig: MFAConfig{
 			Enabled:                 true,
 			SessionTimeoutMinutes:   15,
@@ -485,6 +530,7 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("storage.max_user_storage", cfg.Storage.MaxUserStorage)
 	v.SetDefault("storage.max_file_size", cfg.Storage.MaxFileSize)
 	v.SetDefault("storage.signed_url_ttl", cfg.Storage.SignedURLTTL)
+	v.SetDefault("storage.s3_operation_timeout", 0)
 	v.SetDefault("storage.allow_legacy_media_signatures", cfg.Storage.AllowLegacyMediaSignatures)
 	v.SetDefault("realtime.enabled", cfg.RealTimeConfig.Enabled)
 	v.SetDefault("realtime.websocket_enabled", cfg.RealTimeConfig.WebSocketEnabled)
@@ -507,6 +553,10 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("webhook.timeout", cfg.WebhookConfig.Timeout)
 	v.SetDefault("webhook.queue_size", cfg.WebhookConfig.QueueSize)
 	v.SetDefault("webhook.allow_private_networks", cfg.WebhookConfig.AllowPrivateNetworks)
+	v.SetDefault("webhook.workers", cfg.WebhookConfig.Workers)
+	v.SetDefault("webhook.max_attempts", cfg.WebhookConfig.MaxAttempts)
+	v.SetDefault("webhook.backoff_initial", cfg.WebhookConfig.BackoffInitial)
+	v.SetDefault("webhook.backoff_max", cfg.WebhookConfig.BackoffMax)
 	v.SetDefault("mfa.enabled", cfg.MFAConfig.Enabled)
 	v.SetDefault("mfa.session_timeout_minutes", cfg.MFAConfig.SessionTimeoutMinutes)
 	v.SetDefault("mfa.backup_code_count", cfg.MFAConfig.BackupCodeCount)
@@ -625,6 +675,12 @@ func LoadConfigE() (*Config, error) {
 	}
 
 	configEnvironmentOverrides(&config)
+	if value := envStripeWebhookSecret(); value != "" {
+		config.StripeConfig.WebhookSecret = value
+	}
+	if err := resolveStripeWebhookSecret(&config); err != nil {
+		return nil, err
+	}
 	if config.EmailConfig.AppHost == "" {
 		config.EmailConfig.AppHost = v.GetString("email.appHost")
 	}
@@ -666,6 +722,18 @@ func validateSecurityConfig(cfg *Config) error {
 	}
 	if cfg.WebhookConfig.Timeout <= 0 || cfg.WebhookConfig.QueueSize <= 0 {
 		return fmt.Errorf("webhook timeout and queue_size must be positive")
+	}
+	if cfg.WebhookConfig.Workers <= 0 {
+		return fmt.Errorf("webhook.workers must be positive")
+	}
+	if cfg.WebhookConfig.MaxAttempts <= 0 {
+		return fmt.Errorf("webhook.max_attempts must be positive")
+	}
+	if cfg.WebhookConfig.BackoffInitial <= 0 || cfg.WebhookConfig.BackoffMax < cfg.WebhookConfig.BackoffInitial {
+		return fmt.Errorf("webhook.backoff_initial and webhook.backoff_max must be positive with backoff_max >= backoff_initial")
+	}
+	if cfg.StripeConfig.WebhookTolerance < 0 || cfg.StripeConfig.WebhookTolerance > 24*time.Hour {
+		return fmt.Errorf("stripe.webhook_tolerance must be between 0 and 24h")
 	}
 	mail := cfg.EmailConfig
 	provider := strings.ToLower(strings.TrimSpace(mail.Provider))
@@ -775,13 +843,13 @@ func initializePersistentRuntime(config *Config) error {
 		if err := validateJWTSecret(config.Jwt.Secret); err != nil {
 			return err
 		}
-		return resolveMediaSigningKey(config)
+		return resolveRuntimeSecrets(config)
 	}
 	if config.Jwt.Secret != "" && config.Jwt.Secret != "change_this_to_a_secure_random_string_32_characters_long" {
 		if err := validateJWTSecret(config.Jwt.Secret); err != nil {
 			return err
 		}
-		return resolveMediaSigningKey(config)
+		return resolveRuntimeSecrets(config)
 	}
 	config.Jwt.Secret = ""
 	if config.Jwt.SecretFile == "" {
@@ -795,7 +863,16 @@ func initializePersistentRuntime(config *Config) error {
 	if err := validateJWTSecret(secret); err != nil {
 		return err
 	}
-	return resolveMediaSigningKey(config)
+	return resolveRuntimeSecrets(config)
+}
+
+// resolveRuntimeSecrets finalizes every derived/persistent credential family
+// after the JWT secret is known.
+func resolveRuntimeSecrets(cfg *Config) error {
+	if err := resolveMediaSigningKey(cfg); err != nil {
+		return err
+	}
+	return resolveWebhookSigningKey(cfg)
 }
 
 // mediaSigningKeyMinLen is the minimum length of an explicitly configured
@@ -866,6 +943,63 @@ func deriveMediaSigningKey(jwtSecret []byte) ([]byte, error) {
 		return nil, err
 	}
 	return derived, nil
+}
+
+// resolveWebhookSigningKey finalizes the outbound webhook HMAC key.
+// Precedence:
+//
+//  1. an explicitly configured webhook.signing_secret;
+//  2. the contents of webhook.signing_secret_file (created with random
+//     content on first boot, mirroring jwt.secret_file semantics);
+//  3. HKDF-SHA256 expansion of jwt.secret under a webhook-specific
+//     info/salt label so zero-config installs sign out of the box while
+//     the key remains computationally independent of every other family.
+//
+// Rotation: set signing_secret (or replace the secret file) and restart.
+// Signatures produced by the old key stop verifying at receivers once they
+// are told the new key; there is deliberately no silent legacy fallback.
+func resolveWebhookSigningKey(cfg *Config) error {
+	if value := envWebhookSigningSecret(); value != "" {
+		cfg.WebhookConfig.SigningSecret = value
+	}
+	secret := strings.TrimSpace(cfg.WebhookConfig.SigningSecret)
+	if secret != "" {
+		if len(secret) < 16 {
+			return fmt.Errorf("webhook.signing_secret must be at least 16 characters")
+		}
+		if secret == cfg.Jwt.Secret || secret == cfg.Storage.MediaSecret {
+			return fmt.Errorf("webhook.signing_secret must differ from jwt.secret and storage.media_secret")
+		}
+		cfg.WebhookConfig.SigningSecret = secret
+		return nil
+	}
+	cfg.WebhookConfig.SigningSecretFile = strings.TrimSpace(cfg.WebhookConfig.SigningSecretFile)
+	if cfg.WebhookConfig.SigningSecretFile == "" {
+		cfg.WebhookConfig.SigningSecretFile = filepath.Join(cfg.DataDir, "webhook-signing-secret")
+	}
+	key, err := loadOrCreateSecret(cfg.WebhookConfig.SigningSecretFile)
+	if err != nil {
+		return fmt.Errorf("initialize persistent webhook signing secret: %w", err)
+	}
+	cfg.WebhookConfig.SigningSecret = key
+	return nil
+}
+
+// resolveStripeWebhookSecret loads stripe.webhook_secret from its optional
+// file form. Called during startup so a misconfigured file fails fast.
+func resolveStripeWebhookSecret(cfg *Config) error {
+	if strings.TrimSpace(cfg.StripeConfig.WebhookSecret) == "" && strings.TrimSpace(cfg.StripeConfig.WebhookSecretFile) != "" {
+		contents, err := os.ReadFile(strings.TrimSpace(cfg.StripeConfig.WebhookSecretFile))
+		if err != nil {
+			return fmt.Errorf("read stripe.webhook_secret_file: %w", err)
+		}
+		secret := strings.TrimSpace(string(contents))
+		if secret == "" {
+			return fmt.Errorf("stripe.webhook_secret_file %s is empty", cfg.StripeConfig.WebhookSecretFile)
+		}
+		cfg.StripeConfig.WebhookSecret = secret
+	}
+	return nil
 }
 
 func loadOrCreateSecret(path string) (string, error) {

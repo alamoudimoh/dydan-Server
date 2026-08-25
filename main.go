@@ -325,6 +325,7 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 	corsConfig.AddExposeHeaders("Content-Type")
 	r.Use(cors.New(corsConfig))
 
+	var stopWebhooks context.CancelFunc
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if cfg.Database.Migration {
@@ -361,7 +362,12 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 				return fmt.Errorf("authentication rate-limit tables are missing; enable database migrations")
 			}
 			notifier.Start(context.Background())
-			eventProducer.Start(context.Background())
+			// The webhook dispatcher gets a cancellable context so shutdown
+			// can stop acceptance of new work and wait for in-flight
+			// deliveries (bounded below in OnStop).
+			webhookCtx, cancelWebhooks := context.WithCancel(context.Background())
+			stopWebhooks = cancelWebhooks
+			eventProducer.Start(webhookCtx)
 			mfaCleanup.Start(context.Background())
 			authCleanup.Start(context.Background())
 			draftCleanup.Start(context.Background())
@@ -409,6 +415,22 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 				log.Printf("Server shutdown timeout: %s", err)
 				// Force close
 				srv.Close()
+			}
+
+			// Stop webhook dispatch: cancel acceptance of new work and let
+			// in-flight deliveries finish within their request timeout.
+			if stopWebhooks != nil {
+				stopWebhooks()
+				stopped := make(chan struct{})
+				go func() {
+					eventProducer.WaitForIdle()
+					close(stopped)
+				}()
+				select {
+				case <-stopped:
+				case <-time.After(3 * time.Second):
+					log.Printf("webhook delivery drain timeout; dropping pending work")
+				}
 			}
 
 			// Close the database pool last so in-flight writes finish first.

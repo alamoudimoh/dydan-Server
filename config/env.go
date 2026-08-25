@@ -34,6 +34,18 @@ func envStorageMediaSecret() string {
 	return firstEnvironment("DAYDAN_STORAGE_MEDIA_SECRET", "TASKIER_STORAGE_MEDIA_SECRET", "DT_STORAGE_MEDIA_SECRET")
 }
 
+// envWebhookSigningSecret allows operators to supply the outbound webhook
+// HMAC key without persisting it in the config file.
+func envWebhookSigningSecret() string {
+	return firstEnvironment("DAYDAN_WEBHOOK_SIGNING_SECRET", "TASKIER_WEBHOOK_SIGNING_SECRET", "DT_WEBHOOK_SIGNING_SECRET")
+}
+
+// envStripeWebhookSecret mirrors stripe.webhook_secret for container
+// deployments that inject secrets through the environment.
+func envStripeWebhookSecret() string {
+	return firstEnvironment("DAYDAN_STRIPE_WEBHOOK_SECRET", "TASKIER_STRIPE_WEBHOOK_SECRET", "DT_STRIPE_WEBHOOK_SECRET")
+}
+
 func envSQLitePath() string {
 	return firstEnvironment("DAYDAN_SQLITE_PATH", "TASKIER_SQLITE_PATH", "DT_SQLITE_PATH")
 }

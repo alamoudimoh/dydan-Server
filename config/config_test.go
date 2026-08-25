@@ -441,3 +441,96 @@ func TestDayDanHostedCloudConfigAliasesOverrideLegacyKeys(t *testing.T) {
 		t.Fatalf("apple_client_id=%q", cfg.DayDanCloudConfig.AppleClientID)
 	}
 }
+
+func TestWebhookSigningSecretAutoCreatedAndStable(t *testing.T) {
+	clearConfigSelection(t)
+	dataDir := filepath.Join(t.TempDir(), "data")
+	t.Setenv("TASKIER_DATA_DIR", dataDir)
+
+	first, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first.WebhookConfig.SigningSecret) < 32 {
+		t.Fatal("auto-created webhook signing secret missing or weak")
+	}
+	// Must differ from every other credential family.
+	if first.WebhookConfig.SigningSecret == first.Jwt.Secret || first.WebhookConfig.SigningSecret == first.Storage.MediaSecret {
+		t.Fatal("webhook signing secret collides with another credential family")
+	}
+	secretInfo, err := os.Stat(filepath.Join(dataDir, "webhook-signing-secret"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && secretInfo.Mode().Perm() != 0o600 {
+		t.Fatalf("webhook secret mode=%o", secretInfo.Mode().Perm())
+	}
+
+	second, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.WebhookConfig.SigningSecret != first.WebhookConfig.SigningSecret {
+		t.Fatal("restart regenerated the webhook signing secret")
+	}
+}
+
+func TestWebhookSigningSecretRejectsWeakOrCollidingValues(t *testing.T) {
+	clearConfigSelection(t)
+	dataDir := filepath.Join(t.TempDir(), "data")
+	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Setenv("DAYDAN_WEBHOOK_SIGNING_SECRET", "short")
+
+	if _, err := LoadConfigE(); err == nil {
+		t.Fatal("16-char-minimum not enforced for webhook.signing_secret")
+	}
+
+	clearConfigSelection(t)
+	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	jwt := strings.Repeat("x", 40)
+	t.Setenv("DT_JWT_SECRET", jwt)
+	t.Setenv("DAYDAN_WEBHOOK_SIGNING_SECRET", jwt)
+	if _, err := LoadConfigE(); err == nil {
+		t.Fatal("webhook.signing_secret equal to jwt.secret must be rejected")
+	}
+}
+
+func TestStripeWebhookToleranceValidation(t *testing.T) {
+	cfg := NewConfig()
+	cfg.StripeConfig.WebhookTolerance = -5 * time.Second
+	if err := validateSecurityConfig(cfg); err == nil {
+		t.Fatal("negative stripe.webhook_tolerance accepted")
+	}
+	cfg.StripeConfig.WebhookTolerance = 48 * time.Hour
+	if err := validateSecurityConfig(cfg); err == nil {
+		t.Fatal("stripe.webhook_tolerance above 24h accepted")
+	}
+	cfg.StripeConfig.WebhookTolerance = webhookToleranceOK
+	if err := validateSecurityConfig(cfg); err != nil {
+		t.Fatalf("valid tolerance rejected: %v", err)
+	}
+}
+
+const webhookToleranceOK = 5 * time.Minute
+
+func TestStripeWebhookSecretFileLoading(t *testing.T) {
+	clearConfigSelection(t)
+	dir := t.TempDir()
+	t.Setenv("TASKIER_DATA_DIR", filepath.Join(dir, "data"))
+	secretFile := filepath.Join(dir, "whsec")
+	if err := os.WriteFile(secretFile, []byte("whsec_from_file_1234567890\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	configFile := filepath.Join(dir, "daydan.yaml")
+	if err := os.WriteFile(configFile, []byte("stripe:\n  webhook_secret_file: "+secretFile+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("DAYDAN_CONFIG_FILE", configFile)
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.StripeConfig.WebhookSecret != "whsec_from_file_1234567890" {
+		t.Fatalf("webhook secret from file = %q", cfg.StripeConfig.WebhookSecret)
+	}
+}

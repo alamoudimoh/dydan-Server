@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -139,7 +138,7 @@ func (h *Handler) AssetHandler(c *gin.Context) {
 
 	filename := filePath
 
-	file, err := h.storage.Get(context.Background(), filename)
+	file, err := h.storage.Get(c.Request.Context(), filename)
 	if err != nil {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
@@ -298,7 +297,7 @@ func (h *Handler) ChoreUploadHandler(c *gin.Context) {
 
 	// Save the file first; only write the DB record if the upload succeeds
 	// so we never end up with a dangling record pointing at a missing file.
-	if err = h.storage.Save(context.Background(), path, src); err != nil {
+	if err = h.storage.Save(c.Request.Context(), path, src); err != nil {
 		log.Error("failed to save file to storage", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
 		return
@@ -306,7 +305,7 @@ func (h *Handler) ChoreUploadHandler(c *gin.Context) {
 
 	if err := h.storageRepo.AddMediaRecord(c, mediaRecord, currentUser); err != nil {
 		// Best-effort cleanup: delete the file we just uploaded.
-		if delErr := h.storage.Delete(context.Background(), []string{path}); delErr != nil {
+		if delErr := h.storage.Delete(c.Request.Context(), []string{path}); delErr != nil {
 			log.Error("failed to delete orphaned file after DB error", "path", path, "error", delErr)
 		}
 		switch {
@@ -538,7 +537,7 @@ func (h *Handler) DeleteChoreAttachmentHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.storage.Delete(context.Background(), []string{file.FilePath}); err != nil {
+	if err := h.storage.Delete(c.Request.Context(), []string{file.FilePath}); err != nil {
 		log.Error("failed to delete file from storage", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete file"})
 		return
@@ -681,7 +680,7 @@ func (h *Handler) DeleteDraftAttachmentHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.storage.Delete(context.Background(), []string{file.FilePath}); err != nil {
+	if err := h.storage.Delete(c.Request.Context(), []string{file.FilePath}); err != nil {
 		log.Error("failed to delete draft file from storage", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete file"})
 		return

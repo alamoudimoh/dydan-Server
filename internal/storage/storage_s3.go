@@ -24,7 +24,27 @@ type S3Storage struct {
 	BasePath     string
 	Client       *s3.S3
 	Key          string
+
+	// opTimeout is the per-operation deadline applied by the storage client
+	// itself (centralized policy, not scattered per-handler timers). It caps
+	// every PutObject/DeleteObject round trip — including the SDK's bounded
+	// retries — so a stalled S3/MinIO endpoint cannot hang a request or job
+	// indefinitely. Caller cancellation still takes precedence: whichever
+	// fires first wins.
+	opTimeout time.Duration
 }
+
+// DefaultS3OperationTimeout bounds each S3 API operation (including retries).
+// It is deliberately generous relative to the product's MaxFileSize so large
+// uploads on slow links are not cut off mid-flight, but finite so a stalled
+// connection always releases the caller.
+const DefaultS3OperationTimeout = 2 * time.Minute
+
+// s3MaxRetries is the explicit ceiling on AWS SDK retry attempts per
+// operation. The SDK default already retries only on retryable errors with
+// exponential backoff; pinning it documents the worst case instead of
+// inheriting silent SDK changes.
+const s3MaxRetries = 3
 
 // MaxPresignTTL is the hard ceiling for S3 presigned URL lifetime: AWS SigV4
 // rejects anything longer than 7 days. Runtime-minted presignatures use
@@ -45,6 +65,10 @@ func (s *S3Storage) objectKey(path string) string {
 }
 
 func NewS3Storage(config *config.Config) (*S3Storage, error) {
+	opTimeout := config.Storage.S3OperationTimeout
+	if opTimeout <= 0 {
+		opTimeout = DefaultS3OperationTimeout
+	}
 	sess, err := session.NewSession(&aws.Config{
 		Region:   aws.String(config.Storage.Region),
 		Endpoint: aws.String(config.Storage.Endpoint),
@@ -54,6 +78,10 @@ func NewS3Storage(config *config.Config) (*S3Storage, error) {
 			"",
 		),
 		S3ForcePathStyle: aws.Bool(config.Storage.PathStyle),
+		// Bounded retry policy: at most s3MaxRetries attempts with the
+		// SDK's standard exponential backoff. Combined with opTimeout this
+		// guarantees every operation terminates in bounded time.
+		MaxRetries: aws.Int(s3MaxRetries),
 	})
 	if err != nil {
 		return nil, err
@@ -64,10 +92,27 @@ func NewS3Storage(config *config.Config) (*S3Storage, error) {
 		PublicHost:   config.Storage.PublicBucketHost,
 		BasePath:     config.Storage.BasePath,
 		Client:       s3.New(sess),
+		opTimeout:    opTimeout,
 	}, nil
+}
+
+// withOpTimeout derives a per-operation context from the caller's context.
+// Caller cancellation propagates (ctx.Done closes immediately), and a hard
+// deadline bounds stalled operations even when the caller passed no deadline.
+func (s *S3Storage) withOpTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	timeout := s.opTimeout
+	if timeout <= 0 {
+		timeout = DefaultS3OperationTimeout
+	}
+	return context.WithTimeout(ctx, timeout)
 }
 func (s *S3Storage) Save(ctx context.Context, path string, file io.Reader) error {
 	key := s.objectKey(path)
+	ctx, cancel := s.withOpTimeout(ctx)
+	defer cancel()
 
 	// Read the file into a buffer to create an io.ReadSeeker
 	buf, err := io.ReadAll(file)
@@ -94,10 +139,12 @@ func (s *S3Storage) Delete(ctx context.Context, paths []string) error {
 		// raw concatenation (BasePath + path) silently missed the separator
 		// and deleted non-existent keys.
 		key := s.objectKey(path)
-		_, e := s.Client.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
+		opCtx, cancel := s.withOpTimeout(ctx)
+		_, e := s.Client.DeleteObjectWithContext(opCtx, &s3.DeleteObjectInput{
 			Bucket: aws.String(s.Bucket),
 			Key:    aws.String(key),
 		})
+		cancel()
 		if e != nil {
 			err = e
 		}
@@ -132,6 +179,8 @@ func (s *S3Storage) publicBucket() string {
 
 func (s *S3Storage) SavePublic(ctx context.Context, path string, file io.Reader) error {
 	key := s.objectKey(path)
+	ctx, cancel := s.withOpTimeout(ctx)
+	defer cancel()
 	buf, err := io.ReadAll(file)
 	if err != nil {
 		return err
@@ -223,7 +272,9 @@ func (s *S3Storage) DeletePublicByURL(ctx context.Context, rawURL string) error 
 		return s.Delete(ctx, []string{matchedPath})
 	}
 	key := s.objectKey(matchedPath)
-	_, err := s.Client.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
+	opCtx, cancel := s.withOpTimeout(ctx)
+	defer cancel()
+	_, err := s.Client.DeleteObjectWithContext(opCtx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.PublicBucket),
 		Key:    aws.String(key),
 	})
