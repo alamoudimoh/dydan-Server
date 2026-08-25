@@ -100,3 +100,20 @@ func TestRedactQueryEmpty(t *testing.T) {
 		t.Fatalf("degenerate query should pass through: %q", got)
 	}
 }
+
+// TestRedactQueryCoversSignedMediaCredentials pins phase-6 coverage: signed
+// media URL credentials must be redacted by the shared primitives used by
+// panic recovery and any diagnostic logging.
+func TestRedactQueryCoversSignedMediaCredentials(t *testing.T) {
+	got := RedactQuery("expires=1788256769&sig=abcdef123456")
+	if got != "expires=1788256769&sig=%5Bredacted%5D" {
+		t.Fatalf("local media signature not redacted: %q", got)
+	}
+	got = RedactQuery("X-Amz-Signature=aabbcc&X-Amz-Expires=604800")
+	if !strings.Contains(got, "X-Amz-Signature=%5Bredacted%5D") {
+		t.Fatalf("SigV4 signature not redacted: %q", got)
+	}
+	if strings.Contains(got, "aabbcc") {
+		t.Fatal("signature material leaked into redacted output")
+	}
+}

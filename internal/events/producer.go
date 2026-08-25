@@ -11,6 +11,7 @@ import (
 	"github.com/alamoudimoh/daydan-server/config"
 	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/daydan-server/internal/utils"
 	"github.com/alamoudimoh/daydan-server/logging"
 	"go.uber.org/zap"
 )
@@ -84,9 +85,28 @@ func (p *EventsProducer) publishEvent(event Event) {
 	}
 }
 
+// sanitizeWebhookChore strips minted signed-media credentials from a chore
+// description before it leaves for an external webhook consumer. Descriptions
+// embed <img src="...?sig=..."> URLs whose query strings are bearer
+// credentials valid until the URL expires; third-party receivers have no
+// business holding them. The stable path (dt-data-path / bare src) is kept,
+// and first-party API/sync channels are untouched — clients rely on the
+// embedded expiry to re-sign.
+func (p *EventsProducer) sanitizeWebhookChore(data ChoreData) ChoreData {
+	if data.Chore == nil || data.Chore.Description == nil {
+		return data
+	}
+	sanitized := utils.StripMediaURLCredentials(*data.Chore.Description)
+	data.Chore.Description = &sanitized
+	return data
+}
+
 func (p *EventsProducer) processEvent(event Event) {
 	p.logger.Debugw("Sending webhook event", "type", event.Type, "url", event.URL)
 
+	if choreData, ok := event.Data.(ChoreData); ok {
+		event.Data = p.sanitizeWebhookChore(choreData)
+	}
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		p.logger.Errorw("Failed to marshal webhook event", "error", err)

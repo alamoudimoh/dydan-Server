@@ -13,22 +13,25 @@ import (
 // The list is derived from DayDan's actual credential-bearing parameters:
 //   - "ticket": single-use realtime/SSE connection tickets;
 //   - "c":      legacy password-reset links (?c=<code>);
+//   - "sig" / "X-Amz-Signature": signed media URL credentials;
 //   - generic credential names that must never survive into diagnostics if a
 //     future endpoint ever accepts them in a URL.
 var sensitiveQueryParams = map[string]struct{}{
-	"ticket":        {},
-	"c":             {},
-	"code":          {},
-	"token":         {},
-	"secretkey":     {},
-	"password":      {},
-	"refresh_token": {},
-	"access_token":  {},
-	"id_token":      {},
-	"sessiontoken":  {},
-	"verifier":      {},
-	"otp":           {},
-	"mfa":           {},
+	"ticket":          {},
+	"c":               {},
+	"code":            {},
+	"token":           {},
+	"secretkey":       {},
+	"password":        {},
+	"refresh_token":   {},
+	"access_token":    {},
+	"id_token":        {},
+	"sessiontoken":    {},
+	"verifier":        {},
+	"otp":             {},
+	"mfa":             {},
+	"sig":             {},
+	"x-amz-signature": {},
 }
 
 const redactedQueryValue = "[redacted]"

@@ -346,6 +346,17 @@ func newServer(lc fx.Lifecycle, cfg *config.Config, db *gorm.DB, notifier *notif
 			if remaining, err := uRepo.CountLegacyPlaintextAPITokens(context.Background(), db); err == nil && remaining > 0 {
 				log.Printf("API-token security migration incomplete: %d credential row(s) still stored as legacy plaintext; they will be upgraded automatically on next use or by re-running migrations", remaining)
 			}
+			// Operator safety note for the intentionally-public storage mode:
+			// public_read / a dedicated public bucket only make sense when
+			// the bucket/prefix actually allows anonymous reads. Warn when
+			// the configuration looks ambiguous so private uploads are never
+			// silently promoted to public URLs that 403.
+			switch {
+			case cfg.Storage.PublicRead:
+				log.Printf("storage.public_read is ENABLED: objects in bucket %q are served via unsigned URLs and MUST be anonymously readable by bucket policy; protected uploads in this bucket are world-readable", cfg.Storage.BucketName)
+			case cfg.Storage.PublicBucketName != "" && cfg.Storage.PublicBucketHost == "":
+				log.Printf("storage.public_bucket_name is set without public_bucket_host: public assets (e.g. profile photos) are served as bare endpoint URLs from bucket %q; ensure that bucket/prefix allows anonymous reads, or clients will see 403s", cfg.Storage.PublicBucketName)
+			}
 			if !db.Migrator().HasTable(&authlimit.Bucket{}) || !db.Migrator().HasTable(&authlimit.CapacityGuard{}) {
 				return fmt.Errorf("authentication rate-limit tables are missing; enable database migrations")
 			}
