@@ -27,13 +27,21 @@ type URLSignerS3 struct {
 	storage    *S3Storage
 	PublicHost string
 	PublicRead bool
+	// ttl is the lifetime minted into presigned URLs. It is clamped to
+	// MaxPresignTTL (the AWS SigV4 ceiling) at construction.
+	ttl time.Duration
 }
 
 func NewURLSignerS3(storage *S3Storage, config *config.Config) *URLSignerS3 {
+	ttl := config.Storage.SignedURLTTL
+	if ttl <= 0 || ttl > MaxPresignTTL {
+		ttl = MaxPresignTTL
+	}
 	return &URLSignerS3{
 		storage:    storage,
 		PublicHost: config.Storage.PublicHost,
 		PublicRead: config.Storage.PublicRead,
+		ttl:        ttl,
 	}
 }
 
@@ -55,7 +63,7 @@ func (s *URLSignerS3) Sign(rawPath string) (string, error) {
 		}
 		urlStr = req.HTTPRequest.URL.String()
 	} else {
-		presigned, err := req.Presign(VALID_FOR)
+		presigned, err := req.Presign(s.ttl)
 		if err != nil {
 			return "", err
 		}
@@ -116,12 +124,18 @@ func (s *URLSignerS3) verifyPresigned(rawPath string, query url.Values, signatur
 	}
 
 	expires, err := strconv.ParseInt(expiresStr, 10, 64)
-	if err != nil || expires <= 0 || expires > int64(VALID_FOR/time.Second) {
+	if err != nil || expires <= 0 || expires > int64(MaxPresignTTL/time.Second) {
 		return fmt.Errorf("invalid expiry")
 	}
 	signedAt, err := time.Parse("20060102T150405Z", amzDate)
 	if err != nil {
 		return fmt.Errorf("invalid date")
+	}
+	// Reject credentials dated in the future (beyond a small clock-skew
+	// allowance): a forged X-Amz-Date combined with a large X-Amz-Expires
+	// would otherwise extend validity past any intended lifetime.
+	if signedAt.After(time.Now().UTC().Add(5 * time.Minute)) {
+		return fmt.Errorf("signature date is in the future")
 	}
 	if signedAt.Add(time.Duration(expires) * time.Second).Before(time.Now().UTC()) {
 		return fmt.Errorf("presigned URL expired")
@@ -142,36 +156,43 @@ func (s *URLSignerS3) verifyPresigned(rawPath string, query url.Values, signatur
 	}
 
 	canonicalQuery := canonicalSigV4Query(query)
-	canonicalURI := "/" + escapedS3Key(s.objectKey(rawPath))
+	escapedKey := escapedS3Key(s.objectKey(rawPath))
+	escapedBucketedKey := escapedS3Key(s.storage.Bucket + "/" + s.objectKey(rawPath))
 
 	var lastErr error
 	for _, host := range s.candidateHosts(region) {
-		canonicalRequest := strings.Join([]string{
-			"GET",
-			canonicalURI,
-			canonicalQuery,
-			"host:" + host + "\n",
-			signedHeaders,
-			"UNSIGNED-PAYLOAD",
-		}, "\n")
+		// Virtual-hosted addressing signs "/key"; path-style addressing
+		// (required by MinIO and plain-HTTP endpoints) signs
+		// "/bucket/key". Try both so a legitimately presigned URL validates
+		// regardless of the addressing form used at mint time.
+		for _, canonicalURI := range []string{"/" + escapedKey, "/" + escapedBucketedKey} {
+			canonicalRequest := strings.Join([]string{
+				"GET",
+				canonicalURI,
+				canonicalQuery,
+				"host:" + host + "\n",
+				signedHeaders,
+				"UNSIGNED-PAYLOAD",
+			}, "\n")
 
-		stringToSign := strings.Join([]string{
-			"AWS4-HMAC-SHA256",
-			amzDate,
-			strings.Join([]string{dateScope, region, "s3", "aws4_request"}, "/"),
-			hex.EncodeToString(hashSHA256([]byte(canonicalRequest))),
-		}, "\n")
+			stringToSign := strings.Join([]string{
+				"AWS4-HMAC-SHA256",
+				amzDate,
+				strings.Join([]string{dateScope, region, "s3", "aws4_request"}, "/"),
+				hex.EncodeToString(hashSHA256([]byte(canonicalRequest))),
+			}, "\n")
 
-		key := hmacSHA256([]byte("AWS4"+creds.SecretAccessKey), dateScope)
-		key = hmacSHA256(key, region)
-		key = hmacSHA256(key, "s3")
-		key = hmacSHA256(key, "aws4_request")
-		expected := hex.EncodeToString(hmacSHA256(key, stringToSign))
+			key := hmacSHA256([]byte("AWS4"+creds.SecretAccessKey), dateScope)
+			key = hmacSHA256(key, region)
+			key = hmacSHA256(key, "s3")
+			key = hmacSHA256(key, "aws4_request")
+			expected := hex.EncodeToString(hmacSHA256(key, stringToSign))
 
-		if hmac.Equal([]byte(expected), []byte(signature)) {
-			return nil
+			if hmac.Equal([]byte(expected), []byte(signature)) {
+				return nil
+			}
+			lastErr = fmt.Errorf("signature mismatch for host %q", host)
 		}
-		lastErr = fmt.Errorf("signature mismatch for host %q", host)
 	}
 	return lastErr
 }

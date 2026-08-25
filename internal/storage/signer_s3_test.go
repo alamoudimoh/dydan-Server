@@ -24,8 +24,8 @@ func newTestS3Signer(t *testing.T) *URLSignerS3 {
 	}
 	client := s3.New(sess)
 	st := &S3Storage{
-		Client:  client,
-		Bucket:  "test-bucket",
+		Client:   client,
+		Bucket:   "test-bucket",
 		BasePath: "uploads",
 	}
 	return NewURLSignerS3(st, cfg)

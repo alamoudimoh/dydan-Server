@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 	"time"
 
@@ -25,9 +26,23 @@ type S3Storage struct {
 	Key          string
 }
 
-// VALID_FOR is the lifetime of a presigned URL. AWS SigV4 caps presigned
-// URL expiration at 7 days, so this is the maximum we can ask for.
-const VALID_FOR = 7 * 24 * time.Hour
+// MaxPresignTTL is the hard ceiling for S3 presigned URL lifetime: AWS SigV4
+// rejects anything longer than 7 days. Runtime-minted presignatures use
+// config.Storage.SignedURLTTL clamped to this value; persisted-URL fallbacks
+// (GetPublicURL without a public host) keep the maximum because the URL is
+// stored in a DB row and re-minted only on profile updates.
+const MaxPresignTTL = 7 * 24 * time.Hour
+
+// VALID_FOR is retained as an alias of MaxPresignTTL for existing callers.
+const VALID_FOR = MaxPresignTTL
+
+// objectKey joins BasePath and a relative storage path into a bucket key.
+// Every code path that touches S3 (save, delete, sign, verify) must derive
+// keys through this helper so path-style and virtual-host addressing always
+// refer to the same object identity.
+func (s *S3Storage) objectKey(path string) string {
+	return fmt.Sprintf("%s/%s", s.BasePath, path)
+}
 
 func NewS3Storage(config *config.Config) (*S3Storage, error) {
 	sess, err := session.NewSession(&aws.Config{
@@ -52,7 +67,7 @@ func NewS3Storage(config *config.Config) (*S3Storage, error) {
 	}, nil
 }
 func (s *S3Storage) Save(ctx context.Context, path string, file io.Reader) error {
-	key := fmt.Sprintf("%s/%s", s.BasePath, path)
+	key := s.objectKey(path)
 
 	// Read the file into a buffer to create an io.ReadSeeker
 	buf, err := io.ReadAll(file)
@@ -75,7 +90,10 @@ func (s *S3Storage) Save(ctx context.Context, path string, file io.Reader) error
 func (s *S3Storage) Delete(ctx context.Context, paths []string) error {
 	var err error
 	for _, path := range paths {
-		key := s.BasePath + path
+		// objectKey matches the key layout produced by Save; the previous
+		// raw concatenation (BasePath + path) silently missed the separator
+		// and deleted non-existent keys.
+		key := s.objectKey(path)
 		_, e := s.Client.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
 			Bucket: aws.String(s.Bucket),
 			Key:    aws.String(key),
@@ -88,7 +106,7 @@ func (s *S3Storage) Delete(ctx context.Context, paths []string) error {
 }
 
 func (s *S3Storage) GetURL(ctx context.Context, path string) (string, error) {
-	key := fmt.Sprintf("%s/%s", s.BasePath, path)
+	key := s.objectKey(path)
 	req, _ := s.Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(s.Bucket),
 		Key:    aws.String(key),
@@ -113,7 +131,7 @@ func (s *S3Storage) publicBucket() string {
 }
 
 func (s *S3Storage) SavePublic(ctx context.Context, path string, file io.Reader) error {
-	key := fmt.Sprintf("%s/%s", s.BasePath, path)
+	key := s.objectKey(path)
 	buf, err := io.ReadAll(file)
 	if err != nil {
 		return err
@@ -127,33 +145,87 @@ func (s *S3Storage) SavePublic(ctx context.Context, path string, file io.Reader)
 }
 
 func (s *S3Storage) GetPublicURL(ctx context.Context, path string) (string, error) {
-	key := fmt.Sprintf("%s/%s", s.BasePath, path)
-	if s.PublicHost != "" {
-		return fmt.Sprintf("https://%s/%s", s.PublicHost, key), nil
-	}
-	if s.PublicBucket != "" {
-		// Public bucket with no CDN host — generate a presigned URL from the public bucket.
-		req, _ := s.Client.GetObjectRequest(&s3.GetObjectInput{
-			Bucket: aws.String(s.PublicBucket),
-			Key:    aws.String(key),
-		})
-		return req.Presign(VALID_FOR)
+	key := s.objectKey(path)
+	if s.PublicHost != "" || s.PublicBucket != "" {
+		// Objects written via SavePublic live in a deliberately-public
+		// location; they are served by a bare (unsigned) URL. Presigning
+		// them would be incoherent — the credential adds nothing on a
+		// publicly readable bucket/prefix while imposing a 7-day expiry.
+		return s.publicObjectURL(key), nil
 	}
 	// No public bucket configured — fall back to the private bucket presigned URL.
 	return s.GetURL(ctx, path)
 }
 
-// DeletePublicByURL deletes the S3 object identified by a URL previously
-// returned by GetPublicURL. Only URLs whose host matches PublicHost are
-// acted on; all other URLs (external OIDC picture URLs, etc.) are ignored.
+// publicObjectURL renders the bare URL for an object in the public location.
+// With PublicBucketHost set it is a plain CDN URL; otherwise it points at the
+// configured S3 endpoint honoring path-style / virtual-hosted addressing.
+func (s *S3Storage) publicObjectURL(key string) string {
+	if s.PublicHost != "" {
+		return fmt.Sprintf("https://%s/%s", s.PublicHost, key)
+	}
+	endpoint := strings.TrimRight(aws.StringValue(s.Client.Config.Endpoint), "/")
+	if endpoint == "" {
+		return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", s.publicBucket(), key)
+	}
+	parsed, err := url.Parse(endpoint)
+	if err != nil || parsed.Host == "" {
+		return fmt.Sprintf("%s/%s/%s", endpoint, s.publicBucket(), key)
+	}
+	scheme := "https"
+	if parsed.Scheme == "http" {
+		scheme = "http"
+	}
+	if aws.BoolValue(s.Client.Config.S3ForcePathStyle) {
+		return fmt.Sprintf("%s://%s/%s/%s", scheme, parsed.Host, s.publicBucket(), key)
+	}
+	return fmt.Sprintf("%s://%s.%s/%s", scheme, s.publicBucket(), parsed.Host, key)
+}
+
+// DeletePublicByURL deletes the S3 object identified by a public URL
+// previously returned by GetPublicURL. Only URLs whose prefix matches this
+// deployment's own public location(s) are acted on; all other URLs (external
+// OIDC picture URLs, etc.) are ignored. Deletion targets the public bucket —
+// deleting from the private bucket would leave the anonymously readable
+// object in place.
 func (s *S3Storage) DeletePublicByURL(ctx context.Context, rawURL string) error {
-	if s.PublicHost == "" {
+	if s.PublicHost == "" && s.PublicBucket == "" {
 		return nil
 	}
-	prefix := fmt.Sprintf("https://%s/%s/", s.PublicHost, s.BasePath)
-	if !strings.HasPrefix(rawURL, prefix) {
+	candidates := []string{}
+	if s.PublicHost != "" {
+		candidates = append(candidates, fmt.Sprintf("https://%s/%s/", s.PublicHost, s.BasePath))
+	}
+	publicBase := s.publicObjectURL(strings.TrimSuffix(s.BasePath+"/", "/"))
+	if publicBase != "" {
+		candidates = append(candidates, publicBase+"/")
+	}
+	// Older deployments persisted presigned URLs minted against regional
+	// AWS hosts; include those forms so stale objects are still matched.
+	if aws.StringValue(s.Client.Config.Endpoint) == "" && s.PublicBucket != "" {
+		if region := aws.StringValue(s.Client.Config.Region); region != "" {
+			candidates = append(candidates,
+				fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s/", s.PublicBucket, region, s.BasePath),
+				fmt.Sprintf("https://%s.s3.amazonaws.com/%s/", s.PublicBucket, s.BasePath))
+		}
+	}
+	var matchedPath string
+	for _, prefix := range candidates {
+		if strings.HasPrefix(rawURL, prefix) {
+			matchedPath = strings.TrimPrefix(rawURL, prefix)
+			break
+		}
+	}
+	if matchedPath == "" {
 		return nil
 	}
-	path := strings.TrimPrefix(rawURL, prefix)
-	return s.Delete(ctx, []string{path})
+	if s.PublicBucket == "" {
+		return s.Delete(ctx, []string{matchedPath})
+	}
+	key := s.objectKey(matchedPath)
+	_, err := s.Client.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(s.PublicBucket),
+		Key:    aws.String(key),
+	})
+	return err
 }
