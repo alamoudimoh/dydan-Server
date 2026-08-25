@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -34,8 +36,14 @@ type IdentityProvider struct {
 	httpClient *http.Client
 }
 
-// idpHTTPTimeout bounds userinfo fetches and picture reachability probes.
+// idpHTTPTimeout bounds every outbound call to the identity provider so a
+// hung upstream cannot stall login requests or the notification scheduler.
 const idpHTTPTimeout = 10 * time.Second
+
+// maxUserInfoResponseBytes caps how much of a userinfo response is buffered
+// before parsing. Legitimate IdP userinfo payloads are tiny; anything larger
+// is treated as hostile/misconfigured rather than read into memory.
+const maxUserInfoResponseBytes = 1 << 20 // 1 MiB
 
 func NewIdentityProvider(cfg *config.Config) *IdentityProvider {
 	if cfg.OAuth2Config.ClientID == "" || cfg.OAuth2Config.ClientSecret == "" {
@@ -99,6 +107,10 @@ func (i *IdentityProvider) ExchangeToken(ctx context.Context, code string, redir
 		}
 	}
 
+	// Bind the exchange to the shared bounded client: x/oauth2 otherwise
+	// falls back to http.DefaultClient (no timeout), letting a stalled token
+	// endpoint pin login handlers indefinitely.
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, i.httpClient)
 	token, err := conf.Exchange(ctx, code, opts...)
 	if err != nil {
 		// Enhanced error handling for OAuth2 errors
@@ -123,7 +135,7 @@ func (i *IdentityProvider) ExchangeToken(ctx context.Context, code string, redir
 }
 
 func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) (*IdentityProviderUserInfo, error) {
-	req, err := http.NewRequest("GET", i.config.UserInfoURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", i.config.UserInfoURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -135,11 +147,18 @@ func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) 
 	if err != nil {
 		return nil, err
 	}
-	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("userinfo endpoint returned status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxUserInfoResponseBytes+1))
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	if len(body) > maxUserInfoResponseBytes {
+		return nil, errors.New("userinfo response too large")
+	}
 
 	var claims map[string]any
 	err = json.Unmarshal(body, &claims)
@@ -174,8 +193,7 @@ func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) 
 	}
 	if val, ok := claims["picture"]; ok {
 		pictureURL, _ := val.(string)
-		isValid := i.isPictureURLValid(pictureURL)
-		if isValid {
+		if isFetchableImageReference(pictureURL) {
 			userInfo.Picture = pictureURL
 		}
 	}
@@ -191,18 +209,15 @@ func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) 
 	return &userInfo, nil
 }
 
-// Check if the provided URL is reachable and returns a valid image
-func (i *IdentityProvider) isPictureURLValid(url string) bool {
-	resp, err := i.httpClient.Get(url)
-	if err != nil {
+// isFetchableImageReference accepts only absolute HTTP(S) URLs without
+// embedded credentials. DayDan deliberately does NOT probe picture URLs
+// server-side: the claim value is attacker- or IdP-controlled input, and a
+// reachability GET with default redirects was an SSRF primitive against
+// internal infrastructure. Clients render the image from their own network.
+func isFetchableImageReference(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || u.User != nil {
 		return false
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return false
-	}
-
-	contentType := resp.Header.Get("Content-Type")
-	return strings.HasPrefix(contentType, "image/")
+	return u.Scheme == "http" || u.Scheme == "https"
 }

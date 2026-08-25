@@ -12,11 +12,19 @@ import (
 	"github.com/alamoudimoh/daydan-server/config"
 	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
 	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/daydan-server/internal/outbound"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/alamoudimoh/daydan-server/logging"
 )
 
-var httpClient = &http.Client{Timeout: 30 * time.Second}
+// httpClient enforces the shared outbound destination policy: https-only,
+// public-network destinations only, same-host redirects, bounded redirects.
+// The target is user-supplied, so without this it was an SSRF primitive
+// reachable by any authenticated account.
+var stdClient = outbound.NewClient(outbound.ClientOptions{
+	Timeout:      30 * time.Second,
+	RequireHTTPS: true,
+}).Std()
 
 type DiscordNotifier struct {
 }
@@ -58,6 +66,9 @@ func (dn *DiscordNotifier) sendMessage(c context.Context, webhookURL string, mes
 	if webhookURL == "" {
 		return errors.New("unable to send notification, webhook URL is empty")
 	}
+	if err := outbound.ValidateURLSyntax(webhookURL); err != nil {
+		return fmt.Errorf("invalid Discord webhook URL: %w", err)
+	}
 
 	payload := map[string]string{"content": message}
 	jsonData, err := json.Marshal(payload)
@@ -66,7 +77,14 @@ func (dn *DiscordNotifier) sendMessage(c context.Context, webhookURL string, mes
 		return err
 	}
 
-	resp, err := httpClient.Post(webhookURL, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(c, http.MethodPost, webhookURL, bytes.NewReader(jsonData))
+	if err != nil {
+		log.Error("Error creating Discord request:", err)
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := stdClient.Do(req)
 	if err != nil {
 		log.Error("Error sending message to Discord:", err)
 		return err

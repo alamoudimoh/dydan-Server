@@ -41,10 +41,45 @@ func hasURLScheme(raw string) bool {
 	return idx > 0
 }
 
+// sigv4QueryMarker detects AWS SigV4 presigned-URL parameters in a query
+// fragment. These query values are bearer credentials (X-Amz-Signature /
+// X-Amz-Credential) valid until expiry, regardless of whether the URL is
+// relative or absolute.
+func containsSigV4Credential(query string) bool {
+	lower := strings.ToLower(query)
+	return strings.Contains(lower, "x-amz-signature") ||
+		strings.Contains(lower, "x-amz-credential")
+}
+
+// earliestQueryStart finds where a query begins, accounting for browsers
+// decoding "&#63;" as "?" inside attribute values.
+func earliestQueryStart(raw string) int {
+	cut := -1
+	for _, marker := range []string{"?", "&#63;", "&#x3f;", "&#X3F;"} {
+		if idx := strings.Index(raw, marker); idx >= 0 && (cut < 0 || idx < cut) {
+			cut = idx
+		}
+	}
+	return cut
+}
+
+func stripAbsoluteCredentialQuery(raw string) string {
+	cut := earliestQueryStart(raw)
+	if cut < 0 {
+		return raw
+	}
+	if containsSigV4Credential(raw[cut:]) {
+		return raw[:cut]
+	}
+	return raw
+}
+
 func stripCredentialQuery(raw string) string {
 	if hasURLScheme(raw) {
-		// External image URLs are passed through untouched.
-		return raw
+		// External image URLs are passed through untouched — unless they
+		// carry SigV4 credentials: absolute S3 presigned URLs minted by the
+		// storage signer are exactly as sensitive as relative ones.
+		return stripAbsoluteCredentialQuery(raw)
 	}
 	cut := len(raw)
 	if idx := strings.IndexByte(raw, '?'); idx >= 0 {
@@ -79,12 +114,13 @@ func stripFromMatch(parts []string, urlIndex int) string {
 }
 
 // StripMediaURLCredentials removes signed-media credential query strings
-// from relative image references in rich text. It is applied to chore
-// payloads leaving for external webhook consumers: descriptions embed
-// <img src="...?sig=..."> URLs whose query strings are bearer credentials
-// valid until expiry. The stable path is always preserved (dt-data-path /
-// bare src); first-party API/sync channels are untouched because clients
-// rely on the embedded expiry to re-sign.
+// from image references in rich text — relative and absolute alike. It is
+// applied to chore payloads leaving for external webhook consumers:
+// descriptions embed <img src="...?sig=..."> / SigV4 presigned URLs whose
+// query strings are bearer credentials valid until expiry. The stable path
+// is always preserved (dt-data-path / bare src); first-party API/sync
+// channels are untouched because clients rely on the embedded expiry to
+// re-sign. Non-SigV4 external URLs (third-party CDNs) are left unchanged.
 func StripMediaURLCredentials(text string) string {
 	if text == "" {
 		return text
