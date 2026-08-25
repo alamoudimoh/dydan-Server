@@ -30,6 +30,10 @@ func envJWTSecret() string {
 	return firstEnvironment("DAYDAN_JWT_SECRET", "TASKIER_JWT_SECRET", "DT_JWT_SECRET")
 }
 
+func envStorageMediaSecret() string {
+	return firstEnvironment("DAYDAN_STORAGE_MEDIA_SECRET", "TASKIER_STORAGE_MEDIA_SECRET", "DT_STORAGE_MEDIA_SECRET")
+}
+
 func envSQLitePath() string {
 	return firstEnvironment("DAYDAN_SQLITE_PATH", "TASKIER_SQLITE_PATH", "DT_SQLITE_PATH")
 }
