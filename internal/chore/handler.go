@@ -1302,7 +1302,7 @@ func (h *Handler) DeleteChore(c *gin.Context) {
 	// Broadcast real-time chore deletion event
 	if h.realTimeService != nil {
 		broadcaster := h.realTimeService.GetEventBroadcaster()
-		broadcaster.BroadcastChoreDeleted(chore.ID, chore.Name, chore.CircleID, &currentUser.User, deletedSyncVersion)
+		broadcaster.BroadcastChoreDeleted(chore, &currentUser.User, deletedSyncVersion)
 	}
 
 	c.JSON(200, gin.H{
@@ -1947,6 +1947,24 @@ func (h *Handler) SkipChore(c *gin.Context) {
 		logger.Error("Failed to retrieve chore", "error", err)
 		c.JSON(500, gin.H{
 			"error": "Failed to retrieve chore",
+		})
+		return
+	}
+
+	// Skipping reschedules and reassigns the chore, so require the same
+	// completion capability as CompleteChore/StartChore/PauseChore.
+	circleUsers, err := h.circleRepo.GetCircleUsers(c, actualUser.CircleID)
+	if err != nil {
+		logger.Error("Failed to retrieve circle users", "error", err)
+		c.JSON(500, gin.H{
+			"error": "Failed to retrieve circle users",
+		})
+		return
+	}
+	if !chore.CanComplete(effectiveUser.ID, circleUsers) {
+		logger.Debugw("chore.SkipChore user is not allowed to skip chore", "userID", effectiveUser.ID, "choreID", id)
+		c.JSON(400, gin.H{
+			"error": "User is not assigned to chore",
 		})
 		return
 	}
@@ -3196,11 +3214,10 @@ func (h *Handler) UpdateSubtaskCompletedAt(c *gin.Context) {
 		broadcaster := h.realTimeService.GetEventBroadcaster()
 
 		broadcaster.BroadcastSubtaskUpdated(
-			choreID,
+			chore,
 			req.ID,
 			req.CompletedAt,
 			&effectiveUser.User,
-			chore.CircleID,
 			chore.SyncVersion,
 		)
 

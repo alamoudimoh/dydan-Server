@@ -39,9 +39,15 @@ func canAccessList(userID, circleID int, list *slModel.ShoppingList, circleMembe
 	return circleMember && list.CircleID != nil && *list.CircleID == circleID
 }
 
-func canManageList(userID int, list *slModel.ShoppingList, circleAdmin bool) bool {
+func canManageList(userID, circleID int, list *slModel.ShoppingList, circleMember bool, circleAdmin bool) bool {
 	if isPersonal(list) {
 		return list.CreatedBy == userID
+	}
+	// Managing a circle list requires membership in the list's own circle:
+	// an admin of a different circle (or a creator who has since left the
+	// circle) must not be able to rename/archive/delete it.
+	if !circleMember || list.CircleID == nil || *list.CircleID != circleID {
+		return false
 	}
 	return list.CreatedBy == userID || circleAdmin
 }
@@ -264,8 +270,8 @@ func CanAccessList(userID, circleID int, list *slModel.ShoppingList, circleMembe
 	return canAccessList(userID, circleID, list, circleMember)
 }
 
-func CanManageList(userID int, list *slModel.ShoppingList, circleAdmin bool) bool {
-	return canManageList(userID, list, circleAdmin)
+func CanManageList(userID, circleID int, list *slModel.ShoppingList, circleMember bool, circleAdmin bool) bool {
+	return canManageList(userID, circleID, list, circleMember, circleAdmin)
 }
 
 func CanEditItems(userID, circleID int, list *slModel.ShoppingList, circleMember bool) bool {

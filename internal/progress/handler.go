@@ -47,6 +47,9 @@ func (h *Handler) context(c *gin.Context) (int, int, cModel.Role, *time.Location
 		c.JSON(403, gin.H{"error": "Active Circle membership required"})
 		return 0, 0, "", nil, false
 	}
+	// Managed (child) accounts never exercise elevated capabilities even if a
+	// stale or inconsistent membership row grants them an elevated role.
+	role = auth.CapEffectiveCircleRole(&u.User, role)
 	var tz string
 	_ = h.db.WithContext(c).Table("users").Select("timezone").Where("id = ?", u.ID).Scan(&tz).Error
 	loc, err := time.LoadLocation(tz)

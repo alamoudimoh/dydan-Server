@@ -135,6 +135,28 @@ func (p *ConnectionPool) BroadcastToUser(userID int, event *Event) {
 	}
 }
 
+// BroadcastToUsers sends an event only to the connections of the given users.
+// Used for privacy-scoped chore events: private chores must not fan out to
+// circle members who cannot view them.
+func (p *ConnectionPool) BroadcastToUsers(userIDs map[int]bool, event *Event) {
+	p.mu.RLock()
+	targets := make([]*Connection, 0, len(p.connections))
+	for _, conn := range p.connections {
+		if userIDs[conn.UserID] && !conn.IsClosed() {
+			targets = append(targets, conn)
+		}
+	}
+	p.mu.RUnlock()
+
+	for _, conn := range targets {
+		if conn.SendEvent(event) {
+			p.stats.mu.Lock()
+			p.stats.TotalMessages++
+			p.stats.mu.Unlock()
+		}
+	}
+}
+
 // GetConnection returns a connection by ID
 func (p *ConnectionPool) GetConnection(connectionID string) (*Connection, bool) {
 	p.mu.RLock()

@@ -51,9 +51,13 @@ const (
 
 type UserCircleDetail struct {
 	UserCircle
-	PointsAvailable  int                         `json:"pointsAvailable" gorm:"column:points_available;<-:false"`
-	Username         string                      `json:"username" gorm:"column:username"`
-	DisplayName      string                      `json:"displayName" gorm:"column:display_name"`
+	PointsAvailable int    `json:"pointsAvailable" gorm:"column:points_available;<-:false"`
+	Username        string `json:"username" gorm:"column:username"`
+	DisplayName     string `json:"displayName" gorm:"column:display_name"`
+	// IsManagedAccount is true when the underlying user is a managed child
+	// account (users.user_type = 1, i.e. user/model.UserTypeChild). Kept as a
+	// bool because importing the user model here would create an import cycle.
+	IsManagedAccount bool                        `json:"-" gorm:"column:user_type_child"`
 	NotificationType nModel.NotificationPlatform `json:"-" gorm:"column:notification_type"`
 	TargetID         string                      `json:"-" gorm:"column:target_id"` // Target ID
 	Image            string                      `json:"image" gorm:"column:image"` // Image
@@ -77,6 +81,12 @@ func IsValidRole(r Role) bool {
 	}
 }
 
+// IsManagerOrAdmin reports whether this membership row confers elevated
+// authority. Managed (child) accounts and inactive memberships never do,
+// regardless of the stored role, mirroring auth.ResolveEffectiveRole.
 func (ucd UserCircleDetail) IsManagerOrAdmin() bool {
+	if !ucd.IsActive || ucd.IsManagedAccount {
+		return false
+	}
 	return ucd.Role == UserRoleAdmin || ucd.Role == UserRoleManager
 }

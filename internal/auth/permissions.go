@@ -47,3 +47,15 @@ func HasPermission(role EffectiveRole, permission Permission) bool {
 		return false
 	}
 }
+
+// CapEffectiveCircleRole returns the Circle role the principal may actually
+// exercise. Managed (child) accounts never inherit elevated capabilities,
+// regardless of stale or inconsistent membership rows: a child whose stored
+// role says admin/manager is treated as a plain member by authorization
+// gates. Display surfaces should keep using the raw role.
+func CapEffectiveCircleRole(user *uModel.User, role cModel.Role) cModel.Role {
+	if user != nil && user.UserType == uModel.UserTypeChild && (role == cModel.RoleAdmin || role == cModel.RoleManager) {
+		return cModel.RoleMember
+	}
+	return role
+}

@@ -157,7 +157,9 @@ func (u User) IsPlusMember() bool {
 func (u User) IsAdminOrManager(circleUsers []*cModel.UserCircleDetail) bool {
 	for _, cu := range circleUsers {
 		if cu.UserID == u.ID {
-			return cu.Role == cModel.UserRoleAdmin || cu.Role == cModel.UserRoleManager
+			// Delegates to the tightened predicate: managed child accounts and
+			// inactive memberships never confer elevated authority.
+			return cu.IsManagerOrAdmin()
 		}
 	}
 	return false

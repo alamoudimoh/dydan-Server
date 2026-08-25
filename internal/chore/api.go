@@ -19,8 +19,10 @@ import (
 	limiter "github.com/ulule/limiter/v3"
 
 	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
 	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
 	stRepo "github.com/alamoudimoh/daydan-server/internal/subtask/repo"
+	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 )
 
@@ -109,20 +111,25 @@ func (h *API) CreateChore(c *gin.Context) {
 		return
 	}
 	createdBy := user.ID
-	if choreRequest.CreatedBy != nil {
-		// Check if the specified user exists in the circle
-		var found bool
-		for _, u := range circleUsers {
-			if u.UserID == *choreRequest.CreatedBy {
-				found = true
-				createdBy = u.UserID
-				break
+	if choreRequest.CreatedBy != nil && *choreRequest.CreatedBy != user.ID {
+		// Attributing a chore to another member is an admin/manager delegation.
+		// For any other caller the field is ignored and the chore is attributed
+		// to the authenticated actor, matching the internal API where CreatedBy
+		// is always derived server-side (handler.go CreateChore).
+		if user.UserType != uModel.UserTypeChild && isActiveRole(user.ID, circleUsers, func(role cModel.UserCircleDetail) bool { return role.IsManagerOrAdmin() }) {
+			for _, u := range circleUsers {
+				if u.UserID == *choreRequest.CreatedBy && u.IsActive {
+					createdBy = u.UserID
+					break
+				}
 			}
-		}
-		if !found {
-			log.Errorw("chore.api.CreateChore specified user not found in circle", "userID", *choreRequest.CreatedBy)
-			c.JSON(400, gin.H{"error": "Specified user not found in circle"})
-			return
+			if createdBy != *choreRequest.CreatedBy {
+				log.Errorw("chore.api.CreateChore specified user not found in circle", "userID", *choreRequest.CreatedBy)
+				c.JSON(400, gin.H{"error": "Specified user not found in circle"})
+				return
+			}
+		} else {
+			log.Warnw("chore.api.CreateChore non-admin ignored createdBy attribution", "userID", user.ID, "requestedCreatedBy", *choreRequest.CreatedBy)
 		}
 	}
 
@@ -271,13 +278,46 @@ func (h *API) CompleteChore(c *gin.Context) {
 		return
 	}
 	completedByRaw := c.Query("completedBy")
-	completedBy, err := strconv.Atoi(completedByRaw)
-
 	currentUser := auth.MustCurrentUser(c)
 	performer := currentUser.ID
-	if completedBy != 0 {
-		log.Debugw("chore.api.CompleteChore completedBy is set", "completedBy", completedBy)
-		performer = completedBy
+	if completedByRaw != "" {
+		completedBy, err := strconv.Atoi(completedByRaw)
+		if err != nil {
+			log.Debugw("chore.api.CompleteChore invalid completedBy", "completedBy", completedByRaw)
+			c.JSON(400, gin.H{
+				"error": "Invalid completedBy",
+			})
+			return
+		}
+		if completedBy != currentUser.ID {
+			log.Debugw("chore.api.CompleteChore completedBy is set", "completedBy", completedBy)
+			// Completing on behalf of another member is an admin/manager
+			// delegation within the same circle, mirroring the internal API
+			// contract (authorizeChoreCompletionForUser).
+			circleUsersForAuthz, err := h.circleRepo.GetCircleUsers(c, currentUser.CircleID)
+			if err != nil {
+				log.Errorw("Failed to retrieve circle users", "error", err)
+				c.JSON(500, gin.H{
+					"error": "Failed to retrieve circle users",
+				})
+				return
+			}
+			if currentUser.UserType == uModel.UserTypeChild || !isActiveRole(currentUser.ID, circleUsersForAuthz, func(role cModel.UserCircleDetail) bool { return role.IsManagerOrAdmin() }) {
+				log.Warnw("chore.api.CompleteChore non-admin attempted delegation", "userID", currentUser.ID, "completedBy", completedBy)
+				c.JSON(403, gin.H{
+					"error": "Only circle admins or managers may complete chores on behalf of other members",
+				})
+				return
+			}
+			if !isActiveMember(completedBy, circleUsersForAuthz) {
+				log.Warnw("chore.api.CompleteChore completedBy user not in circle", "completedBy", completedBy)
+				c.JSON(403, gin.H{
+					"error": "The completed by user is not in the circle",
+				})
+				return
+			}
+			performer = completedBy
+		}
 	}
 	chore, err := h.choreRepo.GetChore(c, choreID, currentUser.ID, currentUser.CircleID)
 	if err != nil {
@@ -388,6 +428,26 @@ func (h *API) CompleteChore(c *gin.Context) {
 	c.JSON(200,
 		updatedChore,
 	)
+}
+
+// isActiveRole reports whether userID is an active circle member whose role
+// satisfies the given predicate.
+func isActiveRole(userID int, circleUsers []*cModel.UserCircleDetail, role func(cModel.UserCircleDetail) bool) bool {
+	for _, u := range circleUsers {
+		if u.UserID == userID && u.IsActive && role(*u) {
+			return true
+		}
+	}
+	return false
+}
+
+func isActiveMember(userID int, circleUsers []*cModel.UserCircleDetail) bool {
+	for _, u := range circleUsers {
+		if u.UserID == userID && u.IsActive {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *API) GetCircleMembers(c *gin.Context) {
