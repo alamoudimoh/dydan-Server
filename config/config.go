@@ -157,6 +157,13 @@ type DatabaseConfig struct {
 	Name      string `mapstructure:"name" yaml:"name"`
 	Migration bool   `mapstructure:"migration" yaml:"migration" default:"true"`
 	LogLevel  int    `mapstructure:"logger" yaml:"logger"`
+	// Connection-pool bounds. Zero/negative values fall back to built-in
+	// defaults (25 open / 5 idle, 1h max lifetime, 10m max idle time); they
+	// exist so operators can size pools for PostgreSQL max_connections.
+	MaxOpenConns    int           `mapstructure:"max_open_conns" yaml:"max_open_conns"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns" yaml:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime" yaml:"conn_max_lifetime"`
+	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time" yaml:"conn_max_idle_time"`
 }
 
 type JwtConfig struct {
@@ -503,6 +510,10 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("is_user_creation_disabled", false)
 	v.SetDefault("database.type", cfg.Database.Type)
 	v.SetDefault("database.migration", cfg.Database.Migration)
+	v.SetDefault("database.max_open_conns", 0)
+	v.SetDefault("database.max_idle_conns", 0)
+	v.SetDefault("database.conn_max_lifetime", 0)
+	v.SetDefault("database.conn_max_idle_time", 0)
 	v.SetDefault("jwt.session_time", cfg.Jwt.SessionTime)
 	v.SetDefault("jwt.max_refresh", cfg.Jwt.MaxRefresh)
 	v.SetDefault("jwt.access_token_time", cfg.Jwt.AccessTokenTime)
