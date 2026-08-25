@@ -47,6 +47,12 @@ func Register(migration MigrationScript) {
 	registry = append(registry, migration)
 }
 
+// All returns the registered migration scripts sorted by ID. Useful for
+// tooling and tests that need to target a specific migration.
+func All() []MigrationScript {
+	return sortMigrations(append([]MigrationScript(nil), registry...))
+}
+
 // Sort the migrations by ID
 func sortMigrations(migrations []MigrationScript) []MigrationScript {
 	for i := 0; i < len(migrations); i++ {
