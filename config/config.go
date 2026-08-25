@@ -2,9 +2,12 @@ package config
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -14,6 +17,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/hkdf"
 )
 
 var (
@@ -88,6 +92,33 @@ type StorageConfig struct {
 	// a DNS wildcard at `*.<endpoint-host>`, as well as for plain HTTP
 	// endpoints without matching TLS wildcard certs.
 	PathStyle bool `mapstructure:"path_style" yaml:"path_style"`
+	// MediaSecret is the independent HMAC key used to sign locally-served
+	// media URLs. It is deliberately separate from jwt.secret so a media-URL
+	// credential can never be confused with (or mint) a session JWT, and so
+	// each credential family rotates independently. When unset it is derived
+	// from jwt.secret via HKDF with storage-specific domain separation —
+	// zero-config installs keep working, but the derived key still cannot be
+	// swapped with the JWT key in either direction. Rotate by setting this
+	// value (or media_secret_file) to something new; rotating only invalidates
+	// outstanding signed media URLs (clients transparently re-sign), never
+	// login sessions.
+	MediaSecret string `mapstructure:"media_secret" yaml:"media_secret"`
+	// MediaSecretFile is an alternative to media_secret: a file containing
+	// the media signing secret. Created with random content on first boot if
+	// missing, mirroring jwt.secret_file semantics.
+	MediaSecretFile string `mapstructure:"media_secret_file" yaml:"media_secret_file"`
+	// SignedURLTTL is the lifetime minted into signed media URLs (local and
+	// S3 presigned). It is capped at 7 days because AWS SigV4 refuses longer
+	// presignatures; shorter values are safe because clients re-sign via
+	// /api/v1/files/sign whenever a URL is expired.
+	SignedURLTTL time.Duration `mapstructure:"signed_url_ttl" yaml:"signed_url_ttl"`
+	// AllowLegacyMediaSignatures keeps accepting media URLs signed directly
+	// with the raw JWT secret (the pre-phase-6 scheme). This is a bounded
+	// compatibility window: such URLs already expire at most 7 days after
+	// they were minted, and the flag exists only so an upgrade does not
+	// break clients holding pre-upgrade URLs mid-session. It can be set to
+	// false immediately; new deployments get no benefit from enabling it.
+	AllowLegacyMediaSignatures bool `mapstructure:"allow_legacy_media_signatures" yaml:"allow_legacy_media_signatures"`
 }
 type DayDanCloudConfig struct {
 	GoogleClientID        string `mapstructure:"google_client_id" yaml:"google_client_id"`
@@ -360,9 +391,11 @@ func NewConfig() *Config {
 			Development: false,
 		},
 		Storage: StorageConfig{
-			StorageType:    "local",
-			MaxUserStorage: 10 * 1024 * 1024 * 1024,
-			MaxFileSize:    10 * 1024 * 1024,
+			StorageType:                "local",
+			MaxUserStorage:             10 * 1024 * 1024 * 1024,
+			MaxFileSize:                10 * 1024 * 1024,
+			SignedURLTTL:               MaxSignedURLTTL,
+			AllowLegacyMediaSignatures: true,
 		},
 		FeatureLimits: FeatureLimitsConfig{
 			MaxCircleMembers:     2,
@@ -445,6 +478,8 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("storage.storage_type", cfg.Storage.StorageType)
 	v.SetDefault("storage.max_user_storage", cfg.Storage.MaxUserStorage)
 	v.SetDefault("storage.max_file_size", cfg.Storage.MaxFileSize)
+	v.SetDefault("storage.signed_url_ttl", cfg.Storage.SignedURLTTL)
+	v.SetDefault("storage.allow_legacy_media_signatures", cfg.Storage.AllowLegacyMediaSignatures)
 	v.SetDefault("realtime.enabled", cfg.RealTimeConfig.Enabled)
 	v.SetDefault("realtime.websocket_enabled", cfg.RealTimeConfig.WebSocketEnabled)
 	v.SetDefault("realtime.sse_enabled", cfg.RealTimeConfig.SSEEnabled)
@@ -566,6 +601,9 @@ func LoadConfigE() (*Config, error) {
 	if value := envJWTSecret(); value != "" {
 		v.Set("jwt.secret", value)
 	}
+	if value := envStorageMediaSecret(); value != "" {
+		v.Set("storage.media_secret", value)
+	}
 	if value := envSQLitePath(); value != "" {
 		v.Set("database.path", value)
 	}
@@ -660,8 +698,33 @@ func validateSecurityConfig(cfg *Config) error {
 			return fmt.Errorf(`server.cors_allow_origins wildcard "*" is not allowed because credentials are always enabled; list explicit origins instead`)
 		}
 	}
+	// Signed media URL TTL: must be positive and within the hard AWS SigV4
+	// ceiling (7 days). Shorter values are supported — clients re-sign via
+	// /api/v1/files/sign when a URL expires.
+	if cfg.Storage.SignedURLTTL <= 0 {
+		return fmt.Errorf("storage.signed_url_ttl must be positive")
+	}
+	if cfg.Storage.SignedURLTTL > MaxSignedURLTTL {
+		return fmt.Errorf("storage.signed_url_ttl must not exceed %s (AWS SigV4 presigned URL maximum)", MaxSignedURLTTL)
+	}
+	// public_read intentionally serves objects anonymously, but only when an
+	// operator has explicitly pointed the signer at a real bucket: enabling
+	// it without a bucket name would silently mint unsigned URLs for objects
+	// that may still be private. Empty/malformed values cannot enable it —
+	// viper bool parsing rejects anything but true/1/TRUE-style input.
+	if cfg.Storage.PublicRead {
+		if strings.TrimSpace(cfg.Storage.BucketName) == "" {
+			return fmt.Errorf("storage.public_read requires storage.bucket_name; the bucket/prefix must be configured for anonymous reads")
+		}
+	}
 	return nil
 }
+
+// MaxSignedURLTTL is the hard ceiling for signed media URL lifetime. AWS
+// SigV4 refuses to presign for longer than 7 days, so local HMAC URLs are
+// held to the same bound to keep both credential families interchangeable
+// from the client's perspective.
+const MaxSignedURLTTL = 7 * 24 * time.Hour
 
 func initializePersistentRuntime(config *Config) error {
 	if config.DataDir == "" {
@@ -699,10 +762,16 @@ func initializePersistentRuntime(config *Config) error {
 	}
 	if explicitSecret := envJWTSecret(); explicitSecret != "" {
 		config.Jwt.Secret = explicitSecret
-		return validateJWTSecret(config.Jwt.Secret)
+		if err := validateJWTSecret(config.Jwt.Secret); err != nil {
+			return err
+		}
+		return resolveMediaSigningKey(config)
 	}
 	if config.Jwt.Secret != "" && config.Jwt.Secret != "change_this_to_a_secure_random_string_32_characters_long" {
-		return validateJWTSecret(config.Jwt.Secret)
+		if err := validateJWTSecret(config.Jwt.Secret); err != nil {
+			return err
+		}
+		return resolveMediaSigningKey(config)
 	}
 	config.Jwt.Secret = ""
 	if config.Jwt.SecretFile == "" {
@@ -713,7 +782,80 @@ func initializePersistentRuntime(config *Config) error {
 		return fmt.Errorf("initialize persistent JWT secret: %w", err)
 	}
 	config.Jwt.Secret = secret
-	return validateJWTSecret(secret)
+	if err := validateJWTSecret(secret); err != nil {
+		return err
+	}
+	return resolveMediaSigningKey(config)
+}
+
+// mediaSigningKeyMinLen is the minimum length of an explicitly configured
+// storage.media_secret. Derived keys are always 32 bytes of HKDF output and
+// never go through this check.
+const mediaSigningKeyMinLen = 16
+
+// resolveMediaSigningKey finalizes the media URL signing key. Precedence:
+//
+//  1. an explicitly configured storage.media_secret (or its env override);
+//  2. the contents of storage.media_secret_file (created with random content
+//     on first boot, mirroring jwt.secret_file semantics);
+//  3. HKDF-SHA256 expansion of jwt.secret under a storage-specific
+//     info/salt label.
+//
+// Option 3 keeps zero-config self-hosted installs working after the phase-6
+// key separation without any operator action. The derived key is
+// computationally independent of the JWT key (HKDF is a PRF): knowing or
+// rotating one reveals nothing about the other, but operators who want JWT
+// rotation to leave media URLs untouched must configure option 1/2.
+func resolveMediaSigningKey(cfg *Config) error {
+	if value := envStorageMediaSecret(); value != "" {
+		cfg.Storage.MediaSecret = value
+	}
+	secret := strings.TrimSpace(cfg.Storage.MediaSecret)
+	if secret != "" {
+		if len(secret) < mediaSigningKeyMinLen {
+			return fmt.Errorf("storage.media_secret must be at least %d characters", mediaSigningKeyMinLen)
+		}
+		if secret == cfg.Jwt.Secret {
+			// An operator who pastes the JWT secret as the media secret would
+			// silently defeat key separation AND re-open the legacy scheme
+			// forever, regardless of allow_legacy_media_signatures. Fail fast.
+			return fmt.Errorf("storage.media_secret must differ from jwt.secret")
+		}
+		cfg.Storage.MediaSecret = secret
+		return nil
+	}
+	cfg.Storage.MediaSecretFile = strings.TrimSpace(cfg.Storage.MediaSecretFile)
+	if cfg.Storage.MediaSecretFile != "" {
+		mediaKey, err := loadOrCreateSecret(cfg.Storage.MediaSecretFile)
+		if err != nil {
+			return fmt.Errorf("initialize persistent media signing secret: %w", err)
+		}
+		cfg.Storage.MediaSecret = mediaKey
+		return nil
+	}
+	derived, err := deriveMediaSigningKey([]byte(cfg.Jwt.Secret))
+	if err != nil {
+		return fmt.Errorf("derive media signing secret: %w", err)
+	}
+	cfg.Storage.MediaSecret = hex.EncodeToString(derived)
+	return nil
+}
+
+// mediaSigningKeyInfo and mediaSigningKeySalt are the HKDF domain-separation
+// labels binding the derived media key to exactly this purpose. They must
+// never be reused for another credential family (JWTs use raw jwt.secret).
+const (
+	mediaSigningKeyInfo = "daydan media-url-signing v1"
+	mediaSigningKeySalt = "daydan/storage/media-url"
+)
+
+func deriveMediaSigningKey(jwtSecret []byte) ([]byte, error) {
+	reader := hkdf.New(sha256.New, jwtSecret, []byte(mediaSigningKeySalt), []byte(mediaSigningKeyInfo))
+	derived := make([]byte, 32)
+	if _, err := io.ReadFull(reader, derived); err != nil {
+		return nil, err
+	}
+	return derived, nil
 }
 
 func loadOrCreateSecret(path string) (string, error) {

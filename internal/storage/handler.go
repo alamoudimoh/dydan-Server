@@ -2,10 +2,12 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -55,6 +57,35 @@ func NewHandler(storage Storage, choreRepo *chRepo.ChoreRepository, circleRepo *
 	}
 }
 
+// canonicalAssetPath normalizes a client-supplied asset path to the exact
+// storage-key form used at sign time, rejecting anything that could escape
+// the storage namespace.
+//
+// This MUST run before public/protected classification: classification on a
+// raw client path allowed `profiles/../users/1/x.jpg`-shaped requests (plain,
+// percent-encoded, or double-encoded) to be treated as public and served
+// without a signature after filepath.Clean collapsed the dot segments inside
+// storage.Get. Canonicalizing first means the classified string and the
+// string handed to storage.Get are byte-for-byte identical — the same
+// property signature verification relies on.
+func canonicalAssetPath(rawPath string) (string, error) {
+	if rawPath == "" {
+		return "", errors.New("empty asset path")
+	}
+	// Paths are only ever minted server-side from UUID filenames; nothing
+	// legitimate ever contains dot-dot segments, so refuse them outright
+	// instead of trying to interpret (or collapse) them.
+	if strings.Contains(rawPath, "..") {
+		return "", errors.New("invalid asset path")
+	}
+	cleaned := path.Clean("/" + rawPath) // leading "/" + Clean = force-relative result
+	cleaned = strings.TrimPrefix(cleaned, "/")
+	if cleaned == "" || cleaned == "." {
+		return "", errors.New("invalid asset path")
+	}
+	return cleaned, nil
+}
+
 // AssetHandler serves signed asset URLs from local storage
 func (h *Handler) AssetHandler(c *gin.Context) {
 
@@ -78,14 +109,31 @@ func (h *Handler) AssetHandler(c *gin.Context) {
 	// that was signed, so signature validation and storage.Get agree.
 	filePath := strings.TrimPrefix(parsed.Path, "/")
 
-	// Legacy profile rows stored the storage base directory in the URL
-	// (e.g. "uploads/profiles/1/uuid.jpg"); normalize to the relative key.
-	if idx := strings.Index(filePath, "profiles/"); idx > 0 {
-		filePath = filePath[idx:]
+	// Canonicalize BEFORE classification or legacy normalization so neither
+	// step ever sees a path containing traversal segments (see
+	// canonicalAssetPath).
+	canonical, err := canonicalAssetPath(filePath)
+	if err != nil {
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid asset path"})
+		return
 	}
+	filePath = canonical
 
-	if !isPublicAsset(filePath) && !h.signer.IsValid(filePath, c.Request.URL.Query()) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "invalid or expired signature for url: " + filePath})
+	// Legacy profile rows stored the storage base directory in the URL
+	// (e.g. "uploads/profiles/1/uuid.jpg"); normalize by stripping exactly
+	// that known prefix. Deliberately anchored: a substring search for
+	// "profiles/" would re-root arbitrary future paths into the public
+	// namespace.
+	filePath = strings.TrimPrefix(filePath, "uploads/")
+
+	isPublic := isPublicAsset(filePath)
+	if !isPublic && !h.signer.IsValid(filePath, c.Request.URL.Query()) {
+		c.Header("Cache-Control", "no-store")
+		// Deliberately generic: echoing the requested path back in the error
+		// body would reflect attacker-controlled content and confirm which
+		// storage keys exist.
+		c.JSON(http.StatusForbidden, gin.H{"error": "invalid or expired signature"})
 		return
 	}
 
@@ -93,6 +141,7 @@ func (h *Handler) AssetHandler(c *gin.Context) {
 
 	file, err := h.storage.Get(context.Background(), filename)
 	if err != nil {
+		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
 		return
 	}
@@ -105,12 +154,69 @@ func (h *Handler) AssetHandler(c *gin.Context) {
 	contentType := safeContentType(filename)
 	c.Header("Content-Type", contentType)
 	c.Header("X-Content-Type-Options", "nosniff")
-	c.Header("Cache-Control", "public, max-age=604800, immutable")
-	c.Header("Expires", time.Now().UTC().Add(7*24*time.Hour).Format(http.TimeFormat))
+	// Signed URLs are bearer credentials: never leak them to third parties
+	// via the Referer header when users navigate away from a page embedding
+	// the asset.
+	c.Header("Referrer-Policy", "no-referrer")
+	if isPublic {
+		// Public assets (profile photos) are intentionally world-readable
+		// with stable UUID filenames; long-lived shared caching is correct.
+		c.Header("Cache-Control", "public, max-age=604800, immutable")
+		c.Header("Expires", time.Now().UTC().Add(7*24*time.Hour).Format(http.TimeFormat))
+	} else {
+		// Protected assets must never be cached past the lifetime of the
+		// credential in the URL. Derive max-age/Expires from the actual
+		// remaining validity instead of a fixed window, and keep the
+		// response out of shared caches (`private`) because possession of
+		// the URL is the authorization.
+		remaining := signedURLRemainingLifetime(c.Request.URL.Query())
+		if remaining <= 0 {
+			// IsValid guarantees remaining > 0; clamp defensively.
+			remaining = time.Second
+		}
+		c.Header("Cache-Control", fmt.Sprintf("private, max-age=%d", int(remaining.Seconds())))
+		c.Header("Expires", time.Now().UTC().Add(remaining).Format(http.TimeFormat))
+	}
 	c.Status(http.StatusOK)
 
 	// Serve content
 	io.Copy(c.Writer, file)
+}
+
+// signedURLRemainingLifetime reports how much longer the credential carried
+// in query remains valid, for either supported URL family:
+//   - local HMAC URLs: "expires" (unix seconds);
+//   - SigV4 presigned URLs: X-Amz-Date + X-Amz-Expires.
+//
+// It returns 0 when no recognizable credential parameters are present (the
+// caller treats protected assets as non-cacheable in that case).
+func signedURLRemainingLifetime(query url.Values) time.Duration {
+	now := time.Now().UTC()
+	if expStr := query.Get("expires"); expStr != "" {
+		exp, err := strconv.ParseInt(expStr, 10, 64)
+		if err != nil {
+			return 0
+		}
+		return time.Duration(exp-now.Unix()) * time.Second
+	}
+	amzDate := query.Get("X-Amz-Date")
+	expiresStr := query.Get("X-Amz-Expires")
+	if amzDate != "" && expiresStr != "" {
+		signedAt, err := time.Parse("20060102T150405Z", amzDate)
+		if err != nil {
+			return 0
+		}
+		expiresSecs, err := strconv.ParseInt(expiresStr, 10, 64)
+		if err != nil || expiresSecs <= 0 {
+			return 0
+		}
+		remaining := signedAt.Add(time.Duration(expiresSecs) * time.Second).Sub(now)
+		if remaining < 0 {
+			return 0
+		}
+		return remaining
+	}
+	return 0
 }
 
 // safeContentType maps a storage key to a conservative Content-Type. Only
@@ -488,6 +594,9 @@ func (h *Handler) RedirectAssetHandler(c *gin.Context) {
 		return
 	}
 
+	// The Location header carries a signed-URL credential: stop browsers and
+	// shared caches from storing the redirect past credential rotation.
+	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, signedURL)
 }
 
@@ -587,7 +696,12 @@ func (h *Handler) DeleteDraftAttachmentHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "draft file deleted"})
 }
 
-// isPublicAsset returns true for paths that are publicly accessible without a signature.
+// isPublicAsset returns true for paths that are publicly accessible without a
+// signature. It must only be called on a canonical path (canonicalAssetPath):
+// the profiles/ prefix is intentional — profile photos are written by
+// updateProfilePhoto as "profiles/<userID>/<uuid>.<ext>" and are meant to be
+// world-readable — but traversal segments in a raw client path could make an
+// arbitrary protected key look public.
 func isPublicAsset(path string) bool {
 	return strings.HasPrefix(path, "profiles/")
 }

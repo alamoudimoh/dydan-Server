@@ -20,3 +20,39 @@
 #   user: taskier
 #   password: use-a-secret-manager
 #   name: taskier
+#
+# Storage / media credentials:
+#
+# storage:
+#   storage_type: local          # "local" (filesystem + HMAC-signed URLs) or "s3"
+#   # Lifetime minted into signed media URLs. Clients re-sign expired URLs
+#   # transparently via /api/v1/files/sign, so this can be shortened freely.
+#   signed_url_ttl: 168h         # hard cap: 168h (7d, the AWS SigV4 maximum)
+#   # Independent media-URL signing key. Leave unset to derive a
+#   # storage-specific key from jwt.secret (HKDF domain-separated — never the
+#   # raw JWT key). Set explicitly to rotate media URLs without rotating login
+#   # sessions:
+#   # media_secret: <32+ random chars>
+#   # media_secret_file: /data/media-secret
+#   # Upgrade window only: accept media URLs signed with the pre-phase-6 raw
+#   # JWT-key scheme. Safe to disable immediately after upgrading.
+#   allow_legacy_media_signatures: true
+#   # S3 options:
+#   bucket_name:
+#   region:
+#   base_path:
+#   access_key:
+#   secret_key:
+#   endpoint:
+#   path_style: false
+#   # public_read serves objects ANONYMOUSLY READABLE: it returns unsigned
+#   # URLs and expects the bucket/prefix to have a policy allowing public
+#   # GETs. Only enable this on a bucket you have deliberately made publicly
+#   # readable — protected uploads in that bucket become world-readable too.
+#   # Requires bucket_name to be set.
+#   public_read: false
+#   # Optional dedicated bucket/host for intentionally-public assets such as
+#   # profile photos. Objects saved through SavePublic go here when set;
+#   # everything else stays in the private bucket above.
+#   # public_bucket_name:
+#   # public_bucket_host:
