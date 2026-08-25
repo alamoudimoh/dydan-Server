@@ -21,8 +21,6 @@ import (
 // block until released. Returns the URL and a cleanup func.
 func startTestServer(t *testing.T, onBody func([]byte, map[string]string)) (string, func()) {
 	t.Helper()
-	block := make(chan struct{})
-	var closeOnce sync.Once
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
 		hdr := map[string]string{}
@@ -34,10 +32,7 @@ func startTestServer(t *testing.T, onBody func([]byte, map[string]string)) (stri
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	return server.URL, func() {
-		closeOnce.Do(func() { close(block) })
-		server.Close()
-	}
+	return server.URL, server.Close
 }
 
 func newTestProducer(t *testing.T) *EventsProducer {
@@ -128,7 +123,7 @@ func TestFloodedTenantDropsWithoutBlockingOthers(t *testing.T) {
 	defer srvB.Close()
 
 	p := newTestProducer(t)
-	p.perTenantCap_ = 5
+	p.perTenantCap = 5
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	p.Start(ctx)

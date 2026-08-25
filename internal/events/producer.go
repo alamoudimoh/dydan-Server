@@ -91,8 +91,7 @@ type EventsProducer struct {
 	maxAttempts   int
 	backoffInit   time.Duration
 	backoffMax    time.Duration
-	perTenantCap_ int
-	timeout       time.Duration
+	perTenantCap  int
 
 	// Injectable clocks for deterministic tests.
 	nowFn  func() time.Time
@@ -100,8 +99,8 @@ type EventsProducer struct {
 }
 
 func (p *EventsProducer) perTenantLimit() int {
-	if p.perTenantCap_ > 0 {
-		return p.perTenantCap_
+	if p.perTenantCap > 0 {
+		return p.perTenantCap
 	}
 	return cap(p.queue) // default: same bound as the global queue
 }
@@ -190,7 +189,6 @@ func NewEventsProducer(cfg *config.Config) *EventsProducer {
 		maxAttempts: maxAttempts,
 		backoffInit: cfg.WebhookConfig.BackoffInitial,
 		backoffMax:  cfg.WebhookConfig.BackoffMax,
-		timeout:     timeout,
 	}
 	p.idleCond = sync.NewCond(&p.idleMu)
 	return p
