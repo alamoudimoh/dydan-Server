@@ -22,6 +22,7 @@ import (
 	"github.com/alamoudimoh/daydan-server/internal/email"
 	"github.com/alamoudimoh/daydan-server/internal/mfa"
 	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/daydan-server/internal/outbound"
 	storage "github.com/alamoudimoh/daydan-server/internal/storage"
 	storageRepo "github.com/alamoudimoh/daydan-server/internal/storage/repo"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
@@ -1423,6 +1424,18 @@ func (h *Handler) setWebhook(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
 		return
+	}
+
+	// Structural validation at persist time: the destination is dialed later
+	// by the events worker under the shared outbound policy, but rejecting
+	// malformed/non-HTTP(S) URLs here gives callers an explicit error instead
+	// of silently dropped deliveries. Network-location policy (private-range
+	// blocking / opt-in) remains enforced at dial time.
+	if req.URL != nil && *req.URL != "" {
+		if err := outbound.ValidateURLSyntax(*req.URL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid webhook URL: " + err.Error()})
+			return
+		}
 	}
 
 	if !currentUser.IsPlusMember() {

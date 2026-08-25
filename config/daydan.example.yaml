@@ -56,3 +56,16 @@
 #   # everything else stays in the private bucket above.
 #   # public_bucket_name:
 #   # public_bucket_host:
+#
+# Circle webhook delivery (chore/thing events POSTed to a URL set by a Plus
+# circle admin):
+#
+# webhook:
+#   timeout: 5s
+#   queue_size: 100
+#   # allow_private_networks: false
+#   # Webhook destinations on loopback/RFC1918/link-local addresses are
+#   # REJECTED by default so an authenticated circle admin cannot pivot
+#   # server requests into your internal network (SSRF). If your consumers
+#   # legitimately live on the LAN (Home Assistant, internal alerting, ...),
+#   # opt in explicitly here or via DT_WEBHOOK_ALLOW_PRIVATE_NETWORKS=true.

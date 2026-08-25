@@ -289,6 +289,12 @@ type OAuth2Config struct {
 type WebhookConfig struct {
 	Timeout   time.Duration `mapstructure:"timeout" yaml:"timeout" default:"5s"`
 	QueueSize int           `mapstructure:"queue_size" yaml:"queue_size" default:"100"`
+	// AllowPrivateNetworks permits circle/notification webhook destinations
+	// on loopback/RFC1918/link-local addresses. Off by default because an
+	// authenticated circle admin must not be able to pivot server requests
+	// into internal infrastructure (SSRF); self-hosted deployments whose
+	// consumers legitimately live on the LAN can enable it explicitly.
+	AllowPrivateNetworks bool `mapstructure:"allow_private_networks" yaml:"allow_private_networks"`
 }
 
 type RealTimeConfig struct {
@@ -500,6 +506,7 @@ func setDayDanDefaults(v *viper.Viper) {
 	v.SetDefault("logging.development", cfg.Logging.Development)
 	v.SetDefault("webhook.timeout", cfg.WebhookConfig.Timeout)
 	v.SetDefault("webhook.queue_size", cfg.WebhookConfig.QueueSize)
+	v.SetDefault("webhook.allow_private_networks", cfg.WebhookConfig.AllowPrivateNetworks)
 	v.SetDefault("mfa.enabled", cfg.MFAConfig.Enabled)
 	v.SetDefault("mfa.session_timeout_minutes", cfg.MFAConfig.SessionTimeoutMinutes)
 	v.SetDefault("mfa.backup_code_count", cfg.MFAConfig.BackupCodeCount)
@@ -656,6 +663,9 @@ func validateSecurityConfig(cfg *Config) error {
 	}
 	if cfg.Server.RateLimitMaxActiveBuckets <= 0 {
 		return fmt.Errorf("authentication rate-limit max active buckets must be positive")
+	}
+	if cfg.WebhookConfig.Timeout <= 0 || cfg.WebhookConfig.QueueSize <= 0 {
+		return fmt.Errorf("webhook timeout and queue_size must be positive")
 	}
 	mail := cfg.EmailConfig
 	provider := strings.ToLower(strings.TrimSpace(mail.Provider))

@@ -166,6 +166,21 @@ func generateNotificationsFromTemplate(chore *chModel.Chore, recipient *cModel.U
 			continue
 		}
 		eventType := getEventTypeFromTemplate(template)
+		// Private chores are invisible to circle admins through the API; the
+		// raw event feeds the circle webhook destination, so emitting it for
+		// a private chore would leak another member's data to a destination
+		// they control. The personal notification itself still fires.
+		var rawEvent map[string]interface{}
+		if !chore.IsPrivate {
+			rawEvent = map[string]interface{}{
+				"id":                chore.ID,
+				"type":              eventType,
+				"name":              chore.Name,
+				"due_date":          chore.NextDueDate,
+				"assignee":          assigneeName,
+				"assignee_username": assigneeUsername,
+			}
+		}
 		notifications = append(notifications, &nModel.Notification{
 			ChoreID:      chore.ID,
 			IsSent:       false,
@@ -176,14 +191,7 @@ func generateNotificationsFromTemplate(chore *chModel.Chore, recipient *cModel.U
 			CircleID:     recipient.CircleID,
 			TargetID:     targetID,
 			Text:         text,
-			RawEvent: map[string]interface{}{
-				"id":                chore.ID,
-				"type":              eventType,
-				"name":              chore.Name,
-				"due_date":          chore.NextDueDate,
-				"assignee":          assigneeName,
-				"assignee_username": assigneeUsername,
-			},
+			RawEvent:     rawEvent,
 		})
 
 	}

@@ -168,3 +168,15 @@ func TestGenerateNotificationsFromTemplateFanOutPerMember(t *testing.T) {
 		}
 	}
 }
+
+func TestPrivateChoreNotificationDoesNotCreateWebhookPayload(t *testing.T) {
+	chore := choreDueTomorrow()
+	chore.IsPrivate = true
+	notifications := generateNotificationsFromTemplate(chore, member(3, true, nModel.NotificationPlatformPushover, "key"), nil, nil)
+	if len(notifications) != 1 {
+		t.Fatalf("expected personal notification to remain, got %d", len(notifications))
+	}
+	if notifications[0].RawEvent != nil {
+		t.Fatalf("private reminder produced circle-webhook payload: %#v", notifications[0].RawEvent)
+	}
+}

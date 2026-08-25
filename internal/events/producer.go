@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
 	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	"github.com/alamoudimoh/daydan-server/internal/httpx"
+	"github.com/alamoudimoh/daydan-server/internal/outbound"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/alamoudimoh/daydan-server/internal/utils"
 	"github.com/alamoudimoh/daydan-server/logging"
@@ -51,14 +54,16 @@ type ChoreData struct {
 }
 
 type EventsProducer struct {
-	client *http.Client
+	client *outbound.Client
 	queue  chan Event
 	logger *zap.SugaredLogger
+	base   context.Context
 }
 
 func (p *EventsProducer) Start(ctx context.Context) {
 
 	p.logger = logging.FromContext(ctx)
+	p.base = ctx
 
 	go func() {
 		for event := range p.queue {
@@ -68,10 +73,15 @@ func (p *EventsProducer) Start(ctx context.Context) {
 }
 
 func NewEventsProducer(cfg *config.Config) *EventsProducer {
+	timeout := cfg.WebhookConfig.Timeout
+	if timeout <= 0 {
+		timeout = 5 * time.Second
+	}
 	return &EventsProducer{
-		client: &http.Client{
-			Timeout: cfg.WebhookConfig.Timeout,
-		},
+		client: outbound.NewClient(outbound.ClientOptions{
+			Timeout:              timeout,
+			AllowPrivateNetworks: cfg.WebhookConfig.AllowPrivateNetworks,
+		}),
 		queue: make(chan Event, cfg.WebhookConfig.QueueSize),
 	}
 }
@@ -101,8 +111,14 @@ func (p *EventsProducer) sanitizeWebhookChore(data ChoreData) ChoreData {
 	return data
 }
 
+// maxWebhookResponseDrain bounds how much of a webhook response body is
+// drained (for connection reuse) before closing. Consumer bodies are never
+// interpreted, so an unbounded drain would only be an exhaustion vector.
+const maxWebhookResponseDrain = 64 << 10
+
 func (p *EventsProducer) processEvent(event Event) {
-	p.logger.Debugw("Sending webhook event", "type", event.Type, "url", event.URL)
+	redactedURL := httpx.RedactURLString(event.URL)
+	p.logger.Debugw("Sending webhook event", "type", event.Type, "url", redactedURL)
 
 	if choreData, ok := event.Data.(ChoreData); ok {
 		event.Data = p.sanitizeWebhookChore(choreData)
@@ -113,11 +129,11 @@ func (p *EventsProducer) processEvent(event Event) {
 		return
 	}
 
-	// Pring the event and the url:
-	p.logger.Debug("Sending event to webhook", "url", event.URL, "event", event)
-	p.logger.Debug("Event: ", event)
-
-	req, err := http.NewRequest(METHOD_POST, event.URL, bytes.NewBuffer(eventJSON))
+	ctx := p.base
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	req, err := http.NewRequestWithContext(ctx, METHOD_POST, event.URL, bytes.NewReader(eventJSON))
 	if err != nil {
 		p.logger.Errorw("Failed to create webhook request", "error", err)
 		return
@@ -126,10 +142,12 @@ func (p *EventsProducer) processEvent(event Event) {
 
 	resp, err := p.client.Do(req)
 	if err != nil {
-		p.logger.Debugw("Failed to send webhook event", "error", err)
+		p.logger.Debugw("Failed to send webhook event", "url", redactedURL, "error", err)
 		return
 	}
 	defer resp.Body.Close()
+
+	_, _ = io.CopyN(io.Discard, resp.Body, maxWebhookResponseDrain)
 
 	if resp.StatusCode >= 400 {
 		p.logger.Errorw("Webhook request failed", "status", resp.StatusCode)
@@ -137,9 +155,23 @@ func (p *EventsProducer) processEvent(event Event) {
 	}
 }
 
+// private chore data must not leave for a destination only circle admins
+// control: admins cannot read another member's private chores through the
+// API (Phase 5 boundary), so publishing them over the circle webhook would
+// be an authorization bypass.
+func (p *EventsProducer) withholdPrivate(chore *chModel.Chore) bool {
+	if chore != nil && chore.IsPrivate {
+		p.logger.Debug("Private chore event withheld from circle webhook")
+		return true
+	}
+	return false
+}
+
 func (p *EventsProducer) ChoreCreated(ctx context.Context, webhookURL *string, chore *chModel.Chore, creator *uModel.User) {
-	if webhookURL == nil {
-		p.logger.Debug("No subscribers for circle, skipping webhook")
+	if webhookURL == nil || p.withholdPrivate(chore) {
+		if webhookURL == nil {
+			p.logger.Debug("No subscribers for circle, skipping webhook")
+		}
 		return
 	}
 
@@ -157,8 +189,10 @@ func (p *EventsProducer) ChoreCreated(ctx context.Context, webhookURL *string, c
 }
 
 func (p *EventsProducer) ChoreCompleted(ctx context.Context, webhookURL *string, chore *chModel.Chore, performer *uModel.User) {
-	if webhookURL == nil {
-		p.logger.Debug("No subscribers for circle, skipping webhook")
+	if webhookURL == nil || p.withholdPrivate(chore) {
+		if webhookURL == nil {
+			p.logger.Debug("No subscribers for circle, skipping webhook")
+		}
 		return
 	}
 
@@ -175,8 +209,10 @@ func (p *EventsProducer) ChoreCompleted(ctx context.Context, webhookURL *string,
 }
 
 func (p *EventsProducer) ChoreSkipped(ctx context.Context, webhookURL *string, chore *chModel.Chore, performer *uModel.User) {
-	if webhookURL == nil {
-		p.logger.Debug("No Webhook URL for circle, skipping webhook")
+	if webhookURL == nil || p.withholdPrivate(chore) {
+		if webhookURL == nil {
+			p.logger.Debug("No Webhook URL for circle, skipping webhook")
+		}
 		return
 	}
 

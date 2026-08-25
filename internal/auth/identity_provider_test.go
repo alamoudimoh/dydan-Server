@@ -3,10 +3,14 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/alamoudimoh/daydan-server/config"
 )
@@ -131,5 +135,96 @@ func TestDisabledWithoutCredentials(t *testing.T) {
 	idp := NewIdentityProvider(&config.Config{})
 	if idp.Enabled() {
 		t.Fatal("identity provider must be disabled without client credentials")
+	}
+}
+
+func TestGetUserInfoRejectsErrorStatusAndOversizedBody(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		status  int
+		body    string
+		wantErr string
+	}{
+		{"error status", http.StatusInternalServerError, `{"sub":"accepted-on-error"}`, "status 500"},
+		{"oversized", http.StatusOK, `{"name":"` + strings.Repeat("x", maxUserInfoResponseBytes) + `"}`, "too large"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = io.WriteString(w, tc.body)
+			}))
+			defer server.Close()
+			cfg := config.Config{OAuth2Config: config.OAuth2Config{
+				ClientID: "id", ClientSecret: "secret", UserInfoURL: server.URL,
+			}}
+			_, err := NewIdentityProvider(&cfg).GetUserInfo(context.Background(), "token")
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("GetUserInfo error = %v, want %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestGetUserInfoUsesCallerContext(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	cfg := config.Config{OAuth2Config: config.OAuth2Config{
+		ClientID: "id", ClientSecret: "secret", UserInfoURL: server.URL,
+	}}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	_, err := NewIdentityProvider(&cfg).GetUserInfo(ctx, "token")
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("GetUserInfo error = %v, want deadline exceeded", err)
+	}
+}
+
+func TestPictureClaimDoesNotTriggerServerRequest(t *testing.T) {
+	var pictureCalls int
+	mux := http.NewServeMux()
+	mux.HandleFunc("/userinfo", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"picture": "http://127.0.0.1:1/private"})
+	})
+	mux.HandleFunc("/private", func(http.ResponseWriter, *http.Request) { pictureCalls++ })
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	cfg := config.Config{OAuth2Config: config.OAuth2Config{
+		ClientID: "id", ClientSecret: "secret", UserInfoURL: server.URL + "/userinfo",
+	}}
+	info, err := NewIdentityProvider(&cfg).GetUserInfo(context.Background(), "token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pictureCalls != 0 {
+		t.Fatalf("picture endpoint received %d server requests", pictureCalls)
+	}
+	if info.Picture != "http://127.0.0.1:1/private" {
+		t.Fatalf("valid HTTP picture reference was not preserved: %q", info.Picture)
+	}
+}
+
+func TestExchangeTokenHasOutboundDeadline(t *testing.T) {
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-release:
+		}
+	}))
+	defer server.Close()
+	defer close(release)
+	cfg := config.Config{OAuth2Config: config.OAuth2Config{
+		ClientID: "id", ClientSecret: "secret", TokenURL: server.URL,
+	}}
+	idp := NewIdentityProvider(&cfg)
+	idp.httpClient.Timeout = 20 * time.Millisecond
+	start := time.Now()
+	_, err := idp.ExchangeToken(context.Background(), "code", "")
+	if err == nil || time.Since(start) > time.Second {
+		t.Fatalf("ExchangeToken error = %v after %s (want bounded client deadline)", err, time.Since(start))
 	}
 }
