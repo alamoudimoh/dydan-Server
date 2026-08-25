@@ -151,6 +151,9 @@ func (h *PollingHandler) HandleSSETicket(c *gin.Context) {
 	}
 
 	h.recordTicketMint(user.ID, c.ClientIP())
+	// The response body IS a bearer credential: forbid any cache (shared
+	// proxies, browser/webview caches) from storing it.
+	c.Header("Cache-Control", "no-store")
 	c.JSON(http.StatusOK, gin.H{
 		"ticket":    ticket,
 		"expiresIn": int(ticketTTL.Seconds()),

@@ -1940,7 +1940,7 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.GET("/", h.GetAllUsers())
 		userRoutes.GET("/profile", h.GetUserProfile)
 		userRoutes.PUT("", h.UpdateUserDetails)
-		userRoutes.POST("/tokens", h.requirePermission(auth.PermissionManageAccount), h.CreateLongLivedToken)
+		userRoutes.POST("/tokens", h.requirePermission(auth.PermissionManageAccount), securityLimiter.Middleware("token-create", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.CreateLongLivedToken)
 		userRoutes.GET("/tokens", h.requirePermission(auth.PermissionManageAccount), h.GetAllUserToken)
 		userRoutes.DELETE("/tokens/:id", h.requirePermission(auth.PermissionManageAccount), h.DeleteUserToken)
 		userRoutes.PUT("/webhook", h.requirePermission(auth.PermissionManageCircle), h.setWebhook)

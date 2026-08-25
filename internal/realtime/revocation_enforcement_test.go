@@ -12,9 +12,11 @@ import (
 
 	"github.com/alamoudimoh/daydan-server/config"
 	daydanAuth "github.com/alamoudimoh/daydan-server/internal/auth"
+	"github.com/alamoudimoh/daydan-server/internal/authlimit"
 	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	ginJWT "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	jwtstd "github.com/golang-jwt/jwt/v4"
@@ -32,7 +34,13 @@ type realtimeHarness struct {
 	// revocations commit through it, mirroring production where the replica
 	// serving connections never shares its gorm handle with the writer.
 	mutatingRepo *uRepo.UserRepository
+	realtimeMW   *AuthMiddleware
+	interactive  *ginJWT.GinJWTMiddleware
+	polling      *PollingHandler
+	tickets      *TicketStore
 }
+
+func (h *realtimeHarness) ticketStore() *TicketStore { return h.tickets }
 
 func newRealtimeHarness(t *testing.T, heartbeat time.Duration) *realtimeHarness {
 	t.Helper()
@@ -42,7 +50,7 @@ func newRealtimeHarness(t *testing.T, heartbeat time.Duration) *realtimeHarness 
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&uModel.User{}, &uModel.UserSession{}, &uModel.UserPasswordReset{}, &uModel.MFASession{}, &uModel.UserNotificationTarget{}, &cModel.Circle{}); err != nil {
+	if err := db.AutoMigrate(&uModel.User{}, &uModel.UserSession{}, &uModel.UserPasswordReset{}, &uModel.MFASession{}, &uModel.UserNotificationTarget{}, &cModel.Circle{}, &authlimit.Bucket{}, &authlimit.CapacityGuard{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -75,7 +83,8 @@ func newRealtimeHarness(t *testing.T, heartbeat time.Duration) *realtimeHarness 
 	}
 	mutatingRepo := uRepo.NewUserRepository(db2, cfg)
 
-	realtimeMW := NewAuthMiddleware(repo, nil, nil, cfg, NewTicketStore(cfg))
+	tickets := NewTicketStore(cfg)
+	realtimeMW := NewAuthMiddleware(repo, nil, nil, cfg, tickets)
 	interactiveMW, err := daydanAuth.NewAuthMiddleware(cfg, repo, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +103,11 @@ func newRealtimeHarness(t *testing.T, heartbeat time.Duration) *realtimeHarness 
 	r.GET("/sse", realtimeMW.WebSocketAuthHandler(), polling.HandleSSE)
 	r.GET("/ws", realtimeMW.WebSocketAuthHandler(), wsHandler.HandleWebSocket)
 
-	return &realtimeHarness{router: r, db: db, repo: repo, service: tokenService, cfg: cfg, mutatingRepo: mutatingRepo}
+	// Give the auth abuse limiter sane bounds for ticket-mint tests.
+	cfg.Server.RateLimitAuthPeriod = time.Minute
+	cfg.Server.RateLimitAuth = 1000
+
+	return &realtimeHarness{router: r, db: db, repo: repo, service: tokenService, cfg: cfg, mutatingRepo: mutatingRepo, realtimeMW: realtimeMW, interactive: interactiveMW, polling: polling, tickets: tickets}
 }
 
 func (h *realtimeHarness) login(t *testing.T, username string) (*uModel.User, *daydanAuth.TokenResponse) {
