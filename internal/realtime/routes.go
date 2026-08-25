@@ -1,6 +1,8 @@
 package realtime
 
 import (
+	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/daydan-server/internal/authlimit"
 	ginJWT "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 )
@@ -13,6 +15,8 @@ func Routes(
 	rtAuthMiddleware *AuthMiddleware,
 	pollingHandler *PollingHandler,
 	jwtAuth *ginJWT.GinJWTMiddleware,
+	limiter *authlimit.Limiter,
+	cfg *config.Config,
 ) {
 	// Real-time API group
 	rtGroup := router.Group("/api/v1/realtime")
@@ -22,7 +26,15 @@ func Routes(
 
 	// SSE ticket endpoint (header-authenticated). Native EventSource clients that
 	// cannot send custom headers call this first, then open /sse?ticket=...
-	rtGroup.GET("/sse/ticket", jwtAuth.MiddlewareFunc(), pollingHandler.HandleSSETicket)
+	// JWT validation runs BEFORE the abuse limiter so minting is keyed by both
+	// IP and authenticated user (a NAT'd household cannot exhaust one shared
+	// bucket). Unauthenticated requests fail at the JWT layer without touching
+	// the limiter datastore. The DB-backed limiter bounds minting
+	// replica-independently, so flooding cannot exhaust the TicketStore.
+	rtGroup.GET("/sse/ticket",
+		jwtAuth.MiddlewareFunc(),
+		limiter.Middleware("sse-ticket", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)),
+		pollingHandler.HandleSSETicket)
 
 	// Admin endpoints (require authentication)
 	adminGroup := rtGroup.Group("/admin")
