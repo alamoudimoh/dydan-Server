@@ -37,7 +37,15 @@ func (h *Handler) membership(c *gin.Context, circleID, userID int) (cModel.Role,
 		return "", false
 	}
 	role, err := h.circles.GetActiveUserCircleRole(c, circleID, userID)
-	return role, err == nil
+	if err != nil {
+		return role, false
+	}
+	// Managed (child) accounts never exercise elevated capabilities even if a
+	// stale or inconsistent membership row grants them an elevated role.
+	if u, ok := auth.CurrentUser(c); ok {
+		role = auth.CapEffectiveCircleRole(&u.User, role)
+	}
+	return role, true
 }
 
 func (h *Handler) isCircleAdmin(role cModel.Role) bool {
@@ -161,11 +169,10 @@ func (h *Handler) updateList(c *gin.Context) {
 		writeRepoErr(c, err)
 		return
 	}
-	if !slRepo.CanManageList(user.ID, list, h.isCircleAdmin(role)) {
+	if !slRepo.CanManageList(user.ID, user.CircleID, list, circleMember, h.isCircleAdmin(role)) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
-	_ = circleMember
 
 	if err := h.repo.RenameList(c, list, req.Name); err != nil {
 		writeRepoErr(c, err)
@@ -188,14 +195,14 @@ func (h *Handler) archiveList(c *gin.Context) {
 	if !ok {
 		return
 	}
-	role, _ := h.membership(c, user.CircleID, user.ID)
+	role, circleMember := h.membership(c, user.CircleID, user.ID)
 
 	list, err := h.repo.GetByID(c, listID)
 	if err != nil {
 		writeRepoErr(c, err)
 		return
 	}
-	if !slRepo.CanManageList(user.ID, list, h.isCircleAdmin(role)) {
+	if !slRepo.CanManageList(user.ID, user.CircleID, list, circleMember, h.isCircleAdmin(role)) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
@@ -215,14 +222,14 @@ func (h *Handler) deleteList(c *gin.Context) {
 	if !ok {
 		return
 	}
-	role, _ := h.membership(c, user.CircleID, user.ID)
+	role, circleMember := h.membership(c, user.CircleID, user.ID)
 
 	list, err := h.repo.GetByID(c, listID)
 	if err != nil {
 		writeRepoErr(c, err)
 		return
 	}
-	if !slRepo.CanManageList(user.ID, list, h.isCircleAdmin(role)) {
+	if !slRepo.CanManageList(user.ID, user.CircleID, list, circleMember, h.isCircleAdmin(role)) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}

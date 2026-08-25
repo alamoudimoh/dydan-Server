@@ -99,10 +99,28 @@ func TestPermissions(t *testing.T) {
 	if !slRepo.CanAccessList(3, 9, circle, true) {
 		t.Fatal("circle member should access circle list")
 	}
-	if !slRepo.CanManageList(2, circle, false) {
-		t.Fatal("creator should manage circle list")
+}
+
+func TestManageListRequiresListCircleMembership(t *testing.T) {
+	personal := &slModel.ShoppingList{CreatedBy: 1}
+	circleID := 9
+		circle := &slModel.ShoppingList{CreatedBy: 2, CircleID: &circleID}
+
+	if !slRepo.CanManageList(1, 9, personal, false, false) {
+		t.Fatal("owner should manage own personal list")
 	}
-	if !slRepo.CanManageList(99, circle, true) {
+	if !slRepo.CanManageList(2, 9, circle, true, false) {
+		t.Fatal("creator should manage circle list while a member")
+	}
+	if !slRepo.CanManageList(99, 9, circle, true, true) {
 		t.Fatal("circle admin should manage circle list")
+	}
+	// Admin of another circle must not manage this circle's list.
+	if slRepo.CanManageList(99, 10, circle, true, true) {
+		t.Fatal("admin of a different circle must not manage the list")
+	}
+	// Creator who left the circle loses management rights.
+	if slRepo.CanManageList(2, 9, circle, false, false) {
+		t.Fatal("non-member creator must not manage the circle list")
 	}
 }
