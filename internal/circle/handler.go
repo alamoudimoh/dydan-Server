@@ -852,6 +852,24 @@ func (h *Handler) ChangeMemberRole(c *gin.Context) {
 		return
 	}
 
+	// Managed (child) accounts never inherit elevated Circle capabilities
+	// (see auth.ResolveEffectiveRole): refuse to grant them admin/manager.
+	target, err := h.userRepo.GetUserByID(c, req.MemberID)
+	if err != nil {
+		log.Error("Error changing member role:", err)
+		c.JSON(500, gin.H{
+			"error": "Error changing member role",
+		})
+		return
+	}
+	if target.UserType == uModel.UserTypeChild && (req.Role == cModel.RoleAdmin || req.Role == cModel.RoleManager) {
+		log.Warnw("Attempted to elevate a managed child account", "circleID", currentUser.CircleID, "memberID", req.MemberID, "role", req.Role)
+		c.JSON(400, gin.H{
+			"error": "Managed child accounts cannot be granted admin or manager roles",
+		})
+		return
+	}
+
 	err = h.circleRepo.ChangeUserRole(c, currentUser.CircleID, req.MemberID, req.Role)
 	if errors.Is(err, cRepo.ErrLastAdmin) {
 		c.JSON(http.StatusConflict, gin.H{

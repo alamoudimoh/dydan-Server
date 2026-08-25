@@ -41,7 +41,15 @@ func (h *Handler) admin(c *gin.Context, circleID, userID int) bool {
 }
 func (h *Handler) membership(c *gin.Context, circleID, userID int) (cModel.Role, bool) {
 	role, err := h.circles.GetActiveUserCircleRole(c, circleID, userID)
-	return role, err == nil
+	if err != nil {
+		return role, false
+	}
+	// Managed (child) accounts never exercise elevated capabilities even if a
+	// stale or inconsistent membership row grants them an elevated role.
+	if u, ok := auth.CurrentUser(c); ok {
+		role = auth.CapEffectiveCircleRole(&u.User, role)
+	}
+	return role, true
 }
 func parseID(c *gin.Context) (int, bool) {
 	id, err := strconv.Atoi(c.Param("id"))

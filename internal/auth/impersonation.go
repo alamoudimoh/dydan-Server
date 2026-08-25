@@ -54,31 +54,45 @@ func ImpersonationMiddleware(userRepo *uRepo.UserRepository, circleRepo *cRepo.C
 			return
 		}
 
-		// Check if current user has permission to impersonate (admin or manager)
 		var currentUserRole cModel.UserRole
+		var currentUserActive bool
 		var impersonateUserInCircle bool
+		var impersonateUserActive bool
 
 		for _, circleUser := range circleUsers {
 			if circleUser.UserID == currentUser.ID {
 				currentUserRole = circleUser.Role
+				currentUserActive = circleUser.IsActive
 			}
 			if circleUser.UserID == impersonateUserID {
 				impersonateUserInCircle = true
+				impersonateUserActive = circleUser.IsActive
 			}
 		}
 
-		// Validate current user has admin or manager role
-		if currentUserRole != cModel.UserRoleAdmin && currentUserRole != cModel.UserRoleManager {
-			logger.Warn("User attempted impersonation without permission",
-				"userID", currentUser.ID, "role", currentUserRole, "impersonateUserID", impersonateUserID)
+		// Managed (child) accounts never gain elevated authority — including
+		// impersonation — regardless of stale membership rows.
+		if currentUser.UserType == uModel.UserTypeChild {
+			logger.Warn("Child account attempted impersonation",
+				"userID", currentUser.ID, "impersonateUserID", impersonateUserID)
 			c.JSON(403, gin.H{"error": "Insufficient permissions for impersonation"})
 			c.Abort()
 			return
 		}
 
-		// Validate impersonate user is in the same circle
-		if !impersonateUserInCircle {
-			logger.Warn("User attempted to impersonate user outside circle",
+		// Validate current user has an active admin or manager role. Stale
+		// (inactive) memberships must not preserve impersonation rights.
+		if !currentUserActive || (currentUserRole != cModel.UserRoleAdmin && currentUserRole != cModel.UserRoleManager) {
+			logger.Warn("User attempted impersonation without permission",
+				"userID", currentUser.ID, "role", currentUserRole, "active", currentUserActive, "impersonateUserID", impersonateUserID)
+			c.JSON(403, gin.H{"error": "Insufficient permissions for impersonation"})
+			c.Abort()
+			return
+		}
+
+		// Validate impersonate user is an active member of the same circle.
+		if !impersonateUserInCircle || !impersonateUserActive {
+			logger.Warn("User attempted to impersonate user outside their active circle",
 				"userID", currentUser.ID, "impersonateUserID", impersonateUserID, "circleID", currentUser.CircleID)
 			c.JSON(403, gin.H{"error": "Cannot impersonate user outside your circle"})
 			c.Abort()

@@ -270,6 +270,21 @@ func (h *Handler) syncOIDCRole(c *gin.Context, userID, circleID int, groups []st
 		return
 	}
 
+	// Managed (child) accounts never inherit elevated Circle capabilities
+	// (see auth.ResolveEffectiveRole): OIDC group membership must not be able
+	// to promote them to admin or manager, bypassing the guard enforced by
+	// the interactive role-change endpoint.
+	target, err := h.userRepo.GetUserByID(c, userID)
+	if err != nil {
+		logger.Warnw("OIDC role sync: failed to load target user", "userID", userID, "err", err)
+		return
+	}
+	if target.UserType == uModel.UserTypeChild &&
+		(resolvedRole == cModel.RoleAdmin || resolvedRole == cModel.RoleManager) {
+		logger.Warnw("OIDC role sync: refused to elevate managed child account", "userID", userID, "circleID", circleID, "resolvedRole", resolvedRole)
+		return
+	}
+
 	if err := h.circleRepo.ChangeUserRole(c, circleID, userID, resolvedRole); err != nil {
 		logger.Errorw("OIDC role sync: failed to update role", "userID", userID, "circleID", circleID, "resolvedRole", resolvedRole, "err", err)
 		return
