@@ -215,3 +215,72 @@ func TestConcurrentNewKeysRespectCapacity(t *testing.T) {
 		t.Fatalf("admitted=%d unexpected=%d rows=%d, want 3, 0, 3", admitted.Load(), unexpected.Load(), count)
 	}
 }
+
+// TestForgedForwardedHeadersCannotBypassLimits pins that abuse-control keying
+// uses the effective ClientIP (which ignores X-Forwarded-For from untrusted
+// direct peers): a direct client cannot rotate its limit bucket by rotating
+// forged forwarding headers.
+func TestForgedForwardedHeadersCannotBypassLimits(t *testing.T) {
+	limiter, _, db := sharedLimiters(t, 100)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	_ = r.SetTrustedProxies([]string{"10.0.0.1/32"}) // production-style allowlist
+	r.POST("/login", limiter.Middleware("login", time.Minute, 2), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	do := func(xff string) int {
+		req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader([]byte(`{"username":"u"}`)))
+		req.RemoteAddr = "203.0.113.5:1234"
+		if xff != "" {
+			req.Header.Set("X-Forwarded-For", xff)
+		}
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	if code := do(""); code != http.StatusOK {
+		t.Fatalf("first attempt: %d", code)
+	}
+	if code := do("8.8.8.8"); code != http.StatusOK {
+		t.Fatalf("forged header must not open a fresh bucket, got %d", code)
+	}
+	// Bucket now holds 2 of 2 allowed attempts: the next try is limited even
+	// with yet another freshly forged identity.
+	if code := do("7.7.7.7"); code != http.StatusTooManyRequests {
+		t.Fatalf("attempt must be limited regardless of forged headers, got %d", code)
+	}
+
+	var count int64
+	db.Model(&Bucket{}).Where("scope = ?", "login").Count(&count)
+	if count != 1 {
+		t.Fatalf("all attempts must land in exactly one bucket, got %d", count)
+	}
+}
+
+// TestLimitResponseDoesNotRevealAccountExistence pins the enumeration
+// contract: a rate-limited response is byte-identical whether or not the
+// targeted account exists.
+func TestLimitResponseDoesNotRevealAccountExistence(t *testing.T) {
+	limiter, _, _ := sharedLimiters(t, 100)
+	gin.SetMode(gin.TestMode)
+
+	run := func(username string) (int, string, string) {
+		r := gin.New()
+		r.POST("/login", limiter.Middleware("login", time.Minute, 0, AccountField{Name: "username"}), func(c *gin.Context) { c.Status(200) })
+		req := httptest.NewRequest(http.MethodPost, "/login",
+			bytes.NewReader([]byte(`{"username":"`+username+`"}`)))
+		req.RemoteAddr = "198.51.100.9:1"
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w.Code, w.Body.String(), w.Header().Get("Retry-After")
+	}
+
+	codeA, bodyA, retryA := run("existing-user")
+	codeB, bodyB, retryB := run("nonexistent-user")
+	if codeA != codeB || bodyA != bodyB || retryA != retryB {
+		t.Fatalf("limit responses differ by account existence: (%d,%q,%q) vs (%d,%q,%q)",
+			codeA, bodyA, retryA, codeB, bodyB, retryB)
+	}
+}
