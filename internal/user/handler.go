@@ -378,6 +378,17 @@ func (h *Handler) thirdPartyAuthStart(c *gin.Context) {
 	})
 }
 
+// googleTokeninfoClient bounds the server-side verification call to Google's
+// tokeninfo endpoint. The callback route is unauthenticated and attacker-
+// supplied tokens trigger this outbound request; an unbounded client
+// (http.DefaultClient) would let a stalled upstream connection pin handler
+// goroutines. 10s matches the identity-provider budget in internal/auth.
+func googleTokeninfoClient() *http.Client {
+	return &http.Client{Timeout: googleTokeninfoTimeout}
+}
+
+const googleTokeninfoTimeout = 10 * time.Second
+
 func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 
 	// read :provider from path param, if param is google check the token with google if it's valid and fetch the user details:
@@ -402,7 +413,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 		}
 
 		// logger.Infow("account.handler.thirdPartyAuthCallback", "token", token)
-		service, err := oauth2.NewService(c, option.WithHTTPClient(http.DefaultClient))
+		service, err := oauth2.NewService(c, option.WithHTTPClient(googleTokeninfoClient()))
 		if err != nil {
 			logger.Errorw("account.handler.thirdPartyAuthCallback failed to create oauth2 service", "err", err)
 			c.JSON(http.StatusInternalServerError, gin.H{

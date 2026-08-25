@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	pModel "github.com/alamoudimoh/daydan-server/external/payment/model"
@@ -212,6 +213,58 @@ func (a *StripeDB) UpdateSubscription(ctx context.Context, subscription *pModel.
 	}
 
 	return nil
+}
+
+// ClaimStripeEvent atomically records that processing of a Stripe event is
+// starting. It returns (claimed=true, nil) exactly once per event ID: the
+// primary key turns any concurrent or repeated insert into a constraint
+// violation, which maps to claimed=false so duplicate deliveries (including
+// simultaneous ones from other replicas) never re-run business side effects.
+func (a *StripeDB) ClaimStripeEvent(ctx context.Context, event *pModel.StripeEvent) (bool, error) {
+	logger := logging.FromContext(ctx)
+
+	err := a.db.WithContext(ctx).Create(event).Error
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return false, nil
+	}
+	// SQLite's driver may surface the unique violation as a generic error;
+	// inspect it rather than silently re-processing duplicates.
+	if isUniqueConstraintError(err) {
+		return false, nil
+	}
+	logger.Error("stripe.event.db.Claim failed", "err", err)
+	return false, err
+}
+
+// ReleaseStripeEvent removes a claim after failed processing so Stripe's
+// legitimate retry of the same event can be processed again. A missing row
+// is fine: nothing to release.
+func (a *StripeDB) ReleaseStripeEvent(ctx context.Context, eventID string) error {
+	return a.db.WithContext(ctx).Where("event_id = ?", eventID).Delete(&pModel.StripeEvent{}).Error
+}
+
+// MarkStripeEventProcessed records successful completion for observability;
+// the claim row itself already provides the idempotency guarantee.
+func (a *StripeDB) MarkStripeEventProcessed(ctx context.Context, eventID string) error {
+	return a.db.WithContext(ctx).Model(&pModel.StripeEvent{}).
+		Where("event_id = ?", eventID).
+		Updates(map[string]interface{}{
+			"status":       "processed",
+			"processed_at": time.Now().UTC(),
+		}).Error
+}
+
+func isUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "UNIQUE constraint failed") ||
+		strings.Contains(msg, "duplicate key value") ||
+		strings.Contains(msg, "unique constraint")
 }
 
 // RevenueCat database operations

@@ -2,10 +2,11 @@ package payment
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alamoudimoh/daydan-server/internal/utils"
@@ -16,20 +17,31 @@ import (
 	pDB "github.com/alamoudimoh/daydan-server/external/payment/repo"
 	stripeService "github.com/alamoudimoh/daydan-server/external/payment/service"
 	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	authn "github.com/alamoudimoh/daydan-server/internal/auth"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/stripe/stripe-go/v76"
+	stripe "github.com/stripe/stripe-go/v76"
+	"github.com/stripe/stripe-go/v76/webhook"
+	"go.uber.org/zap"
 )
 
+// DefaultWebhookTolerance matches Stripe's recommended signature freshness
+// window. Configurable via stripe.webhook_tolerance (hard-capped at 24h in
+// config validation).
+const DefaultWebhookTolerance = webhook.DefaultTolerance
+
 type Webhook struct {
-	stripeDB         pDB.StripeDB
-	revenueCatDB     pDB.RevenueCatDB
-	subscriptionDB   pDB.SubscriptionDB
-	whitelistIPs     map[string]bool
-	stripe           *stripeService.StripeService
-	prices           []config.StripePrices
+	stripeDB       pDB.StripeDB
+	revenueCatDB   pDB.RevenueCatDB
+	subscriptionDB pDB.SubscriptionDB
+	whitelistIPs   map[string]bool
+	stripe         *stripeService.StripeService
+	prices         []config.StripePrices
 	revenueCatConfig config.RevenueCatConfig
-	userRepo         *uRepo.UserRepository
+	userRepo       *uRepo.UserRepository
+
+	webhookSecret string
+	tolerance     time.Duration
 }
 
 func NewWebhook(stripeDB pDB.StripeDB,
@@ -44,6 +56,11 @@ func NewWebhook(stripeDB pDB.StripeDB,
 		whitelistIPs[ip] = true
 	}
 
+	tolerance := config.StripeConfig.WebhookTolerance
+	if tolerance <= 0 {
+		tolerance = DefaultWebhookTolerance
+	}
+
 	return &Webhook{
 		stripeDB:         stripeDB,
 		revenueCatDB:     revenueCatDB,
@@ -53,6 +70,8 @@ func NewWebhook(stripeDB pDB.StripeDB,
 		userRepo:         uRepo,
 		prices:           config.StripeConfig.Prices,
 		revenueCatConfig: config.RevenueCatConfig,
+		webhookSecret:    config.StripeConfig.WebhookSecret,
+		tolerance:        tolerance,
 	}
 }
 
@@ -62,74 +81,171 @@ func (h *Webhook) isIPWhitelisted(ip string) bool {
 	return ok
 }
 
+// StripeWebhook handles inbound Stripe events.
+//
+// Trust model (Phase 8): authenticity comes exclusively from the Stripe
+// signature over the raw request body, verified with the configured endpoint
+// secret (stripe.webhook_secret). The IP allowlist — if configured — is kept
+// as defense-in-depth only; it is never sufficient on its own. Without a
+// configured secret the endpoint fails closed with 503 rather than accepting
+// unsigned events.
+//
+// Replay model: every verified event claims its stable Stripe event ID in
+// the stripe_events table before business logic runs; duplicates get a 200
+// without re-executing side effects, and a failed processing run releases
+// the claim so Stripe's retry is processed again.
 func (h *Webhook) StripeWebhook(c *gin.Context) {
 
 	logger := logging.FromContext(c)
 
+	if h.webhookSecret == "" {
+		// Fail closed: an operator enabled Stripe but did not configure the
+		// endpoint secret. Never silently fall back to network trust.
+		logger.Error("stripe.webhook rejected: no stripe.webhook_secret configured")
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "stripe webhook verification is not configured"})
+		return
+	}
+
+	// Defense-in-depth only: enforce legacy IP restrictions when present.
 	ip := c.ClientIP()
-	if !h.isIPWhitelisted(ip) {
+	if len(h.whitelistIPs) > 0 && !h.isIPWhitelisted(ip) {
 		logger.Errorw("payment.webhook.Webhook failed to validate ip", "ip", ip)
 		c.JSON(http.StatusForbidden, "Forbidden")
 		return
 	}
 
-	event := stripe.Event{}
-	if err := c.BindJSON(&event); err != nil {
-		logger.Errorw("payment.webhook.Webhook failed to bind json", "err", err)
-		return
-	}
-	// create a file and write the event to it:
-	timestamp := time.Now().UTC().Format("2006-01-02_15:04:05")
-	f, err := os.Create(fmt.Sprintf("w-%s-%s.json", timestamp, event.Type))
+	// The signature covers the exact bytes Stripe sent. Read the raw body
+	// once and verify against it — never re-marshal or re-indent first.
+	rawBody, err := c.GetRawData()
 	if err != nil {
-		logger.Errorw("payment.webhook.Webhook failed to create file", "err", err)
+		if authn.IsBodyTooLarge(err) {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request body too large"})
+			return
+		}
+		logger.Errorw("payment.webhook.Webhook failed to read body", "err", err)
+		c.JSON(http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	defer f.Close()
-	if err := json.NewEncoder(f).Encode(event); err != nil {
-		logger.Errorw("payment.webhook.Webhook failed to write to file", "err", err)
+	if len(rawBody) == 0 {
+		logger.Errorw("payment.webhook.Webhook failed to read body", "err", "empty body")
+		c.JSON(http.StatusBadRequest, "Invalid request body")
 		return
 	}
+
+	sigHeader := c.GetHeader("Stripe-Signature")
+	event, err := webhook.ConstructEventWithTolerance(rawBody, sigHeader, h.webhookSecret, h.tolerance)
+	if err != nil {
+		// Deliberately terse: error strings can embed attacker-controlled
+		// header fragments; log the failure category only.
+		logger.Errorw("stripe.webhook signature verification failed", "reason", signatureErrorKind(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "signature verification failed"})
+		return
+	}
+
+	claimed, err := h.stripeDB.ClaimStripeEvent(c, &model.StripeEvent{
+		EventID:     event.ID,
+		EventType:   string(event.Type),
+		Livemode:    event.Livemode,
+		Status:      "processing",
+		ProcessedAt: time.Now().UTC(),
+	})
+	if err != nil {
+		logger.Errorw("stripe.webhook failed to claim event", "event_id", event.ID, "err", err)
+		c.JSON(http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+	if !claimed {
+		logger.Debugw("stripe.webhook duplicate delivery ignored", "event_id", event.ID)
+		c.JSON(http.StatusOK, gin.H{"status": "duplicate"})
+		return
+	}
+
+	// A panic during business processing must NOT leave the claim row
+	// behind: gin's recovery middleware would otherwise answer 500 while the
+	// durable claim suppresses every future legitimate retry of this event.
+	processErr := func() (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Errorw("stripe.webhook processing panicked", "event_id", event.ID)
+				err = fmt.Errorf("processing panicked")
+			}
+		}()
+		return h.processStripeEvent(c, logger, &event)
+	}()
+	if processErr != nil {
+		// Release the claim so Stripe's legitimate retry of this event is
+		// processed again instead of being permanently suppressed.
+		if relErr := h.stripeDB.ReleaseStripeEvent(c, event.ID); relErr != nil {
+			logger.Errorw("stripe.webhook failed to release event claim", "event_id", event.ID, "err", relErr)
+		}
+		logger.Errorw("stripe.webhook failed to process event", "event_id", event.ID, "err", err)
+		c.JSON(http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	if err := h.stripeDB.MarkStripeEventProcessed(c, event.ID); err != nil {
+		// Non-fatal: idempotency is already guaranteed by the claim row;
+		// status bookkeeping is best-effort observability.
+		logger.Errorw("stripe.webhook failed to mark event processed", "event_id", event.ID, "err", err)
+	}
+	logger.Debugw("payment.webhook.Webhook handled event", "event_id", event.ID, "event", event.Type)
+}
+
+// signatureErrorKind classifies signature failures for logging without
+// echoing untrusted header content.
+func signatureErrorKind(err error) string {
+	msg := err.Error()
+	switch {
+	case errors.Is(err, webhook.ErrInvalidHeader):
+		return "malformed_signature_header"
+	case strings.Contains(msg, "No signatures found"):
+		return "missing_signature"
+	case strings.Contains(msg, "timestamp"):
+		return "timestamp_out_of_tolerance"
+	case strings.Contains(msg, "signature mismatch"), strings.Contains(msg, "Signature hash"):
+		return "invalid_signature"
+	default:
+		return "unverified_payload"
+	}
+}
+
+// processStripeEvent executes business side effects for a verified,
+// claim-held event.
+func (h *Webhook) processStripeEvent(c *gin.Context, logger *zap.SugaredLogger, event *stripe.Event) error {
 
 	switch event.Type {
 	case "checkout.session.completed":
-		// get the subscription id from the event:
-
 		var s stripe.CheckoutSession
 		if err := json.Unmarshal(event.Data.Raw, &s); err != nil {
-			logger.Errorw("payment.webhook.Webhook failed to unmarshal session", "err", err)
-			c.JSON(http.StatusInternalServerError, "Internal Server Error")
-			return
+			return fmt.Errorf("unmarshal checkout session: %w", err)
 		}
 
 		if s.PaymentStatus != "paid" || s.Status != "complete" {
 			logger.Errorw("payment.webhook.Webhook failed to get payment status", "event", event.Type)
-			c.JSON(http.StatusOK, nil)
-
-			return
+			return nil
 		}
 
 		if s.Subscription.ID == "" {
 			logger.Errorw("payment.webhook.Webhook failed to get subscription id", "event", event.Type)
-			c.JSON(http.StatusOK, nil)
-			return
+			return nil
 		}
 
 		// Get user ID from stripe customer
 		customer, err := h.stripeDB.GetCustomerByCustomerID(c, s.Customer.ID)
 		if err != nil {
-			logger.Errorw("payment.webhook.Webhook failed to get customer", "customer_id", s.Customer.ID, "err", err)
-			return
+			return fmt.Errorf("get customer %s: %w", s.Customer.ID, err)
 		}
 
 		expiredAt := time.Now().UTC().AddDate(1, 0, 0)
 		// Save to legacy table for backward compatibility
-		h.stripeDB.SaveSubscription(c, &model.StripeSubscription{
+		if _, err := h.stripeDB.SaveSubscription(c, &model.StripeSubscription{
 			SubscriptionID: s.Subscription.ID,
 			CustomerID:     s.Customer.ID,
 			Status:         "active",
 			ExpiredAt:      &expiredAt,
-		})
+		}); err != nil {
+			return fmt.Errorf("save legacy subscription: %w", err)
+		}
 
 		// Save to unified subscription table
 		if customer != nil {
@@ -145,17 +261,19 @@ func (h *Webhook) StripeWebhook(c *gin.Context) {
 				CreatedAt:              time.Now().UTC(),
 				UpdatedAt:              time.Now().UTC(),
 			}
-			h.subscriptionDB.SaveSubscription(c, unifiedSub)
+			if _, err := h.subscriptionDB.SaveSubscription(c, unifiedSub); err != nil {
+				return fmt.Errorf("save unified subscription: %w", err)
+			}
 		}
 
-		h.stripeDB.UpdateSession(c, event.ID, string(s.Status))
+		if err := h.stripeDB.UpdateSession(c, event.ID, string(s.Status)); err != nil {
+			return fmt.Errorf("update session: %w", err)
+		}
 
 	case "invoice.payment_succeeded":
 		var inv stripe.Invoice
 		if err := json.Unmarshal(event.Data.Raw, &inv); err != nil {
-			logger.Errorw("payment.webhook.Webhook failed to unmarshal invoice", "err", err)
-			c.JSON(http.StatusInternalServerError, "Internal Server Error")
-			return
+			return fmt.Errorf("unmarshal invoice: %w", err)
 		}
 		mInvoice := &model.StripeInvoice{
 			InvoiceID:      inv.ID,
@@ -170,51 +288,41 @@ func (h *Webhook) StripeWebhook(c *gin.Context) {
 
 		if inv.PeriodEnd == inv.PeriodStart {
 			// on initial payment, the period end and start are the same
-			// so we add a year to the period end
-			logger.Debugw("payment.webhook.Webhook ignoring payment_succeeded for session checkout", "event", event.Type)
-
+			logger.Debugw("payment.webhook ignoring payment_succeeded for session checkout", "event", event.Type)
 		}
 		expiredAt = mInvoice.PeriodEnd.AddDate(1, 0, 0)
 
-		h.stripeDB.SaveInvoice(c, mInvoice)
+		if _, err := h.stripeDB.SaveInvoice(c, mInvoice); err != nil {
+			return fmt.Errorf("save invoice: %w", err)
+		}
 		now := time.Now().UTC()
 
 		// Update legacy table
-		h.stripeDB.UpdateSubscription(c, &model.StripeSubscription{
+		if err := h.stripeDB.UpdateSubscription(c, &model.StripeSubscription{
 			SubscriptionID: inv.Subscription.ID,
 			UpdatedAt:      &now,
 			Status:         "active",
 			ExpiredAt:      &expiredAt,
-		})
+		}); err != nil {
+			return fmt.Errorf("update legacy subscription: %w", err)
+		}
 
 		// Update unified subscription table
 		if unifiedSub, err := h.subscriptionDB.GetSubscriptionByID(c, inv.Subscription.ID); err == nil && unifiedSub != nil {
 			unifiedSub.Status = "active"
 			unifiedSub.ExpiresAt = &expiredAt
-			h.subscriptionDB.UpdateSubscription(c, unifiedSub)
+			if err := h.subscriptionDB.UpdateSubscription(c, unifiedSub); err != nil {
+				return fmt.Errorf("update unified subscription: %w", err)
+			}
+		} else if err != nil {
+			return fmt.Errorf("get unified subscription: %w", err)
 		}
 
-		// get the subscription id from the event:
-
-		// dealing with subscriptions and recurring payments, you'll likely be dealing with invoice.payment_succeeded events
-	// handle user canceling subscription:
-	// case "checkout.session.async_payment_failed":
-	// case "payment_intent.succeeded":
-
-	// if payment fail we can send email to the user to update the payment method
-	// case "payment_intent.payment_failed":
-
-	// do somethi
-
 	default:
-		logger.Debugw("payment.webhook.Webhook failed to handle event", "event", event.Type)
-
-		return
+		logger.Debugw("payment.webhook ignoring unhandled event", "event", event.Type)
 	}
-	logger.Debugw("payment.webhook.Webhook handled event", "event", event.Type)
-
+	return nil
 }
-
 // RevenueCat webhook event structure
 type RevenueCatWebhookEvent struct {
 	APIVersion string          `json:"api_version"`
@@ -622,6 +730,7 @@ func Webhooks(cfg *config.Config, w *Webhook, r *gin.Engine, auth *jwt.GinJWTMid
 
 	paymentsWithoutAuth := r.Group("webhooks")
 
+	paymentsWithoutAuth.Use(authn.LimitRequestBody(authn.MaxAuthRequestBodyBytes))
 	paymentsWithoutAuth.Use(utils.TimeoutMiddleware(cfg.Server.WebhookTimeout))
 	{
 		paymentsWithoutAuth.POST("stripe", w.StripeWebhook)

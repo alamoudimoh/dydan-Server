@@ -87,3 +87,18 @@ type RevenueCatEvent struct {
 	EventTimestamp    time.Time `json:"event_timestamp" gorm:"column:event_timestamp;not null"`
 	ProcessedAt       time.Time `json:"processed_at" gorm:"column:processed_at;not null"`
 }
+
+// StripeEvent is the durable replay guard for inbound Stripe webhook
+// deliveries. The primary key is Stripe's stable event ID, so a claim row
+// can only exist once per delivered event across process restarts and
+// server replicas (the unique constraint makes concurrent duplicate claims
+// impossible — exactly one insert wins). A row is inserted BEFORE business
+// processing starts and deleted again if processing fails, so a legitimate
+// Stripe retry after an error is reprocessed instead of being swallowed.
+type StripeEvent struct {
+	EventID     string    `json:"event_id" gorm:"column:event_id;primaryKey;not null"`
+	EventType   string    `json:"event_type" gorm:"column:event_type;not null"`
+	Livemode    bool      `json:"livemode" gorm:"column:livemode;not null;default:false"`
+	Status      string    `json:"status" gorm:"column:status;not null;default:processing"`
+	ProcessedAt time.Time `json:"processed_at" gorm:"column:processed_at;not null"`
+}

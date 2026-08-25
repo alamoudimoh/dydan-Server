@@ -47,6 +47,7 @@ func Migration(db *gorm.DB) error {
 		sModel.StripeSession{},
 		sModel.StripeInvoice{},
 		sModel.RevenueCatEvent{},
+		sModel.StripeEvent{},
 		sModel.RevenueCatSubscription{},
 		sModel.Subscription{},
 		uModel.MFASession{},
