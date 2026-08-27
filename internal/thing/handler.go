@@ -1,6 +1,7 @@
 package thing
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	tRepo "github.com/alamoudimoh/daydan-server/internal/thing/repo"
 	"github.com/alamoudimoh/daydan-server/logging"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type Handler struct {
@@ -145,13 +147,17 @@ func (h *Handler) UpdateThingState(c *gin.Context) {
 		return
 	}
 	thing, err := h.tRepo.GetThingByID(c, thingID)
-	old_state := thing.State
-	if thing.UserID != currentUser.ID {
-		c.JSON(403, gin.H{"error": "Forbidden"})
+	if errors.Is(err, gorm.ErrRecordNotFound) || thing == nil {
+		c.JSON(404, gin.H{"error": "Thing not found"})
 		return
 	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Unable to find thing"})
+		return
+	}
+	old_state := thing.State
+	if thing.UserID != currentUser.ID {
+		c.JSON(403, gin.H{"error": "Forbidden"})
 		return
 	}
 	thing.State = val

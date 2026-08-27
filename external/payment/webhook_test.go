@@ -3,11 +3,11 @@ package payment
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"strings"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -82,7 +82,23 @@ func newFixture(t *testing.T) *fixture {
 	f.router = gin.New()
 	f.router.Use(authn.LimitRequestBody(authn.MaxAuthRequestBodyBytes))
 	f.router.POST("/webhooks/stripe", f.h.StripeWebhook)
+	f.router.POST("/webhooks/revenuecat", f.h.RevenueCatWebhook)
 	return f
+}
+
+func TestRevenueCatUnconfiguredSecretFailsClosed(t *testing.T) {
+	f := newFixture(t)
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/revenuecat", strings.NewReader(`{"event":{"id":"attacker-event"}}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	f.router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusServiceUnavailable)
+	}
+	if got := subscriptionCount(t, f); got != 0 {
+		t.Fatal("unconfigured RevenueCat webhook produced side effects")
+	}
 }
 
 // signedEvent builds a Stripe checkout.session.completed event payload and
@@ -316,7 +332,7 @@ func TestStripeUnconfiguredSecretFailsClosed(t *testing.T) {
 	cfg.StripeConfig.WebhookSecret = "" // integration misconfigured
 	f := &fixture{
 		db: db,
-		h: NewWebhook(prepo.NewStripeDB(db), prepo.NewRevenueCatDB(db), prepo.NewSubscriptionDB(db), nil, nil, cfg),
+		h:  NewWebhook(prepo.NewStripeDB(db), prepo.NewRevenueCatDB(db), prepo.NewSubscriptionDB(db), nil, nil, cfg),
 	}
 	f.router = gin.New()
 	f.router.POST("/webhooks/stripe", f.h.StripeWebhook)
@@ -389,13 +405,14 @@ func TestStripeNoRawPayloadDumpedToDisk(t *testing.T) {
 	}
 }
 
-func newFixtureOnDB(t *testing.T, db *gorm.DB) *fixture {	t.Helper()
+func newFixtureOnDB(t *testing.T, db *gorm.DB) *fixture {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 	cfg := config.NewConfig()
 	cfg.StripeConfig.WebhookSecret = testWebhookSecret
 	f := &fixture{
 		db: db,
-		h: NewWebhook(prepo.NewStripeDB(db), prepo.NewRevenueCatDB(db), prepo.NewSubscriptionDB(db), nil, nil, cfg),
+		h:  NewWebhook(prepo.NewStripeDB(db), prepo.NewRevenueCatDB(db), prepo.NewSubscriptionDB(db), nil, nil, cfg),
 	}
 	f.router = gin.New()
 	f.router.POST("/webhooks/stripe", f.h.StripeWebhook)
