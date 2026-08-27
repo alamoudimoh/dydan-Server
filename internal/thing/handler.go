@@ -147,12 +147,16 @@ func (h *Handler) UpdateThingState(c *gin.Context) {
 		return
 	}
 	thing, err := h.tRepo.GetThingByID(c, thingID)
-	if errors.Is(err, gorm.ErrRecordNotFound) || thing == nil {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(404, gin.H{"error": "Thing not found"})
 		return
 	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Unable to find thing"})
+		return
+	}
+	if thing == nil {
+		c.JSON(404, gin.H{"error": "Thing not found"})
 		return
 	}
 	old_state := thing.State
