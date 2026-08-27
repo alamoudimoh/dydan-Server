@@ -241,7 +241,8 @@ func (c *Chore) CanDeleteHistory(
 		return true
 	}
 	for _, cu := range circleUsers {
-		if cu.UserID == userID && cu.Role == "admin" {
+		// AUD-07: Use IsManagerOrAdmin to cap managed-child accounts.
+		if cu.UserID == userID && cu.IsManagerOrAdmin() {
 			return true
 		}
 	}
@@ -255,7 +256,8 @@ func (c *Chore) CanEdit(userID int, circleUsers []*cModel.UserCircleDetail, upda
 		userHasPermission = true
 	}
 	for _, cu := range circleUsers {
-		if cu.UserID == userID && cu.Role == "admin" {
+		// AUD-07: Use IsManagerOrAdmin to cap managed-child accounts.
+		if cu.UserID == userID && cu.IsManagerOrAdmin() {
 			userHasPermission = true
 			break
 		}

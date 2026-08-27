@@ -25,7 +25,7 @@ func maintenanceTestHandler(t *testing.T) (*Handler, *gorm.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&uModel.User{}, &cModel.UserCircle{}, &tModel.Thing{}, &tModel.ThingChore{}, &mModel.Meter{}, &mModel.Reading{}, &mModel.ChoreSchedule{}, &chModel.Chore{}, &chModel.ChoreHistory{}); err != nil {
+	if err := db.AutoMigrate(&uModel.User{}, &cModel.UserCircle{}, &tModel.Thing{}, &tModel.ThingChore{}, &mModel.Meter{}, &mModel.Reading{}, &mModel.ChoreSchedule{}, &chModel.Chore{}, &chModel.ChoreHistory{}, &chModel.ChoreAssignees{}); err != nil {
 		t.Fatal(err)
 	}
 	return NewHandler(db, cRepo.NewCircleRepository(db)), db
@@ -87,7 +87,7 @@ func TestAssetCircleIsolationLinkingArchiveAndHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	detail, err := h.buildDetail(&gin.Context{}, asset, 1)
+	detail, err := h.buildDetail(&gin.Context{}, asset, 1, 1)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -45,6 +45,10 @@ func (h *Handler) role(c *gin.Context, circleID, userID int) (cModel.Role, bool)
 		c.JSON(http.StatusForbidden, gin.H{"error": "Active Circle membership required"})
 		return "", false
 	}
+	// AUD-07: Cap managed-child accounts to member regardless of stale role.
+	if u, ok := auth.CurrentUser(c); ok {
+		role = auth.CapEffectiveCircleRole(&u.User, role)
+	}
 	return role, true
 }
 

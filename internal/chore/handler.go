@@ -2593,7 +2593,8 @@ func authorizeChoreCompletionForUser(h *Handler, c *gin.Context, currentUser *uM
 	isCompletedByAuthorized := false
 
 	for _, circleUser := range circleUsers {
-		if circleUser.UserID == currentUser.ID && (circleUser.Role == circle.UserRoleAdmin || circleUser.Role == circle.UserRoleManager) {
+		// AUD-07: Use IsManagerOrAdmin to cap managed-child accounts.
+		if circleUser.UserID == currentUser.ID && circleUser.IsManagerOrAdmin() {
 			isAuthorized = true
 		}
 		if circleUser.UserID == *completedByUserID {
@@ -3650,7 +3651,8 @@ func (h *Handler) ApproveChore(c *gin.Context) {
 
 	isAdmin := false
 	for _, user := range circleUsers {
-		if user.UserID == currentUser.ID && (user.Role == circle.UserRoleAdmin || user.Role == circle.UserRoleManager) {
+		// AUD-07: Use IsManagerOrAdmin to cap managed-child accounts.
+		if user.UserID == currentUser.ID && user.IsManagerOrAdmin() {
 			isAdmin = true
 			break
 		}
@@ -3858,7 +3860,8 @@ func (h *Handler) RejectChore(c *gin.Context) {
 
 	isAdmin := false
 	for _, user := range circleUsers {
-		if user.UserID == currentUser.ID && (user.Role == circle.UserRoleAdmin || user.Role == circle.UserRoleManager) {
+		// AUD-07: Use IsManagerOrAdmin to cap managed-child accounts.
+		if user.UserID == currentUser.ID && user.IsManagerOrAdmin() {
 			isAdmin = true
 			break
 		}

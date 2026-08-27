@@ -93,7 +93,15 @@ func idParam(c *gin.Context) (int, bool) {
 
 func (h *Handler) canManage(c *gin.Context, userID, circleID int) bool {
 	role, err := h.circles.GetActiveUserCircleRole(c, circleID, userID)
-	if err != nil || (role != cModel.RoleAdmin && role != cModel.RoleManager) {
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Manager or admin access required"})
+		return false
+	}
+	// AUD-07: Cap managed-child accounts to member regardless of stale role.
+	if u, ok := auth.CurrentUser(c); ok {
+		role = auth.CapEffectiveCircleRole(&u.User, role)
+	}
+	if role != cModel.RoleAdmin && role != cModel.RoleManager {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Manager or admin access required"})
 		return false
 	}
@@ -244,7 +252,7 @@ func (h *Handler) Link(c *gin.Context) {
 }
 
 func (h *Handler) Detail(c *gin.Context) {
-	_, circleID, ok := current(c)
+	userID, circleID, ok := current(c)
 	if !ok {
 		return
 	}
@@ -257,7 +265,7 @@ func (h *Handler) Detail(c *gin.Context) {
 		c.JSON(404, gin.H{"error": "Asset not found"})
 		return
 	}
-	detail, err := h.buildDetail(c, *asset, circleID)
+	detail, err := h.buildDetail(c, *asset, circleID, userID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve asset"})
 		return
@@ -265,7 +273,7 @@ func (h *Handler) Detail(c *gin.Context) {
 	c.JSON(200, gin.H{"res": detail})
 }
 
-func (h *Handler) buildDetail(c *gin.Context, asset tModel.Thing, circleID int) (assetDetail, error) {
+func (h *Handler) buildDetail(c *gin.Context, asset tModel.Thing, circleID int, userID int) (assetDetail, error) {
 	d := assetDetail{Thing: asset, Meters: []mModel.Meter{}, Maintenance: []maintenanceItem{}, History: []serviceHistory{}, Status: "all_good"}
 	allMeters, err := mRepo.NewRepository(h.db).List(c, circleID)
 	if err != nil {
@@ -277,7 +285,15 @@ func (h *Handler) buildDetail(c *gin.Context, asset tModel.Thing, circleID int) 
 		}
 	}
 	var chores []chModel.Chore
-	if err := h.db.WithContext(c).Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").Where("tc.thing_id = ? AND chores.circle_id = ? AND chores.is_active = ?", asset.ID, circleID, true).Preload("MeterSchedule").Find(&chores).Error; err != nil {
+	// AUD-06: Apply chore privacy predicate so private chores are only visible
+	// to their creator or assignees, matching GetChores/GetChore repository queries.
+	if err := h.db.WithContext(c).
+		Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").
+		Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id AND chore_assignees.user_id = ?", userID).
+		Where("tc.thing_id = ? AND chores.circle_id = ? AND chores.is_active = ?", asset.ID, circleID, true).
+		Where("((chores.is_private = false) OR (chores.is_private = true AND (chores.created_by = ? OR chore_assignees.user_id = ?)))", userID, userID).
+		Preload("MeterSchedule").
+		Find(&chores).Error; err != nil {
 		return d, err
 	}
 	now := time.Now().UTC()
@@ -310,7 +326,7 @@ func (h *Handler) buildDetail(c *gin.Context, asset tModel.Thing, circleID int) 
 			hasUpcoming = true
 		}
 		var last serviceHistory
-		q := h.historyQuery(c, asset.ID, circleID).Where("chore_histories.chore_id = ?", chore.ID).Limit(1)
+		q := h.historyQuery(c, asset.ID, circleID, userID).Where("chore_histories.chore_id = ?", chore.ID).Limit(1)
 		if q.Scan(&last).Error == nil && last.ID != 0 {
 			item.LastService = &last
 		}
@@ -319,7 +335,7 @@ func (h *Handler) buildDetail(c *gin.Context, asset tModel.Thing, circleID int) 
 	if d.Status != "attention" && hasUpcoming {
 		d.Status = "upcoming"
 	}
-	if err := h.historyQuery(c, asset.ID, circleID).Limit(50).Scan(&d.History).Error; err != nil {
+	if err := h.historyQuery(c, asset.ID, circleID, userID).Limit(50).Scan(&d.History).Error; err != nil {
 		return d, err
 	}
 	sort.SliceStable(d.Maintenance, func(i, j int) bool {
@@ -338,12 +354,21 @@ func (h *Handler) buildDetail(c *gin.Context, asset tModel.Thing, circleID int) 
 	return d, nil
 }
 
-func (h *Handler) historyQuery(c *gin.Context, assetID, circleID int) *gorm.DB {
-	return h.db.WithContext(c).Table("chore_histories").Select("chore_histories.id, chore_histories.chore_id, chores.name AS chore_name, chore_histories.performed_at, chore_histories.completed_by, COALESCE(users.display_name, users.username) AS completed_by_name, chore_histories.meter_reading, meters.unit AS meter_unit, chore_histories.points").Joins("JOIN chores ON chores.id = chore_histories.chore_id").Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").Joins("LEFT JOIN users ON users.id = chore_histories.completed_by").Joins("LEFT JOIN meters ON meters.id = chore_histories.meter_id").Where("tc.thing_id = ? AND chores.circle_id = ? AND chore_histories.status = ?", assetID, circleID, chModel.ChoreHistoryStatusCompleted).Order("chore_histories.performed_at DESC, chore_histories.id DESC")
+func (h *Handler) historyQuery(c *gin.Context, assetID, circleID, userID int) *gorm.DB {
+	return h.db.WithContext(c).Table("chore_histories").
+		Select("chore_histories.id, chore_histories.chore_id, chores.name AS chore_name, chore_histories.performed_at, chore_histories.completed_by, COALESCE(users.display_name, users.username) AS completed_by_name, chore_histories.meter_reading, meters.unit AS meter_unit, chore_histories.points").
+		Joins("JOIN chores ON chores.id = chore_histories.chore_id").
+		Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").
+		Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id AND chore_assignees.user_id = ?", userID).
+		Joins("LEFT JOIN users ON users.id = chore_histories.completed_by").
+		Joins("LEFT JOIN meters ON meters.id = chore_histories.meter_id").
+		Where("tc.thing_id = ? AND chores.circle_id = ? AND chore_histories.status = ?", assetID, circleID, chModel.ChoreHistoryStatusCompleted).
+		Where("((chores.is_private = false) OR (chores.is_private = true AND (chores.created_by = ? OR chore_assignees.user_id = ?)))", userID, userID).
+		Order("chore_histories.performed_at DESC, chore_histories.id DESC")
 }
 
 func (h *Handler) Center(c *gin.Context) {
-	_, circleID, ok := current(c)
+	userID, circleID, ok := current(c)
 	if !ok {
 		return
 	}
@@ -376,12 +401,28 @@ func (h *Handler) Center(c *gin.Context) {
 		}
 	}
 	var chores []chModel.Chore
-	if err := h.db.WithContext(c).Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").Where("chores.circle_id = ? AND chores.is_active = ?", circleID, true).Preload("ThingChore").Preload("MeterSchedule").Find(&chores).Error; err != nil {
+	// AUD-06: Apply chore privacy predicate so private chores are only visible
+	// to their creator or assignees.
+	if err := h.db.WithContext(c).
+		Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").
+		Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id AND chore_assignees.user_id = ?", userID).
+		Where("chores.circle_id = ? AND chores.is_active = ?", circleID, true).
+		Where("((chores.is_private = false) OR (chores.is_private = true AND (chores.created_by = ? OR chore_assignees.user_id = ?)))", userID, userID).
+		Preload("ThingChore").Preload("MeterSchedule").Find(&chores).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve maintenance"})
 		return
 	}
 	var history []serviceHistory
-	if err := h.db.WithContext(c).Table("chore_histories").Select("chore_histories.id, chore_histories.chore_id, chores.name AS chore_name, tc.thing_id AS asset_id, chore_histories.performed_at, chore_histories.completed_by, COALESCE(users.display_name, users.username) AS completed_by_name, chore_histories.meter_reading, meters.unit AS meter_unit, chore_histories.points").Joins("JOIN chores ON chores.id = chore_histories.chore_id").Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").Joins("LEFT JOIN users ON users.id = chore_histories.completed_by").Joins("LEFT JOIN meters ON meters.id = chore_histories.meter_id").Where("chores.circle_id = ? AND chore_histories.status = ?", circleID, chModel.ChoreHistoryStatusCompleted).Order("chore_histories.performed_at DESC, chore_histories.id DESC").Limit(200).Scan(&history).Error; err != nil {
+	if err := h.db.WithContext(c).Table("chore_histories").
+		Select("chore_histories.id, chore_histories.chore_id, chores.name AS chore_name, tc.thing_id AS asset_id, chore_histories.performed_at, chore_histories.completed_by, COALESCE(users.display_name, users.username) AS completed_by_name, chore_histories.meter_reading, meters.unit AS meter_unit, chore_histories.points").
+		Joins("JOIN chores ON chores.id = chore_histories.chore_id").
+		Joins("JOIN thing_chores tc ON tc.chore_id = chores.id").
+		Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id AND chore_assignees.user_id = ?", userID).
+		Joins("LEFT JOIN users ON users.id = chore_histories.completed_by").
+		Joins("LEFT JOIN meters ON meters.id = chore_histories.meter_id").
+		Where("chores.circle_id = ? AND chore_histories.status = ?", circleID, chModel.ChoreHistoryStatusCompleted).
+		Where("((chores.is_private = false) OR (chores.is_private = true AND (chores.created_by = ? OR chore_assignees.user_id = ?)))", userID, userID).
+		Order("chore_histories.performed_at DESC, chore_histories.id DESC").Limit(200).Scan(&history).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve maintenance"})
 		return
 	}
