@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,8 +17,8 @@ import (
 	"github.com/alamoudimoh/daydan-server/external/payment/model"
 	pDB "github.com/alamoudimoh/daydan-server/external/payment/repo"
 	stripeService "github.com/alamoudimoh/daydan-server/external/payment/service"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 	authn "github.com/alamoudimoh/daydan-server/internal/auth"
+	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	stripe "github.com/stripe/stripe-go/v76"
@@ -31,14 +32,14 @@ import (
 const DefaultWebhookTolerance = webhook.DefaultTolerance
 
 type Webhook struct {
-	stripeDB       pDB.StripeDB
-	revenueCatDB   pDB.RevenueCatDB
-	subscriptionDB pDB.SubscriptionDB
-	whitelistIPs   map[string]bool
-	stripe         *stripeService.StripeService
-	prices         []config.StripePrices
+	stripeDB         pDB.StripeDB
+	revenueCatDB     pDB.RevenueCatDB
+	subscriptionDB   pDB.SubscriptionDB
+	whitelistIPs     map[string]bool
+	stripe           *stripeService.StripeService
+	prices           []config.StripePrices
 	revenueCatConfig config.RevenueCatConfig
-	userRepo       *uRepo.UserRepository
+	userRepo         *uRepo.UserRepository
 
 	webhookSecret string
 	tolerance     time.Duration
@@ -323,6 +324,7 @@ func (h *Webhook) processStripeEvent(c *gin.Context, logger *zap.SugaredLogger, 
 	}
 	return nil
 }
+
 // RevenueCat webhook event structure
 type RevenueCatWebhookEvent struct {
 	APIVersion string          `json:"api_version"`
@@ -373,9 +375,14 @@ type RevenueCatTransaction struct {
 func (h *Webhook) RevenueCatWebhook(c *gin.Context) {
 	logger := logging.FromContext(c)
 
-	// check authentication header to be equal to secret123:
+	if strings.TrimSpace(h.revenueCatConfig.AuthSecret) == "" {
+		logger.Error("revenuecat.webhook.RevenueCatWebhook is not configured")
+		c.JSON(http.StatusServiceUnavailable, "RevenueCat webhook is not configured")
+		return
+	}
+
 	authHeader := c.GetHeader("Authorization")
-	if authHeader != h.revenueCatConfig.AuthSecret {
+	if subtle.ConstantTimeCompare([]byte(authHeader), []byte(h.revenueCatConfig.AuthSecret)) != 1 {
 		// Log only the failure category. The Authorization header carries the
 		// webhook secret and must never be written to logs.
 		logger.Errorw("revenuecat.webhook.RevenueCatWebhook failed to validate auth header", "header_present", authHeader != "")
