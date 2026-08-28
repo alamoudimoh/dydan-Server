@@ -2,12 +2,16 @@ name: Scheduled Beta Release
 
 on:
   schedule:
-    - cron: '0 4  * * *'     # Daily at 04:00 UTC
-  workflow_dispatch:         # Allow manual trigger
+    - cron: "0 4  * * *" # Daily at 04:00 UTC
+  workflow_dispatch: # Allow manual trigger
 
 permissions:
   contents: write
   actions: write
+
+concurrency:
+  group: scheduled-beta-release
+  cancel-in-progress: false
 
 jobs:
   beta-release:
@@ -17,7 +21,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history needed to inspect tags and commits
+          fetch-depth: 0 # Full history needed to inspect tags and commits
 
       - name: Determine and push beta tag
         id: tag

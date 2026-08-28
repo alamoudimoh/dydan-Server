@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -172,6 +173,85 @@ func TestRefreshConcurrentRequestsMintOnlyOneSuccessor(t *testing.T) {
 	}
 	if len(rotated) != 1 || retries != tabs-1 {
 		t.Fatalf("expected one successor and %d retries, got %d successors and %d retries", tabs-1, len(rotated), retries)
+	}
+	if liveFamilySessions(t, db, family) == 0 {
+		t.Fatal("family was revoked by concurrent refreshes")
+	}
+}
+
+func TestRefreshConcurrentRequestsAcrossSQLiteConnections(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "refresh-rotation.db")
+	dsn := "file:" + filepath.ToSlash(path) + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(1)"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&uModel.User{}, &uModel.UserSession{}, &uModel.UserNotificationTarget{}, &cModel.Circle{}, &cModel.UserCircle{}); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	cfg := &config.Config{}
+	cfg.Jwt.SessionTime = time.Hour
+	cfg.Jwt.AccessTokenTime = 15 * time.Minute
+	cfg.Jwt.MaxRefresh = 24 * time.Hour
+	cfg.Jwt.Secret = "test-secret-that-is-long-enough-1234"
+	seedRepo := uRepo.NewUserRepository(db, cfg)
+	seedService := NewTokenService(seedRepo, nil, cfg)
+	user := &uModel.User{Username: "multi-connection-rotation-user", CircleID: 1}
+	if err := db.Create(user).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	initial, err := seedService.GenerateTokens(context.Background(), &uModel.UserDetails{User: *user})
+	if err != nil {
+		t.Fatalf("generate tokens: %v", err)
+	}
+	family := familyIDOf(t, seedService, db, initial.RefreshToken)
+
+	const requests = 16
+	services := make([]*TokenService, requests)
+	for i := range services {
+		connection, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+		if err != nil {
+			t.Fatalf("open connection %d: %v", i, err)
+		}
+		sqlDB, err := connection.DB()
+		if err != nil {
+			t.Fatalf("get connection %d: %v", i, err)
+		}
+		sqlDB.SetMaxOpenConns(1)
+		t.Cleanup(func() { _ = sqlDB.Close() })
+		services[i] = NewTokenService(uRepo.NewUserRepository(connection, cfg), nil, cfg)
+	}
+
+	start := make(chan struct{})
+	results := make(chan error, requests)
+	var wg sync.WaitGroup
+	for _, service := range services {
+		wg.Add(1)
+		go func(service *TokenService) {
+			defer wg.Done()
+			<-start
+			_, err := service.RefreshTokens(context.Background(), initial.RefreshToken)
+			results <- err
+		}(service)
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+
+	successes := 0
+	retries := 0
+	for err := range results {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, ErrRefreshRetry):
+			retries++
+		default:
+			t.Fatalf("unexpected concurrent refresh error: %v", err)
+		}
+	}
+	if successes != 1 || retries != requests-1 {
+		t.Fatalf("expected 1 success and %d retries, got %d successes and %d retries", requests-1, successes, retries)
 	}
 	if liveFamilySessions(t, db, family) == 0 {
 		t.Fatal("family was revoked by concurrent refreshes")
