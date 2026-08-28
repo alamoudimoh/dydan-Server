@@ -8,11 +8,13 @@
 
 version: 2
 
+project_name: daydan
+
 before:
   hooks:
     # - go mod tidy
     # Add this line to trigger Swagger generation
-    - go install github.com/swaggo/swag/cmd/swag@latest
+    - go install github.com/swaggo/swag/cmd/swag@v1.16.6
     - sh -c '$(go env GOPATH)/bin/swag init -g docs/handler.go'
 
 
