@@ -2,19 +2,19 @@ name: Go Release
 
 permissions:
   contents: write
-  
+
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release (e.g. v1.0.0-beta.1)'
-        required: false
+        description: "Tag to release (e.g. v1.0.0-beta.1)"
+        required: true
         type: string
       frontend_ref:
-        description: 'daydan-app ref (tag/branch/SHA) to embed. Required for reproducible builds; empty = daydan-app@develop HEAD (non-reproducible).'
+        description: "daydan-app ref (tag/branch/SHA) to embed. Required for reproducible builds; empty = daydan-app@develop HEAD (non-reproducible)."
         required: false
         type: string
 
@@ -25,7 +25,21 @@ jobs:
     steps:
       - name: Resolve release tag
         id: resolve
-        run: echo "tag=${{ inputs.tag || github.ref_name }}" >> $GITHUB_OUTPUT
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          PUSH_TAG: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -z "$INPUT_TAG" ]; then
+            echo "::error::Manual releases require an explicit tag."
+            exit 1
+          fi
+          tag="${INPUT_TAG:-$PUSH_TAG}"
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$'; then
+            echo "::error::Release tag must be a v-prefixed semantic version, got: $tag"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -64,7 +78,7 @@ jobs:
           # Pin to the exact commit resolved above; never a moving ref.
           ref: ${{ steps.frontend-ref.outputs.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          path: 'frontend-code'
+          path: "frontend-code"
 
       - name: Verify frontend checkout matches pinned commit
         run: |
@@ -81,19 +95,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: true 
+          cache: true
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          # either 'goreleaser' (default) or 'goreleaser-pro'
-          distribution: goreleaser
-          version: v2.8.1
-          args: release --clean --skip=validate
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # I added QEMU Emulation support for non-native architectures and also Buildx to enables multi-architecture. not sure if there is better/faster way to do this
-      - name: Set up QEMU 
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -141,6 +146,18 @@ jobs:
             COMMIT=${{ steps.commit.outputs.sha }}
             DAYDAN_FRONTEND_COMMIT=${{ steps.frontend-ref.outputs.sha }}
             DAYDAN_FRONTEND_REF=${{ steps.frontend-ref.outputs.ref }}
+
+      # Publish the GitHub release only after every distributable image is
+      # available. This prevents a release page that advertises a version
+      # whose Docker image failed to build or push.
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.8.1
+          args: release --clean --skip=validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Provenance is written to the run summary and baked into the image as
       # OCI labels (see Dockerfile), so the server/frontend pairing of a

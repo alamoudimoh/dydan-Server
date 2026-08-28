@@ -16,6 +16,7 @@ import (
 	storageModel "github.com/alamoudimoh/daydan-server/internal/storage/model"
 	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
 	"github.com/alamoudimoh/daydan-server/logging"
+	modernsqlite "github.com/glebarez/go-sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -640,28 +641,54 @@ func (r *UserRepository) MarkSessionUsedIfUnused(c context.Context, sessionID st
 	return res.RowsAffected > 0, res.Error
 }
 
+const refreshRotationSQLiteRetries = 5
+
+const (
+	sqliteBusyCode   = 5
+	sqliteLockedCode = 6
+)
+
+func isRetryableSQLiteLock(err error) bool {
+	var sqliteErr *modernsqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+	code := sqliteErr.Code() & 0xff
+	return code == sqliteBusyCode || code == sqliteLockedCode
+}
+
 func (r *UserRepository) RotateUserSession(c context.Context, oldSessionID string, next *uModel.UserSession) (bool, error) {
-	won := false
-	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
-		if _, err := lockUserSessionWrites(tx, next.UserID); err != nil {
-			return err
-		}
-		res := tx.Model(&uModel.UserSession{}).
-			Where("id = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?", oldSessionID, time.Now().UTC()).
-			Update("used_at", time.Now().UTC())
-		if res.Error != nil {
-			return res.Error
-		}
-		if res.RowsAffected != 1 {
+	for attempt := 0; attempt <= refreshRotationSQLiteRetries; attempt++ {
+		won := false
+		err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+			if _, err := lockUserSessionWrites(tx, next.UserID); err != nil {
+				return err
+			}
+			res := tx.Model(&uModel.UserSession{}).
+				Where("id = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?", oldSessionID, time.Now().UTC()).
+				Update("used_at", time.Now().UTC())
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected != 1 {
+				return nil
+			}
+			if err := tx.Create(next).Error; err != nil {
+				return err
+			}
+			won = true
 			return nil
+		})
+		if err == nil || !isRetryableSQLiteLock(err) || attempt == refreshRotationSQLiteRetries {
+			return won, err
 		}
-		if err := tx.Create(next).Error; err != nil {
-			return err
+		select {
+		case <-c.Done():
+			return false, c.Err()
+		case <-time.After(time.Duration(attempt+1) * time.Millisecond):
 		}
-		won = true
-		return nil
-	})
-	return won, err
+	}
+	return false, nil
 }
 
 // GetLatestFamilySession returns the newest live (non-revoked, unexpired)
