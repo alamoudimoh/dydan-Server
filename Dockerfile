@@ -69,7 +69,7 @@ RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
       -buildvcs=false -o /daydanctl ./cmd/daydanctl
 
 # Stage 3: Create a smaller runtime image
-FROM alpine:latest
+FROM alpine:3.21
 
 # Install necessary CA certificates and timezone data, plus su-exec for the
 # entrypoint's privilege drop (tiny, static, and signal-transparent).

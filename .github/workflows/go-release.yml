@@ -27,6 +27,11 @@ jobs:
         id: resolve
         run: echo "tag=${{ inputs.tag || github.ref_name }}" >> $GITHUB_OUTPUT
 
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.tag }}
+
       # The release image must embed the DayDan frontend, never upstream
       # Donetick.
       #
@@ -52,11 +57,6 @@ jobs:
           REPO_URL: https://github.com/${{ github.repository_owner }}/daydan-app.git
         run: bash scripts/resolve-frontend-ref.sh
 
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.resolve.outputs.tag }}
-
       - name: Checkout Frontend
         uses: actions/checkout@v4
         with:
@@ -81,7 +81,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          check-latest: true
           cache: true 
 
       - name: Run GoReleaser
@@ -89,8 +88,7 @@ jobs:
         with:
           # either 'goreleaser' (default) or 'goreleaser-pro'
           distribution: goreleaser
-          # 'latest', 'nightly', or a semver
-          version: latest
+          version: v2.8.1
           args: release --clean --skip=validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -116,16 +114,17 @@ jobs:
         run: |
           VERSION=${{ steps.resolve.outputs.tag }}
           DOCKER_USER=${{ secrets.DOCKER_USERNAME }}
+          DOCKER_IMAGE=${DOCKER_USER}/daydan
 
           # Check if this is a pre-release (contains -, like v1.0.0-beta.1)
           if [[ "$VERSION" =~ - ]]; then
             # Extract pre-release channel (alpha, beta, rc, etc.)
             CHANNEL=$(echo "$VERSION" | sed -E 's/v[0-9]+\.[0-9]+\.[0-9]+-([a-z]+).*/\1/')
             echo "Pre-release detected: $VERSION (channel: $CHANNEL)"
-            echo "tags=${DOCKER_USER}/donetick:${VERSION},${DOCKER_USER}/donetick:${CHANNEL}" >> $GITHUB_OUTPUT
+            echo "tags=${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:${CHANNEL}" >> $GITHUB_OUTPUT
           else
             echo "Stable release detected: $VERSION"
-            echo "tags=${DOCKER_USER}/donetick:latest,${DOCKER_USER}/donetick:${VERSION}" >> $GITHUB_OUTPUT
+            echo "tags=${DOCKER_IMAGE}:latest,${DOCKER_IMAGE}:${VERSION}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push Docker image

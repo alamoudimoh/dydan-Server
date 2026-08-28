@@ -36,7 +36,14 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout frontend build context
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/daydan-app
+          path: frontend-code
       - name: Verify Compose and fresh/restart container behavior
+        env:
+          DAYDAN_FRONTEND_CONTEXT: frontend-code
         run: bash scripts/verify-container.sh
 
   postgres-security:

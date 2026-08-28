@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM alpine:latest AS builder
+FROM alpine:3.21 AS builder
 
 WORKDIR /usr/src/app
 
@@ -7,7 +7,7 @@ COPY donetick .
 COPY config/selfhosted.yaml config/local.yaml ./config/
 
 # Stage 2: Create a smaller runtime image
-FROM alpine:latest
+FROM alpine:3.21
 
 # Install timezone package
 RUN apk --no-cache add tzdata
