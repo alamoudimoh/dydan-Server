@@ -88,7 +88,8 @@ func Migration(db *gorm.DB) error {
 		return err
 	}
 	// Legacy Things were user-scoped. Assets are circle-scoped; preserve every
-	// existing row by adopting the owner's current circle on upgrade.
+	// existing row by adopting the owner's current circle on upgrade. Visibility
+	// remains owner-only unless a maintenance asset explicitly sets is_shared.
 	if err := db.Exec(`UPDATE things SET circle_id = (SELECT circle_id FROM users WHERE users.id = things.user_id) WHERE (circle_id IS NULL OR circle_id = 0) AND user_id IS NOT NULL`).Error; err != nil {
 		return err
 	}

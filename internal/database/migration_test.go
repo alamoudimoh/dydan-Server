@@ -28,6 +28,9 @@ func TestMigrationScriptsSQLite(t *testing.T) {
 	if !db.Migrator().HasTable(&rewardModel.Reward{}) || !db.Migrator().HasTable(&rewardModel.RewardRequest{}) || !db.Migrator().HasColumn("points_histories", "reward_request_id") {
 		t.Fatal("rewards schema was not created")
 	}
+	if !db.Migrator().HasColumn("things", "is_shared") {
+		t.Fatal("thing visibility schema was not created")
+	}
 	if err := Migration(db); err != nil {
 		t.Fatalf("AutoMigrate second run failed: %v", err)
 	}
@@ -73,7 +76,7 @@ func TestMigrationBackfillsLegacyThingCircleAndIsIdempotent(t *testing.T) {
 	if err := db.First(&migrated, thing.ID).Error; err != nil {
 		t.Fatal(err)
 	}
-	if migrated.CircleID != 42 || migrated.Name != thing.Name {
+	if migrated.CircleID != 42 || migrated.Name != thing.Name || migrated.IsShared {
 		t.Fatalf("legacy thing was not preserved: %#v", migrated)
 	}
 }

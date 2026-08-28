@@ -171,7 +171,7 @@ func (h *Handler) request(c *gin.Context) {
 	if h.inbox != nil {
 		if members, err := h.circles.GetCircleUsers(c, cid); err == nil {
 			for _, member := range members {
-				if member.IsActive && member.Role == cModel.UserRoleAdmin {
+				if member.IsActive && !member.IsManagedAccount && member.Role == cModel.UserRoleAdmin {
 					id := r.ID
 					_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: cid, UserID: member.UserID, Type: "reward_request_pending", Severity: "warning", Title: "New reward request", Message: r.RewardNameSnapshot + " · " + strconv.Itoa(r.CostPointsSnapshot) + " pts", EntityType: "reward_request", EntityID: &id, DedupKey: "reward_request_pending:" + strconv.Itoa(r.ID) + ":" + strconv.Itoa(member.UserID)})
 				}

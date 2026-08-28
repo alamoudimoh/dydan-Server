@@ -7,6 +7,7 @@ import (
 
 	auth "github.com/alamoudimoh/daydan-server/internal/auth"
 	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
+	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
 	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
 	"github.com/alamoudimoh/daydan-server/internal/events"
 	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
@@ -42,6 +43,23 @@ func (h *Handler) validCategory(c *gin.Context, categoryID *int, circleID int) b
 	var count int64
 	h.tRepo.DB().Table("labels").Where("id = ? AND circle_id = ? AND archived_at IS NULL", *categoryID, circleID).Count(&count)
 	return count == 1
+}
+
+func (h *Handler) canModifyThing(c *gin.Context, userID, circleID int, thing *tModel.Thing) bool {
+	if thing.UserID != userID {
+		return false
+	}
+	if !thing.IsShared {
+		return true
+	}
+	role, err := h.circleRepo.GetActiveUserCircleRole(c, circleID, userID)
+	if err != nil {
+		return false
+	}
+	if user, ok := auth.CurrentUser(c); ok {
+		role = auth.CapEffectiveCircleRole(&user.User, role)
+	}
+	return role == cModel.RoleAdmin || role == cModel.RoleManager
 }
 
 func NewHandler(cr *chRepo.ChoreRepository, circleRepo *cRepo.CircleRepository,
@@ -160,7 +178,7 @@ func (h *Handler) UpdateThingState(c *gin.Context) {
 		return
 	}
 	old_state := thing.State
-	if thing.UserID != currentUser.ID {
+	if !h.canModifyThing(c, currentUser.ID, currentUser.CircleID, thing) {
 		c.JSON(403, gin.H{"error": "Forbidden"})
 		return
 	}
@@ -250,7 +268,7 @@ func (h *Handler) UpdateThing(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Unable to find thing"})
 		return
 	}
-	if thing.UserID != currentUser.ID {
+	if !h.canModifyThing(c, currentUser.ID, currentUser.CircleID, thing) {
 		c.JSON(403, gin.H{"error": "Forbidden"})
 		return
 	}
@@ -340,7 +358,7 @@ func (h *Handler) GetThingHistory(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Unable to find thing"})
 		return
 	}
-	if thing.UserID != currentUser.ID {
+	if !h.canModifyThing(c, currentUser.ID, currentUser.CircleID, thing) {
 		c.JSON(403, gin.H{"error": "Forbidden"})
 		return
 	}

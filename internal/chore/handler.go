@@ -2489,7 +2489,7 @@ func (h *Handler) CompleteChore(c *gin.Context) {
 			return
 		}
 		for _, member := range circleUsers {
-			if member.IsActive && member.UserID != completedBy && (member.Role == circle.UserRoleAdmin || member.Role == circle.UserRoleManager) {
+			if member.UserID != completedBy && member.IsManagerOrAdmin() {
 				entityID := chore.ID
 				if h.inbox != nil {
 					_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: actualUser.CircleID, UserID: member.UserID, Type: "task_approval_required", Severity: "warning", Title: "Task completion needs approval", Message: chore.Name, EntityType: "chore", EntityID: &entityID, DedupKey: fmt.Sprintf("task_approval_required:%d:%d:%s", chore.ID, member.UserID, completedDate.UTC().Format(time.RFC3339Nano))})
@@ -2593,7 +2593,8 @@ func authorizeChoreCompletionForUser(h *Handler, c *gin.Context, currentUser *uM
 	isCompletedByAuthorized := false
 
 	for _, circleUser := range circleUsers {
-		if circleUser.UserID == currentUser.ID && (circleUser.Role == circle.UserRoleAdmin || circleUser.Role == circle.UserRoleManager) {
+		// AUD-07: Use IsManagerOrAdmin to cap managed-child accounts.
+		if circleUser.UserID == currentUser.ID && circleUser.IsManagerOrAdmin() {
 			isAuthorized = true
 		}
 		if circleUser.UserID == *completedByUserID {
@@ -3650,7 +3651,8 @@ func (h *Handler) ApproveChore(c *gin.Context) {
 
 	isAdmin := false
 	for _, user := range circleUsers {
-		if user.UserID == currentUser.ID && (user.Role == circle.UserRoleAdmin || user.Role == circle.UserRoleManager) {
+		// AUD-07: Use IsManagerOrAdmin to cap managed-child accounts.
+		if user.UserID == currentUser.ID && user.IsManagerOrAdmin() {
 			isAdmin = true
 			break
 		}
@@ -3858,7 +3860,8 @@ func (h *Handler) RejectChore(c *gin.Context) {
 
 	isAdmin := false
 	for _, user := range circleUsers {
-		if user.UserID == currentUser.ID && (user.Role == circle.UserRoleAdmin || user.Role == circle.UserRoleManager) {
+		// AUD-07: Use IsManagerOrAdmin to cap managed-child accounts.
+		if user.UserID == currentUser.ID && user.IsManagerOrAdmin() {
 			isAdmin = true
 			break
 		}

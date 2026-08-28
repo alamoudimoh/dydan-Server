@@ -6,9 +6,12 @@ import (
 )
 
 type Thing struct {
-	ID          int           `json:"id" gorm:"primary_key"`
-	UserID      int           `json:"userID" gorm:"column:user_id"`
-	CircleID    int           `json:"circleId" gorm:"column:circle_id"`
+	ID       int `json:"id" gorm:"primary_key"`
+	UserID   int `json:"userID" gorm:"column:user_id"`
+	CircleID int `json:"circleId" gorm:"column:circle_id"`
+	// IsShared distinguishes circle maintenance assets from a user's personal
+	// Things. Existing and ordinary Things remain private by default.
+	IsShared    bool          `json:"isShared" gorm:"column:is_shared;default:false"`
 	Name        string        `json:"name" gorm:"column:name"`
 	Description *string       `json:"description,omitempty" gorm:"column:description;type:text"`
 	Category    string        `json:"category,omitempty" gorm:"column:category"`
