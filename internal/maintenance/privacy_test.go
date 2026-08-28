@@ -47,7 +47,7 @@ func setupPrivacyTest(t *testing.T) (*Handler, *gorm.DB, uModel.User, uModel.Use
 	}
 
 	// A creates a Thing (asset) in the shared circle
-	asset := tModel.Thing{ID: 100, UserID: 10, CircleID: 5, Name: "Alice's Car", Type: "text", CreatedAt: &now, UpdatedAt: &now}
+	asset := tModel.Thing{ID: 100, UserID: 10, CircleID: 5, IsShared: true, Name: "Alice's Car", Type: "text", CreatedAt: &now, UpdatedAt: &now}
 	if err := db.Create(&asset).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -240,10 +240,46 @@ func TestAUD06_AdminDoesNotBypassPrivateChorePrivacy(t *testing.T) {
 	_ = asset
 }
 
+func TestAUD06_UnrelatedManagerCannotLinkPrivateChore(t *testing.T) {
+	h, db, _, _, _, privateChore, _ := setupPrivacyTest(t)
+	now := time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC)
+	manager := uModel.User{ID: 30, Username: "carol", DisplayName: "Carol", CircleID: 5}
+	sharedAsset := tModel.Thing{ID: 102, UserID: manager.ID, CircleID: 5, IsShared: true, Name: "Shared boiler", Type: "text", CreatedAt: &now, UpdatedAt: &now}
+	if err := db.Create(&manager).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&cModel.UserCircle{UserID: manager.ID, CircleID: 5, Role: cModel.UserRoleManager, IsActive: true}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&sharedAsset).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, response := maintenanceContext("POST", "/maintenance/assets/102/links", uModel.UserDetails{User: manager}, linkRequest{ChoreID: &privateChore.ID})
+	ctx.Params = gin.Params{{Key: "id", Value: "102"}}
+	h.Link(ctx)
+	if response.Code != 404 {
+		t.Fatalf("unrelated manager linked a private chore: %d %s", response.Code, response.Body.String())
+	}
+	var link tModel.ThingChore
+	if err := db.Where("chore_id = ?", privateChore.ID).First(&link).Error; err != nil {
+		t.Fatal(err)
+	}
+	if link.ThingID == sharedAsset.ID {
+		t.Fatal("private chore relationship was reassigned by unrelated manager")
+	}
+}
+
 // TestAUD06_AssigneeCanSeePrivateChoreMaintenance verifies that a user assigned
 // to a private chore can see its maintenance data through the Thing detail.
 func TestAUD06_AssigneeCanSeePrivateChoreMaintenance(t *testing.T) {
 	h, db, userA, userB, asset, privateChore, _ := setupPrivacyTest(t)
+
+	// The asset itself is personal. B can still see it because B is explicitly
+	// assigned to its private chore.
+	if err := db.Model(&tModel.Thing{}).Where("id = ?", asset.ID).Update("is_shared", false).Error; err != nil {
+		t.Fatal(err)
+	}
 
 	// Assign user B as an assignee of the private chore
 	if err := db.Create(&chModel.ChoreAssignees{ChoreID: privateChore.ID, UserID: userB.ID}).Error; err != nil {
@@ -278,6 +314,71 @@ func TestAUD06_AssigneeCanSeePrivateChoreMaintenance(t *testing.T) {
 
 	_ = userA
 	_ = asset
+}
+
+// TestAUD06_PersonalAssetNeverLeaksToPeers verifies that ordinary Things keep
+// the owner-only policy used by /things when viewed through maintenance APIs.
+func TestAUD06_PersonalAssetNeverLeaksToPeers(t *testing.T) {
+	h, db, userA, userB, _, _, _ := setupPrivacyTest(t)
+	now := time.Date(2026, 8, 1, 11, 0, 0, 0, time.UTC)
+	personal := tModel.Thing{ID: 101, UserID: userA.ID, CircleID: 5, Name: "Alice private medical device", Type: "text", CreatedAt: &now, UpdatedAt: &now}
+	privateChore := chModel.Chore{ID: 202, Name: "Private calibration", CircleID: 5, CreatedBy: userA.ID, IsActive: true, IsPrivate: true, CreatedAt: now, UpdatedAt: now}
+	if err := db.Create(&personal).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&privateChore).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&tModel.ThingChore{ThingID: personal.ID, ChoreID: privateChore.ID}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&chModel.ChoreHistory{ChoreID: privateChore.ID, PerformedAt: &now, CompletedBy: userA.ID, Status: chModel.ChoreHistoryStatusCompleted, CreatedAt: now}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Same-circle peer cannot fetch the resource at all.
+	bobCtx, detail := maintenanceContext("GET", "/maintenance/assets/101", uModel.UserDetails{User: userB}, nil)
+	bobCtx.Params = gin.Params{{Key: "id", Value: "101"}}
+	h.Detail(bobCtx)
+	if detail.Code != 404 {
+		t.Fatalf("personal asset detail leaked to peer: %d %s", detail.Code, detail.Body.String())
+	}
+
+	// The database-backed list and center queries also exclude it, rather than
+	// relying on response filtering after the private row is loaded.
+	bobCtx, list := maintenanceContext("GET", "/maintenance/assets", uModel.UserDetails{User: userB}, nil)
+	h.List(bobCtx)
+	if list.Code != 200 || bytes.Contains(list.Body.Bytes(), []byte(personal.Name)) {
+		t.Fatalf("personal asset leaked from list: %d %s", list.Code, list.Body.String())
+	}
+	bobCtx, center := maintenanceContext("GET", "/maintenance", uModel.UserDetails{User: userB}, nil)
+	h.Center(bobCtx)
+	if center.Code != 200 || bytes.Contains(center.Body.Bytes(), []byte(personal.Name)) || bytes.Contains(center.Body.Bytes(), []byte(privateChore.Name)) {
+		t.Fatalf("personal asset or history leaked from center: %d %s", center.Code, center.Body.String())
+	}
+
+	// A different adult admin has no personal-data bypass.
+	admin := uModel.User{ID: 30, Username: "carol", DisplayName: "Carol", CircleID: 5}
+	if err := db.Create(&admin).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&cModel.UserCircle{UserID: admin.ID, CircleID: 5, Role: cModel.UserRoleAdmin, IsActive: true}).Error; err != nil {
+		t.Fatal(err)
+	}
+	adminCtx, adminDetail := maintenanceContext("GET", "/maintenance/assets/101", uModel.UserDetails{User: admin}, nil)
+	adminCtx.Params = gin.Params{{Key: "id", Value: "101"}}
+	h.Detail(adminCtx)
+	if adminDetail.Code != 404 {
+		t.Fatalf("non-owner admin bypassed personal asset boundary: %d %s", adminDetail.Code, adminDetail.Body.String())
+	}
+
+	// The owner keeps complete access.
+	ownerCtx, ownerDetail := maintenanceContext("GET", "/maintenance/assets/101", uModel.UserDetails{User: userA}, nil)
+	ownerCtx.Params = gin.Params{{Key: "id", Value: "101"}}
+	h.Detail(ownerCtx)
+	if ownerDetail.Code != 200 || !bytes.Contains(ownerDetail.Body.Bytes(), []byte(privateChore.Name)) {
+		t.Fatalf("owner lost personal maintenance access: %d %s", ownerDetail.Code, ownerDetail.Body.String())
+	}
 }
 
 // TestAUD07_ManagedChildCannotManageAssets verifies that a managed child
@@ -353,6 +454,10 @@ func TestAUD07_ManagedChildCannotManageAssets(t *testing.T) {
 	h.Create(c)
 	if resp.Code != 201 {
 		t.Fatalf("parent admin should be allowed Create, got %d: %s", resp.Code, resp.Body.String())
+	}
+	var created tModel.Thing
+	if err := db.Where("name = ?", "New Asset").First(&created).Error; err != nil || !created.IsShared {
+		t.Fatalf("maintenance-created asset must be explicitly shared: asset=%#v err=%v", created, err)
 	}
 }
 

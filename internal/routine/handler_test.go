@@ -163,6 +163,36 @@ func TestRoutineCRUDReorderArchiveAndCircleIsolation(t *testing.T) {
 	}
 }
 
+func TestManagedChildWithStaleManagerRoleCannotManageAnotherRoutine(t *testing.T) {
+	h := newRoutineHarness(t)
+	pack := createPack(t, h, nil)
+	// The authenticated principal carries the authoritative managed-child type.
+	// Seed the historical membership directly without invoking child-account
+	// creation, which correctly normalizes it to member.
+	child := uModel.User{ID: 999, CircleID: h.circle, UserType: uModel.UserTypeChild}
+	if err := h.db.Exec("INSERT INTO users (id, username, circle_id, user_type) VALUES (?, ?, ?, ?)", child.ID, "child", child.CircleID, child.UserType).Error; err != nil {
+		t.Fatalf("seed child: %v", err)
+	}
+	if err := h.db.Create(&cModel.UserCircle{UserID: child.ID, CircleID: h.circle, Role: cModel.UserRoleManager, IsActive: true}).Error; err != nil {
+		t.Fatalf("seed child membership: %v", err)
+	}
+
+	body, err := json.Marshal(packInput{Name: "Changed", Description: "must not save"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(response)
+	ctx.Request = httptest.NewRequest(http.MethodPut, "/api/v1/routines/"+strconv.Itoa(pack.ID), bytes.NewReader(body))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	ctx.Params = gin.Params{{Key: "id", Value: strconv.Itoa(pack.ID)}}
+	ctx.Set("id", &uModel.UserDetails{User: child})
+	h.handler.Update(ctx)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("managed child with stale manager role managed another routine: %d %s", response.Code, response.Body.String())
+	}
+}
+
 func TestApplyIsAtomicIdempotentIndependentAndPreservesConfiguration(t *testing.T) {
 	h := newRoutineHarness(t)
 	points := 5

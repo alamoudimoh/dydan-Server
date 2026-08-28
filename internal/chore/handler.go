@@ -2489,7 +2489,7 @@ func (h *Handler) CompleteChore(c *gin.Context) {
 			return
 		}
 		for _, member := range circleUsers {
-			if member.IsActive && member.UserID != completedBy && (member.Role == circle.UserRoleAdmin || member.Role == circle.UserRoleManager) {
+			if member.UserID != completedBy && member.IsManagerOrAdmin() {
 				entityID := chore.ID
 				if h.inbox != nil {
 					_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: actualUser.CircleID, UserID: member.UserID, Type: "task_approval_required", Severity: "warning", Title: "Task completion needs approval", Message: chore.Name, EntityType: "chore", EntityID: &entityID, DedupKey: fmt.Sprintf("task_approval_required:%d:%d:%s", chore.ID, member.UserID, completedDate.UTC().Format(time.RFC3339Nano))})
