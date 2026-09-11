@@ -474,6 +474,18 @@ func configEnvironmentOverrides(config *Config) {
 	if environmentIsTrue("DAYDAN_DISABLE_SIGNUP", "DONETICK_DISABLE_SIGNUP") {
 		config.IsUserCreationDisabled = true
 	}
+	if environmentIsTrue("DAYDAN_SINGLE_CIRCLE_INSTANCE", "DT_SINGLE_CIRCLE_INSTANCE") {
+		config.SingleCircleInstance = true
+	}
+	if environmentIsTrue("DAYDAN_DISABLE_PASSWORD_AUTH", "DT_DISABLE_PASSWORD_AUTH") {
+		config.DisablePasswordAuth = true
+	}
+	if raw := firstEnvironment("DAYDAN_OAUTH2_ADMIN_GROUPS", "DT_OAUTH2_ADMIN_GROUPS"); raw != "" {
+		config.OAuth2Config.AdminGroups = splitEnvironmentList(raw)
+	}
+	if raw := firstEnvironment("DAYDAN_OAUTH2_MANAGER_GROUPS", "DT_OAUTH2_MANAGER_GROUPS"); raw != "" {
+		config.OAuth2Config.ManagerGroups = splitEnvironmentList(raw)
+	}
 
 	if envAllowLegacyOAuthState() {
 		config.OAuth2Config.AllowLegacyOAuthState = true
@@ -501,6 +513,16 @@ func configEnvironmentOverrides(config *Config) {
 		}
 		config.Server.TrustedProxies = proxies
 	}
+}
+
+func splitEnvironmentList(raw string) []string {
+	var values []string
+	for _, part := range strings.Split(raw, ",") {
+		if value := strings.TrimSpace(part); value != "" {
+			values = append(values, value)
+		}
+	}
+	return values
 }
 func setDayDanDefaults(v *viper.Viper) {
 	cfg := NewConfig()

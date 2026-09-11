@@ -10,9 +10,8 @@ DayDan is an open-source, user-friendly app designed to help you organize tasks 
 ![Screenshot](assets/screenshot.png)
 
 
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/donetick/donetick/go-release.yml)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/donetick/donetick)
-![Docker Pulls](https://img.shields.io/docker/pulls/donetick/donetick)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/alamoudimoh/DayDan-Server/go-release.yml)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/alamoudimoh/DayDan-Server)
 
 
 [![Discord](https://img.shields.io/discord/1272383484509421639)](https://discord.gg/6hSH6F33q7)
@@ -89,8 +88,8 @@ side (the Compose file expects the frontend at `../daydan-app`; set
 `DAYDAN_FRONTEND_CONTEXT` to override the path):
 
 ```bash
-git clone <daydan-app-url> daydan-app
-git clone <daydan-server-url> daydan-server
+git clone https://github.com/alamoudimoh/DayDan-AppWeb.git daydan-app
+git clone https://github.com/alamoudimoh/DayDan-Server.git daydan-server
 cd daydan-server
 docker compose up -d --build
 ```
@@ -144,15 +143,15 @@ docker compose down             # stop (data volume is kept)
 docker compose up -d            # start again
 ```
 
-Back up all persistent state with:
+Back up all persistent state with the supported operator toolkit:
 
 ```bash
-docker run --rm -v daydan-data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/daydan-data-backup.tar.gz -C /data .
+docker compose run --rm backup
 ```
 
-Restore by extracting the archive into an empty `daydan-data` volume before
-starting the container.
+Backups include a verified SQLite snapshot, the persisted JWT secret, and
+uploads. Follow [docs/backup-restore.md](docs/backup-restore.md) to verify,
+restore, or schedule them. Do not use a raw live SQLite file copy.
 
 ### Release provenance
 
@@ -174,19 +173,19 @@ optional overrides.
 ### Using Docker
 
 ```bash
-docker build -t daydan .
+docker build --build-context frontend=../daydan-app -t daydan .
 docker run -d --name daydan -p 2021:2021 -v daydan-data:/data daydan
 ```
 
 ### Using the Binary
-1. **Download the latest release** from the [Releases](https://github.com/donetick/donetick/releases) page.
+1. **Download the latest release** from the [Releases](https://github.com/alamoudimoh/DayDan-Server/releases) page.
 2. **Extract the file** and navigate to the folder:
    ```bash
    cd path/to/extracted-folder
    ```
 3. **Run DayDan:**
    ```bash
-   ./taskier
+   ./daydan
    ```
 
 ---
@@ -199,11 +198,11 @@ docker run -d --name daydan -p 2021:2021 -v daydan-data:/data daydan
 
 1. Clone the frontend repository:
    ```bash
-   git clone https://github.com/donetick/frontend.git donetick-frontend
+   git clone https://github.com/alamoudimoh/DayDan-AppWeb.git daydan-app
    ```
 2. Navigate to the frontend directory:
    ```bash
-   cd donetick-frontend
+   cd daydan-app
    ```
 3. Install dependencies:
    ```bash
@@ -227,11 +226,11 @@ docker run -d --name daydan -p 2021:2021 -v daydan-data:/data daydan
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/donetick/donetick.git
+   git clone https://github.com/alamoudimoh/DayDan-Server.git daydan-server
    ```
 2. Navigate to the project directory:
    ```bash
-   cd donetick
+   cd daydan-server
    ```
 3. Install dependencies:
    ```bash
@@ -240,7 +239,7 @@ docker run -d --name daydan -p 2021:2021 -v daydan-data:/data daydan
 4. Copy the frontend build to the application:
    ```bash
    rm -rf ./frontend/dist
-   cp -r ../donetick-frontend/dist ./frontend
+   cp -r ../daydan-app/dist ./frontend
    ```
 5. Run the app locally; configuration and JWT setup are automatic:
    ```bash
@@ -248,7 +247,7 @@ docker run -d --name daydan -p 2021:2021 -v daydan-data:/data daydan
    ```
    Or build the application:
    ```bash
-   go build -o donetick .
+   go build -o daydan .
    ```
 
 ### Build the development Docker image
@@ -257,7 +256,7 @@ docker run -d --name daydan -p 2021:2021 -v daydan-data:/data daydan
 
 1. Build the Docker image:
    ```bash
-   docker build -t donetick/donetick -f Dockerfile.dev .
+   docker build -t daydan -f Dockerfile.dev .
    ```
 
 ---
@@ -270,10 +269,10 @@ These features are designed for self-hosted single-household deployments where c
 
 | Variable | Type | Default | Description |
 |---|---|---|---|
-| `DT_SINGLE_CIRCLE_INSTANCE` | bool | `false` | Hides circle-management UI and disables join/leave/delete-member/accept-request endpoints. New OIDC users are added to a shared household circle (ID 1) instead of getting a personal circle. |
-| `DT_OAUTH2_ADMIN_GROUPS` | comma-separated strings | *(empty)* | OIDC group names that grant the `admin` role. |
-| `DT_OAUTH2_MANAGER_GROUPS` | comma-separated strings | *(empty)* | OIDC group names that grant the `manager` role. |
-| `DT_DISABLE_PASSWORD_AUTH` | bool | `false` | SSO-only: disables password login. |
+| `DAYDAN_SINGLE_CIRCLE_INSTANCE` | bool | `false` | Hides circle-management UI and disables join/leave/delete-member/accept-request endpoints. New OIDC users are added to a shared household circle (ID 1) instead of getting a personal circle. |
+| `DAYDAN_OAUTH2_ADMIN_GROUPS` | comma-separated strings | *(empty)* | OIDC group names that grant the `admin` role. |
+| `DAYDAN_OAUTH2_MANAGER_GROUPS` | comma-separated strings | *(empty)* | OIDC group names that grant the `manager` role. |
+| `DAYDAN_DISABLE_PASSWORD_AUTH` | bool | `false` | SSO-only: disables password login. |
 
 ### Role Resolution Rules
 
@@ -282,7 +281,7 @@ Role sync runs **on every OIDC login** (not just first-time user creation), so y
 - If user is in any **admin group** -> `admin` (admin takes priority over manager)
 - Else if user is in any **manager group** -> `manager`
 - Else -> `member`
-- If **neither** `DT_OAUTH2_ADMIN_GROUPS` **nor** `DT_OAUTH2_MANAGER_GROUPS` is configured, roles are not modified at all (preserves existing behavior).
+- If **neither** `DAYDAN_OAUTH2_ADMIN_GROUPS` **nor** `DAYDAN_OAUTH2_MANAGER_GROUPS` is configured, roles are not modified at all (preserves existing behavior).
 
 Group matching is **exact-string and case-sensitive**.
 
@@ -293,10 +292,10 @@ Group matching is **exact-string and case-sensitive**.
 3. Set the environment variables:
    ```yaml
    environment:
-     - DT_SINGLE_CIRCLE_INSTANCE=true
-     - DT_OAUTH2_ADMIN_GROUPS=donetick-admins
-     - DT_OAUTH2_MANAGER_GROUPS=donetick-managers
-     - DT_DISABLE_PASSWORD_AUTH=true
+     - DAYDAN_SINGLE_CIRCLE_INSTANCE=true
+     - DAYDAN_OAUTH2_ADMIN_GROUPS=daydan-admins
+     - DAYDAN_OAUTH2_MANAGER_GROUPS=daydan-managers
+     - DAYDAN_DISABLE_PASSWORD_AUTH=true
    ```
 
 ---

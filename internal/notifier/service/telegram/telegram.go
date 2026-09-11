@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/alamoudimoh/daydan-server/config"
 	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
@@ -18,8 +19,15 @@ type TelegramNotifier struct {
 	bot *tgbotapi.BotAPI
 }
 
-func NewTelegramNotifier(config *config.Config) *TelegramNotifier {
-	bot, err := tgbotapi.NewBotAPI(config.Telegram.Token)
+func NewTelegramNotifier(cfg *config.Config) *TelegramNotifier {
+	// Telegram is optional. An empty token is the zero-config default, and
+	// passing it to NewBotAPI makes an unnecessary outbound request during
+	// startup that produces a misleading error log.
+	if strings.TrimSpace(cfg.Telegram.Token) == "" {
+		return nil
+	}
+
+	bot, err := tgbotapi.NewBotAPI(cfg.Telegram.Token)
 	if err != nil {
 		fmt.Println("Error creating bot: ", err)
 		return nil
