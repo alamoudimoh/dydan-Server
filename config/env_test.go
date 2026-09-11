@@ -12,7 +12,11 @@ func clearDayDanEnvironment(t *testing.T) {
 		"DAYDAN_ENV", "DAYDAN_CONFIG_FILE", "DAYDAN_DATA_DIR", "DAYDAN_JWT_SECRET", "DAYDAN_SQLITE_PATH",
 		"DAYDAN_TELEGRAM_TOKEN", "DAYDAN_PUSHOVER_TOKEN", "DAYDAN_DISABLE_SIGNUP",
 		"DAYDAN_LOG_LEVEL", "DAYDAN_LOG_ENCODING", "DAYDAN_LOG_DEVELOPMENT",
+		"DAYDAN_SINGLE_CIRCLE_INSTANCE", "DAYDAN_DISABLE_PASSWORD_AUTH",
+		"DAYDAN_OAUTH2_ADMIN_GROUPS", "DAYDAN_OAUTH2_MANAGER_GROUPS",
 		"DT_ENV", "DT_CONFIG_FILE", "DT_JWT_SECRET", "DT_SQLITE_PATH",
+		"DT_SINGLE_CIRCLE_INSTANCE", "DT_DISABLE_PASSWORD_AUTH",
+		"DT_OAUTH2_ADMIN_GROUPS", "DT_OAUTH2_MANAGER_GROUPS",
 		"TASKIER_CONFIG_FILE", "TASKIER_DATA_DIR", "TASKIER_JWT_SECRET", "TASKIER_SQLITE_PATH",
 		"DONETICK_TELEGRAM_TOKEN", "DONETICK_PUSHOVER_TOKEN", "DONETICK_DISABLE_SIGNUP",
 		"DONETICK_LOG_LEVEL", "DONETICK_LOG_ENCODING", "DONETICK_LOG_DEVELOPMENT",
@@ -111,4 +115,56 @@ func TestDayDanTelegramTokenPrecedenceOverDonetick(t *testing.T) {
 	if cfg.Telegram.Token != "daydan-telegram-token" {
 		t.Fatalf("telegram token=%q", cfg.Telegram.Token)
 	}
+}
+
+func TestDayDanAuthConfigurationEnvironmentVariables(t *testing.T) {
+	clearDayDanEnvironment(t)
+	t.Setenv("DAYDAN_SINGLE_CIRCLE_INSTANCE", "true")
+	t.Setenv("DAYDAN_DISABLE_PASSWORD_AUTH", "true")
+	t.Setenv("DAYDAN_OAUTH2_ADMIN_GROUPS", "admins, owners")
+	t.Setenv("DAYDAN_OAUTH2_MANAGER_GROUPS", "managers")
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.SingleCircleInstance {
+		t.Fatal("single_circle_instance was not enabled")
+	}
+	if !cfg.DisablePasswordAuth {
+		t.Fatal("disable_password_auth was not enabled")
+	}
+	if got, want := cfg.OAuth2Config.AdminGroups, []string{"admins", "owners"}; !equalStrings(got, want) {
+		t.Fatalf("admin_groups=%q, want %q", got, want)
+	}
+	if got, want := cfg.OAuth2Config.ManagerGroups, []string{"managers"}; !equalStrings(got, want) {
+		t.Fatalf("manager_groups=%q, want %q", got, want)
+	}
+}
+
+func TestLegacyAuthConfigurationEnvironmentVariablesStillWork(t *testing.T) {
+	clearDayDanEnvironment(t)
+	t.Setenv("DT_SINGLE_CIRCLE_INSTANCE", "true")
+	t.Setenv("DT_DISABLE_PASSWORD_AUTH", "true")
+	t.Setenv("DT_OAUTH2_ADMIN_GROUPS", "admins")
+
+	cfg, err := LoadConfigE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.SingleCircleInstance || !cfg.DisablePasswordAuth || !equalStrings(cfg.OAuth2Config.AdminGroups, []string{"admins"}) {
+		t.Fatalf("legacy auth environment variables not applied: %+v", cfg)
+	}
+}
+
+func equalStrings(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }

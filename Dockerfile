@@ -13,11 +13,10 @@ WORKDIR /web
 # local named context COPY mixes files and directories.
 COPY --from=frontend package.json ./
 COPY --from=frontend package-lock.json ./
+COPY --from=frontend .npmrc ./
 COPY --from=frontend index.html ./
 COPY --from=frontend vite.config.mjs ./
 COPY --from=frontend vite.allowed-hosts.mjs ./
-COPY --from=frontend tailwind.config.mjs ./
-COPY --from=frontend postcss.config.mjs ./
 COPY --from=frontend src ./src
 COPY --from=frontend public ./public
 COPY --from=frontend patches ./patches
