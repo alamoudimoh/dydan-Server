@@ -106,7 +106,8 @@ docker compose up -d --build
 Persistent runtime state lives in `/data` inside the container:
 
 
-- `/data/daydan.db` — SQLite database (legacy `taskier.db` / `donetick.db` are migrated automatically)
+- `/data/daydan.db` — SQLite database; legacy `taskier.db` and `donetick.db`
+  filenames are migrated automatically for existing installations.
 - `/data/jwt-secret` — automatically generated session-signing secret
 - `/data/uploads` — local attachments
 
@@ -121,8 +122,8 @@ cannot be spoofed with `X-Forwarded-*` headers. For Nginx/Caddy/Traefik
 configuration — including header sanitization requirements and the
 short-lived access-token policy — see [docs/reverse-proxy.md](docs/reverse-proxy.md).
 
-The default Compose volume is `daydan-data`. Existing Taskier deployments can
-reuse a `taskier-data` volume without copying data:
+The default Compose volume is `daydan-data`. Existing installations using the
+legacy `taskier-data` volume can reuse it without copying data:
 
 ```bash
 DAYDAN_DOCKER_VOLUME=taskier-data docker compose up -d
