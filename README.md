@@ -74,13 +74,26 @@ go run .
 go test ./...
 ```
 
-To build a local image with the paired client:
+To build the full application image locally with the paired client, use the
+production Dockerfile and its named frontend context:
 
 ```bash
-docker build --build-context frontend=../daydan-app -t daydan -f Dockerfile.dev .
+docker build --build-context frontend=../daydan-app -t daydan .
 ```
 
-The production image is built by `.github/workflows/go-release.yml`; it
+`Dockerfile.dev` is a legacy artifact-oriented development image. It expects a
+prebuilt `donetick` backend binary and the development config files in the
+server build context; it does not build the frontend and is not the normal
+full-application workflow. If you specifically need that image, build the
+artifact first and then use the Dockerfile:
+
+```bash
+go build -o donetick .
+docker build -f Dockerfile.dev -t daydan-dev .
+```
+
+The production image is built by
+`.github/workflows/go-release.yml`; it
 compiles the client and server together and serves the resulting SPA and API
 from one origin.
 
@@ -88,6 +101,9 @@ Detailed implementation evidence and cross-product documentation are in
 [docs/product-implementation-review.md](docs/product-implementation-review.md)
 and [docs/architecture.md](docs/architecture.md). The generated API contract
 is maintained in `docs/swagger.yaml` and `docs/swagger.json`.
+
+Authentication, OIDC group mapping, MFA, sessions, and authorization are
+covered in [docs/security.md](docs/security.md).
 
 ## Configuration
 

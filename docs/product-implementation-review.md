@@ -14,9 +14,9 @@ browser/PWA and Capacitor mobile experience; Server supplies the API,
 authentication, persistence, migrations, realtime events, notifications,
 integrations, media storage, and deployment image.
 
-The client is React 19/Vite with TanStack Query, authenticated SSE, native
-offline storage, widgets, deep links, localization, Arabic RTL, and responsive
-Figma-derived surfaces. The server is a Go/Gin monolith using Fx, GORM,
+The client is React 19/Vite with React Router, TanStack Query, authenticated
+SSE, native offline storage, widgets, deep links, localization, Arabic RTL,
+and responsive Figma-derived surfaces. The server is a Go/Gin monolith using Fx, GORM,
 SQLite-first persistence, optional PostgreSQL, startup migrations, and embedded
 frontend serving.
 
@@ -26,8 +26,15 @@ The implementation contains circles and members, assignments, recurring
 chores, subtasks, labels, projects, routines, shopping lists, maintenance,
 meters, Things, attachments, timers, history, points, rewards, progress,
 calendar, dashboards, search, notifications, account settings, MFA, API
-tokens, managed child accounts, storage adapters, and payment/integration
-boundaries.
+tokens, managed child accounts, storage adapters, payment/integration
+boundaries, Home Assistant support, notification targets, and webhooks.
+
+Representative evidence: client route modules under `src/views/`, server
+domains under `internal/chore`, `internal/circle`, `internal/subtask`,
+`internal/project`, `internal/routine`, `internal/shoppinglist`,
+`internal/maintenance`, `internal/meter`, `internal/thing`, `internal/points`,
+`internal/reward`, `internal/progress`, `internal/notifier`, and
+`internal/events`.
 
 ## Security and reliability
 
@@ -38,13 +45,37 @@ proxy allowlists, security headers, signed URLs, separate media signing
 secrets, outbound destination checks, HMAC-signed webhooks, privacy-scoped
 realtime broadcasts, bounded retry queues, and runtime artifact checks.
 
-## Deployment
+Representative evidence: `internal/auth/session_manager.go`,
+`internal/auth/access_validation.go`, `internal/auth/role_resolver.go`,
+`internal/mfa/`, `internal/authlimit/`, `internal/realtime/ticket_store.go`,
+`internal/realtime/service.go`, `internal/utils/middleware.go`,
+`config/config.go`, `frontend/handler.go`, `internal/events/signing.go`,
+`internal/storage/`, and `internal/outbound/`.
+
+## Mobile and offline
+
+Representative evidence includes AppWeb's
+`src/utils/NativeCredentialStorage.js`, `src/utils/OfflineDB.js`,
+`src/utils/SyncEngine.js`, `src/service/WidgetService.js`,
+`src/CapacitorListener.js`, `android/`, `ios/`, and the native plugin
+dependencies in `package.json`. These cover secure credentials, native SQLite,
+queued sync, widgets, deep links, NFC, speech, OCR/scanning, notifications,
+and RevenueCat integration. Local AI is platform-dependent rather than a
+general browser capability.
+
+## Deployment and operations
 
 The recommended deployment is Docker Compose with the paired repositories.
 SQLite and `/data/daydan.db` are the zero-config path; PostgreSQL is optional.
 The image exposes port `2021`, serves the API and embedded client from one
-origin, persists uploads and secrets under `/data`, and includes `daydanctl`
-for SQLite backup/restore verification and retention.
+origin, persists uploads and secrets under `/data`, runs as an unprivileged
+runtime user, includes a healthcheck, and includes `daydanctl` for SQLite
+backup/restore verification and retention.
+
+Representative evidence: `Dockerfile`, `docker-compose.yaml`,
+`docker-entrypoint.sh`, `internal/database/`, `migrations/`,
+`cmd/daydanctl/main.go`, `docs/backup-restore.md`, and
+`docs/reverse-proxy.md`.
 
 ## Evolution themes
 
@@ -60,9 +91,13 @@ Recent merged history shows three material streams of DayDan work:
    distribution, zero-config startup, migrations, notification behavior,
    reliability verification, and operator backup tooling.
 
-These themes are evidenced by the recent `develop` histories and the
-corresponding `internal/`, `src/`, `android/`, `ios/`, `scripts/`, and
-workflow paths.
+These themes are evidenced by AppWeb Figma migration PRs #38, #40, #42, #43,
+#44, and #45; and Server security/reliability PRs #8, #10, #11, #12, #13,
+#14, #15, #16, #17, #18, #19, #20, #21, and #22. Representative commits
+include `546227c` for security headers, `f5b6fd7` for realtime ticket
+hardening, `6ccb5b1` for media-secret separation, `2851a2b` for outbound
+destination policy, `fa68833` for production reliability, and `0404ccc` for
+reproducible releases.
 
 ## Current limitations
 
