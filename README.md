@@ -13,10 +13,6 @@ DayDan is an open-source, user-friendly app designed to help you organize tasks 
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/alamoudimoh/DayDan-Server/go-release.yml)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/alamoudimoh/DayDan-Server)
 
-
-[![Discord](https://img.shields.io/discord/1272383484509421639)](https://discord.gg/6hSH6F33q7)
-[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/donetick)](https://www.reddit.com/r/donetick)
-
 ---
 
 ## Features
@@ -287,7 +283,7 @@ Group matching is **exact-string and case-sensitive**.
 
 ### Example: Authentik Configuration
 
-1. Create groups in Authentik (e.g., `donetick-admins`, `donetick-managers`).
+1. Create groups in Authentik (e.g., `daydan-admins`, `daydan-managers`).
 2. Ensure your Authentik OAuth2 provider includes the `groups` scope and that the `groups` claim is returned in the userinfo endpoint.
 3. Set the environment variables:
    ```yaml
@@ -301,7 +297,7 @@ Group matching is **exact-string and case-sensitive**.
 ---
 
 ## Contributing
-Contributions are welcome! If you want to work on something that is not already listed as an open, tagged issue, please open a [Discussion](https://github.com/donetick/donetick/discussions)  or reach out on [Discord](https://discord.gg/yyRDcwd3) first to ensure it aligns with our goals and to avoid any unnecessary effort.
+Contributions are welcome! Please open an issue or pull request in the [DayDan Server repository](https://github.com/alamoudimoh/DayDan-Server), or coordinate related frontend work in [DayDan-AppWeb](https://github.com/alamoudimoh/DayDan-AppWeb).
 
 **Please note:** Pull Requests that are submitted without prior discussion or do not address an existing tagged issue will be deprioritized in the review queue.
 
@@ -334,13 +330,7 @@ This project is licensed under the **AGPLv3**. See the [LICENSE](LICENSE.md) fil
 ---
 
 ## Join the Discussion
-For ideas or feature requests, please use GitHub Discussions. We also have a Discord server and a subreddit for those who prefer those platforms!
-
-
-[![Discord](https://img.shields.io/discord/1272383484509421639)](https://discord.gg/6hSH6F33q7)
-[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/donetick)](https://www.reddit.com/r/donetick)
-
-[![Github Discussion](https://img.shields.io/github/discussions/donetick/donetick)](https://github.com/donetick/donetick/discussions)
+For ideas or feature requests, please use [DayDan Server issues](https://github.com/alamoudimoh/DayDan-Server/issues) or [DayDan-AppWeb issues](https://github.com/alamoudimoh/DayDan-AppWeb/issues), depending on which repository is affected.
 
 ---
 
