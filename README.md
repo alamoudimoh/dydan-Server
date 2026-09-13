@@ -28,7 +28,8 @@ The server also provides:
   signed webhooks, signed media URLs, and outbound destination controls;
 - local filesystem or S3-compatible media storage, FCM/Telegram/Discord/
   Pushover notifications, SMTP/SMTP2Go email, payment provider webhooks, and
-  Home Assistant/API integrations;
+  REST/API and webhook integrations suitable for external automation
+  platforms such as Home Assistant;
 - `daydanctl` backup, verification, restore, and retention operations for
   SQLite deployments.
 

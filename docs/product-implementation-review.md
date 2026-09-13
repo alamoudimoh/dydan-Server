@@ -27,7 +27,9 @@ chores, subtasks, labels, projects, routines, shopping lists, maintenance,
 meters, Things, attachments, timers, history, points, rewards, progress,
 calendar, dashboards, search, notifications, account settings, MFA, API
 tokens, managed child accounts, storage adapters, payment/integration
-boundaries, Home Assistant support, notification targets, and webhooks.
+boundaries, REST/API and webhook integrations suitable for external
+automation platforms such as Home Assistant, notification targets, and
+webhooks.
 
 Representative evidence: client route modules under `src/views/`, server
 domains under `internal/chore`, `internal/circle`, `internal/subtask`,
@@ -91,12 +93,20 @@ Recent merged history shows three material streams of DayDan work:
    distribution, zero-config startup, migrations, notification behavior,
    reliability verification, and operator backup tooling.
 
-These themes are evidenced by AppWeb Figma migration PRs #38, #40, #42, #43,
-#44, and #45; and Server security/reliability PRs #8, #10, #11, #12, #13,
-#14, #15, #16, #17, #18, #19, #20, #21, and #22. Representative commits
-include `546227c` for security headers, `f5b6fd7` for realtime ticket
-hardening, `6ccb5b1` for media-secret separation, `2851a2b` for outbound
-destination policy, `fa68833` for production reliability, and `0404ccc` for
+These themes are evidenced by AppWeb build/runtime preparation PRs #37 and
+#38 (with #38 limited to reference-build closure), then material Figma
+migration PR #39 (shell/navigation foundation), #40 (Home/Today), #42
+(Tasks/Calendar), #43 (household/product screens), #44 (Search/Settings/Error),
+#45 (auth/payment/public surfaces), and #46 (final Figma parity and
+Joy-Material closure). Server security/reliability history includes PRs #8,
+#10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, and #22.
+Representative commits include `546227c` for security headers, `f5b6fd7` for
+realtime ticket hardening, `6ccb5b1` for media-secret separation, `2851a2b`
+for outbound destination policy, `fa68833` for maintenance privacy and
+managed-child role hardening, `af6e90b96fbb35b3fa3ad70316d92cbce3160d7c`
+for production reliability (scheduler shutdown/lifecycle hardening,
+database connection-pool bounds, PostgreSQL migration locking, UTC
+PostgreSQL sessions, and runtime/container readiness), and `0404ccc` for
 reproducible releases.
 
 ## Current limitations
