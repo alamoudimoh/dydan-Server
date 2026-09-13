@@ -1,8 +1,9 @@
 # DayDan product implementation review
 
-**Reviewed:** 2026-09-12
-**Repositories:** `alamoudimoh/DayDan-AppWeb` and `alamoudimoh/DayDan-Server`
-**Baseline:** `develop`
+**Last verified:** 2026-09-13
+**Repositories:**
+- `alamoudimoh/DayDan-AppWeb` — `develop` @ `8031cb342d6bae22ea6341ce8782688100142313`
+- `alamoudimoh/DayDan-Server` — `develop` @ `cfb583f6525f76f8ff318614f3bf2dd548830733`
 
 This evidence baseline records the current product and the engineering themes
 that materially shape its documentation.
