@@ -52,22 +52,26 @@ func (h *AuthHandler) requireCSRF(c *gin.Context) bool {
 
 // RefreshTokenHandler handles POST /auth/refresh
 func (h *AuthHandler) RefreshTokenHandler(c *gin.Context) {
-	// Try to get refresh token from cookie first (httpOnly), fallback to body (legacy)
-	refreshToken, err := c.Cookie(RefreshTokenCookieName)
-	if err == nil {
-		if !h.requireCSRF(c) {
-			return
-		}
-	} else {
-		// Fallback to JSON body for backward compatibility
-		var req RefreshRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
+	// An explicit body credential is used for native clients and one-time web
+	// migration. Otherwise the browser's HttpOnly cookie remains authoritative.
+	var req RefreshRequest
+	bodyErr := c.ShouldBindJSON(&req)
+	refreshToken := req.RefreshToken
+	if refreshToken == "" {
+		var cookieErr error
+		refreshToken, cookieErr = c.Cookie(RefreshTokenCookieName)
+		if cookieErr != nil {
+			if bodyErr == nil {
+				bodyErr = errors.New("refresh token required")
+			}
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid request: " + err.Error(),
+				"error": "Invalid request: " + bodyErr.Error(),
 			})
 			return
 		}
-		refreshToken = req.RefreshToken
+		if !h.requireCSRF(c) {
+			return
+		}
 	}
 
 	if refreshToken == "" {
