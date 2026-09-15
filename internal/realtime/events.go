@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 )
 
 // EventType represents the type of real-time event

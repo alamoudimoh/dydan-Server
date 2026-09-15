@@ -1,6 +1,7 @@
 package user
 
 import (
+	"cmp"
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
@@ -12,25 +13,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/config"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-// postgresTestDB skips unless DAYDAN_TEST_POSTGRES_DSN is set, e.g.
+// postgresTestDB skips unless DYDAN_TEST_POSTGRES_DSN is set, e.g.
 //
-//	DAYDAN_TEST_POSTGRES_DSN="host=localhost port=54329 user=daydan \
-//	  password=daydan dbname=daydan sslmode=disable" go test ./internal/user/repo/ -run Postgres
+//	DYDAN_TEST_POSTGRES_DSN="host=localhost port=54329 user=dydan \
+//	  password=dydan dbname=dydan sslmode=disable" go test ./internal/user/repo/ -run Postgres
 //
 // It provides live PostgreSQL coverage for the duplicate-signup constraint
 // classification and the hashed API-token storage path.
 func postgresTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := os.Getenv("DAYDAN_TEST_POSTGRES_DSN")
+	dsn := cmp.Or(
+		os.Getenv("DYDAN_TEST_POSTGRES_DSN"),
+		os.Getenv("DAYDAN_TEST_POSTGRES_DSN"),
+	)
 	if dsn == "" {
-		t.Skip("DAYDAN_TEST_POSTGRES_DSN not set; skipping live PostgreSQL coverage")
+		t.Skip("DYDAN_TEST_POSTGRES_DSN not set; skipping live PostgreSQL coverage")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {

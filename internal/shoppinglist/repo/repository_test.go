@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	slModel "github.com/alamoudimoh/daydan-server/internal/shoppinglist/model"
-	slRepo "github.com/alamoudimoh/daydan-server/internal/shoppinglist/repo"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	slModel "github.com/alamoudimoh/dydan-server/internal/shoppinglist/model"
+	slRepo "github.com/alamoudimoh/dydan-server/internal/shoppinglist/repo"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
@@ -104,7 +104,7 @@ func TestPermissions(t *testing.T) {
 func TestManageListRequiresListCircleMembership(t *testing.T) {
 	personal := &slModel.ShoppingList{CreatedBy: 1}
 	circleID := 9
-		circle := &slModel.ShoppingList{CreatedBy: 2, CircleID: &circleID}
+	circle := &slModel.ShoppingList{CreatedBy: 2, CircleID: &circleID}
 
 	if !slRepo.CanManageList(1, 9, personal, false, false) {
 		t.Fatal("owner should manage own personal list")

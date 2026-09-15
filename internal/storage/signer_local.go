@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 // maxLocalSignatureHorizon is the largest expiry a local signed URL may
@@ -48,6 +48,9 @@ func NewURLSignerLocal(cfg *config.Config) *URLSignerLocal {
 	}
 	if cfg.Storage.AllowLegacyMediaSignatures && len(cfg.Jwt.Secret) > 0 && !hmac.Equal([]byte(cfg.Jwt.Secret), s.key) {
 		s.legacyKey = []byte(cfg.Jwt.Secret)
+	}
+	if cfg.Storage.AllowLegacyMediaSignatures && cfg.Storage.LegacyMediaSecret != "" && !hmac.Equal([]byte(cfg.Storage.LegacyMediaSecret), s.key) {
+		s.legacyKey = []byte(cfg.Storage.LegacyMediaSecret)
 	}
 	return s
 }

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"go.uber.org/zap"
 )
 
@@ -52,11 +52,11 @@ func TestPrivateChoreEventsAreRestrictedToCreatorAndAssignees(t *testing.T) {
 	outsider := connectTestUser(t, svc, 3)
 
 	private := &chModel.Chore{
-		ID:        42,
-		CircleID:  1,
-		Name:      "secret chore",
-		IsPrivate: true,
-		CreatedBy: 1,
+		ID:         42,
+		CircleID:   1,
+		Name:       "secret chore",
+		IsPrivate:  true,
+		CreatedBy:  1,
 		AssignedTo: &[]int{2}[0],
 	}
 
@@ -92,11 +92,11 @@ func TestPrivateChoreSubtaskEventsAreRestricted(t *testing.T) {
 	outsider := connectTestUser(t, svc, 3)
 
 	private := &chModel.Chore{
-		ID:        44,
-		CircleID:  1,
-		Name:      "secret chore",
-		IsPrivate: true,
-		CreatedBy: 1,
+		ID:         44,
+		CircleID:   1,
+		Name:       "secret chore",
+		IsPrivate:  true,
+		CreatedBy:  1,
 		AssignedTo: &[]int{2}[0],
 	}
 

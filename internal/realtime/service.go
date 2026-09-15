@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"go.uber.org/zap"
 )
 

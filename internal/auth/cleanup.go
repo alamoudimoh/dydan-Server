@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
-	"github.com/alamoudimoh/daydan-server/logging"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/logging"
 )
 
 type CleanupService struct {
@@ -19,7 +19,7 @@ func NewCleanupService(userRepo *uRepo.UserRepository) *CleanupService {
 		userRepo: userRepo,
 		ticker:   time.NewTicker(60 * time.Minute),
 		// Buffered so Stop never blocks while a cleanup job is mid-run.
-		done:     make(chan bool, 1),
+		done: make(chan bool, 1),
 	}
 }
 

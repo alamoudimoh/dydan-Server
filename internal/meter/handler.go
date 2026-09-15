@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/internal/auth"
-	choreDomain "github.com/alamoudimoh/daydan-server/internal/chore"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
-	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
-	mRepo "github.com/alamoudimoh/daydan-server/internal/meter/repo"
+	"github.com/alamoudimoh/dydan-server/internal/auth"
+	choreDomain "github.com/alamoudimoh/dydan-server/internal/chore"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	chRepo "github.com/alamoudimoh/dydan-server/internal/chore/repo"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
+	mRepo "github.com/alamoudimoh/dydan-server/internal/meter/repo"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

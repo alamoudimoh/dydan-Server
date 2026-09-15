@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
-	mRepo "github.com/alamoudimoh/daydan-server/internal/meter/repo"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
+	mRepo "github.com/alamoudimoh/dydan-server/internal/meter/repo"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	nRepo "github.com/alamoudimoh/dydan-server/internal/notifier/repo"
 	"gorm.io/gorm"
 )
 

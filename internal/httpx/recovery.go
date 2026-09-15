@@ -20,7 +20,7 @@ import (
 )
 
 // sensitiveHeaders are masked in any panic-time request dump. gin's built-in
-// Recovery only masks "Authorization"; DayDan also authenticates with the
+// Recovery only masks "Authorization"; Dydan also authenticates with the
 // "secretkey" API-token header, browser sessions ride on Cookie headers, the
 // refresh token can appear as a "refresh_token" header, and MFA codes travel
 // in "X-MFA-Code". A panic in debug mode would otherwise write all of them

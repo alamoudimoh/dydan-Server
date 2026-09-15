@@ -3,11 +3,11 @@ package auth
 import (
 	"strconv"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
-	"github.com/alamoudimoh/daydan-server/logging"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 

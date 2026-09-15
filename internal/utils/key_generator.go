@@ -5,7 +5,7 @@ import (
 
 	crand "crypto/rand"
 
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 

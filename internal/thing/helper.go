@@ -3,7 +3,7 @@ package thing
 import (
 	"strconv"
 
-	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
+	tModel "github.com/alamoudimoh/dydan-server/internal/thing/model"
 )
 
 func isValidThingState(thing *tModel.Thing) bool {

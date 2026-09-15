@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 func TestPublicKeyCacheConcurrentRefresh(t *testing.T) {

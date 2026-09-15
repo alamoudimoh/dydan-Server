@@ -15,10 +15,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/v76/webhook"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	pModel "github.com/alamoudimoh/daydan-server/external/payment/model"
-	prepo "github.com/alamoudimoh/daydan-server/external/payment/repo"
-	authn "github.com/alamoudimoh/daydan-server/internal/auth"
+	"github.com/alamoudimoh/dydan-server/config"
+	pModel "github.com/alamoudimoh/dydan-server/external/payment/model"
+	prepo "github.com/alamoudimoh/dydan-server/external/payment/repo"
+	authn "github.com/alamoudimoh/dydan-server/internal/auth"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

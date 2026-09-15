@@ -3,9 +3,9 @@ package project
 import (
 	"strconv"
 
-	"github.com/alamoudimoh/daydan-server/internal/auth"
-	pModel "github.com/alamoudimoh/daydan-server/internal/project/model"
-	pRepo "github.com/alamoudimoh/daydan-server/internal/project/repo"
+	"github.com/alamoudimoh/dydan-server/internal/auth"
+	pModel "github.com/alamoudimoh/dydan-server/internal/project/model"
+	pRepo "github.com/alamoudimoh/dydan-server/internal/project/repo"
 	"github.com/gin-gonic/gin"
 )
 

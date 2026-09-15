@@ -71,9 +71,9 @@ oauth2:
   # OIDC group-based role mapping (optional).
   # Users in these groups get the corresponding role on every OIDC login.
   # admin_groups:
-  #   - "donetick-admins"
+  #   - "dydan-admins"
   # manager_groups:
-  #   - "donetick-managers"
+  #   - "dydan-managers"
 # Single-circle instance mode (optional).
 # When true, disables circle join/leave endpoints and adds new OIDC users
 # to a shared household circle instead of creating personal circles.

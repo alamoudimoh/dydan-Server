@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
 )
 
 func TestManagedChildRolesCannotUseAdminOnlyChoreOperations(t *testing.T) {

@@ -2,12 +2,15 @@ package fcm
 
 import "testing"
 
-func TestDayDanFCMChannelIsCanonicalForNewNotifications(t *testing.T) {
-	if androidNotificationChannelID() != DayDanFCMChannelID {
-		t.Fatalf("androidNotificationChannelID() = %q, want %q", androidNotificationChannelID(), DayDanFCMChannelID)
+func TestNotificationChannelUsesCanonicalDydanID(t *testing.T) {
+	if androidNotificationChannelID() != DydanFCMChannelID {
+		t.Fatalf("androidNotificationChannelID() = %q, want %q", androidNotificationChannelID(), DydanFCMChannelID)
 	}
-	if DayDanFCMChannelID != "daydan_notifications" {
-		t.Fatalf("DayDanFCMChannelID = %q", DayDanFCMChannelID)
+	if DydanFCMChannelID != "dydan_notifications" {
+		t.Fatalf("DydanFCMChannelID = %q", DydanFCMChannelID)
+	}
+	if LegacyDayDanFCMChannelID != "daydan_notifications" {
+		t.Fatalf("LegacyDayDanFCMChannelID = %q", LegacyDayDanFCMChannelID)
 	}
 }
 
@@ -15,7 +18,7 @@ func TestLegacyDonetickFCMChannelPreservedForCompatibility(t *testing.T) {
 	if LegacyDonetickFCMChannelID != "donetick_notifications" {
 		t.Fatalf("LegacyDonetickFCMChannelID = %q", LegacyDonetickFCMChannelID)
 	}
-	if LegacyDonetickFCMChannelID == DayDanFCMChannelID {
+	if LegacyDonetickFCMChannelID == DydanFCMChannelID {
 		t.Fatal("legacy and canonical FCM channel IDs must differ")
 	}
 }

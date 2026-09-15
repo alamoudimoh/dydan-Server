@@ -1,8 +1,8 @@
 package realtime
 
 import (
-	"github.com/alamoudimoh/daydan-server/config"
-	"github.com/alamoudimoh/daydan-server/internal/authlimit"
+	"github.com/alamoudimoh/dydan-server/config"
+	"github.com/alamoudimoh/dydan-server/internal/authlimit"
 	ginJWT "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	config "github.com/alamoudimoh/daydan-server/config"
-	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
+	config "github.com/alamoudimoh/dydan-server/config"
+	tModel "github.com/alamoudimoh/dydan-server/internal/thing/model"
 	"gorm.io/gorm"
 )
 

@@ -27,27 +27,28 @@ var (
 )
 
 type Config struct {
-	DataDir                string              `mapstructure:"data_dir" yaml:"data_dir"`
-	Name                   string              `mapstructure:"name" yaml:"name"`
-	Telegram               TelegramConfig      `mapstructure:"telegram" yaml:"telegram"`
-	Pushover               PushoverConfig      `mapstructure:"pushover" yaml:"pushover"`
-	Database               DatabaseConfig      `mapstructure:"database" yaml:"database"`
-	Jwt                    JwtConfig           `mapstructure:"jwt" yaml:"jwt"`
-	Server                 ServerConfig        `mapstructure:"server" yaml:"server"`
-	SchedulerJobs          SchedulerConfig     `mapstructure:"scheduler_jobs" yaml:"scheduler_jobs"`
-	EmailConfig            EmailConfig         `mapstructure:"email" yaml:"email"`
-	StripeConfig           StripeConfig        `mapstructure:"stripe" yaml:"stripe"`
-	RevenueCatConfig       RevenueCatConfig    `mapstructure:"revenuecat" yaml:"revenuecat"`
-	IAPConfig              IAPConfig           `mapstructure:"iap" yaml:"iap"`
-	OAuth2Config           OAuth2Config        `mapstructure:"oauth2" yaml:"oauth2"`
-	WebhookConfig          WebhookConfig       `mapstructure:"webhook" yaml:"webhook"`
-	RealTimeConfig         RealTimeConfig      `mapstructure:"realtime" yaml:"realtime"`
-	MFAConfig              MFAConfig           `mapstructure:"mfa" yaml:"mfa"`
-	Logging                LogConfig           `mapstructure:"logging" yaml:"logging"`
-	IsDayDanCloud          bool                `mapstructure:"is_done_tick_dot_com" yaml:"is_done_tick_dot_com"`
+	DataDir          string           `mapstructure:"data_dir" yaml:"data_dir"`
+	Name             string           `mapstructure:"name" yaml:"name"`
+	Telegram         TelegramConfig   `mapstructure:"telegram" yaml:"telegram"`
+	Pushover         PushoverConfig   `mapstructure:"pushover" yaml:"pushover"`
+	Database         DatabaseConfig   `mapstructure:"database" yaml:"database"`
+	Jwt              JwtConfig        `mapstructure:"jwt" yaml:"jwt"`
+	Server           ServerConfig     `mapstructure:"server" yaml:"server"`
+	SchedulerJobs    SchedulerConfig  `mapstructure:"scheduler_jobs" yaml:"scheduler_jobs"`
+	EmailConfig      EmailConfig      `mapstructure:"email" yaml:"email"`
+	StripeConfig     StripeConfig     `mapstructure:"stripe" yaml:"stripe"`
+	RevenueCatConfig RevenueCatConfig `mapstructure:"revenuecat" yaml:"revenuecat"`
+	IAPConfig        IAPConfig        `mapstructure:"iap" yaml:"iap"`
+	OAuth2Config     OAuth2Config     `mapstructure:"oauth2" yaml:"oauth2"`
+	WebhookConfig    WebhookConfig    `mapstructure:"webhook" yaml:"webhook"`
+	RealTimeConfig   RealTimeConfig   `mapstructure:"realtime" yaml:"realtime"`
+	MFAConfig        MFAConfig        `mapstructure:"mfa" yaml:"mfa"`
+	Logging          LogConfig        `mapstructure:"logging" yaml:"logging"`
+	// Legacy keys remain readable; applyDydanCloudConfigAliases gives canonical keys precedence.
+	IsDydanCloud           bool                `mapstructure:"is_done_tick_dot_com" yaml:"is_done_tick_dot_com"`
 	IsUserCreationDisabled bool                `mapstructure:"is_user_creation_disabled" yaml:"is_user_creation_disabled"`
 	MinVersion             string              `mapstructure:"min_version" yaml:"min_version"`
-	DayDanCloudConfig      DayDanCloudConfig   `mapstructure:"donetick_cloud" yaml:"donetick_cloud"`
+	DydanCloudConfig       DydanCloudConfig    `mapstructure:"donetick_cloud" yaml:"donetick_cloud"`
 	FCM                    FCMConfig           `mapstructure:"fcm" yaml:"fcm"`
 	FeatureLimits          FeatureLimitsConfig `mapstructure:"feature_limits" yaml:"feature_limits"`
 	Storage                StorageConfig       `mapstructure:"storage" yaml:"storage"`
@@ -83,7 +84,8 @@ type StorageConfig struct {
 	// private bucket (BucketName).
 	PublicBucketName string `mapstructure:"public_bucket_name" yaml:"public_bucket_name"`
 	// PublicBucketHost is the CDN / custom-domain host used to construct bare
-	// (unsigned) URLs for objects in PublicBucketName. Example: "pub.donetick.com".
+	// (unsigned) URLs for objects in PublicBucketName. The legacy hosted domain
+	// is "pub.donetick.com".
 	// If empty, GetPublicURL falls back to a presigned URL from the private bucket.
 	PublicBucketHost string `mapstructure:"public_bucket_host" yaml:"public_bucket_host"`
 	// PathStyle forces path-style S3 addressing (endpoint/bucket/key)
@@ -103,6 +105,9 @@ type StorageConfig struct {
 	// outstanding signed media URLs (clients transparently re-sign), never
 	// login sessions.
 	MediaSecret string `mapstructure:"media_secret" yaml:"media_secret"`
+	// LegacyMediaSecret is populated only for HKDF-derived legacy URLs during
+	// the Dydan transition; it is never loaded from configuration.
+	LegacyMediaSecret string `mapstructure:"-" yaml:"-"`
 	// MediaSecretFile is an alternative to media_secret: a file containing
 	// the media signing secret. Created with random content on first boot if
 	// missing, mirroring jwt.secret_file semantics.
@@ -125,7 +130,7 @@ type StorageConfig struct {
 	// false immediately; new deployments get no benefit from enabling it.
 	AllowLegacyMediaSignatures bool `mapstructure:"allow_legacy_media_signatures" yaml:"allow_legacy_media_signatures"`
 }
-type DayDanCloudConfig struct {
+type DydanCloudConfig struct {
 	GoogleClientID        string `mapstructure:"google_client_id" yaml:"google_client_id"`
 	GoogleAndroidClientID string `mapstructure:"google_android_client_id" yaml:"google_android_client_id"`
 	GoogleIOSClientID     string `mapstructure:"google_ios_client_id" yaml:"google_ios_client_id"`
@@ -333,7 +338,7 @@ type WebhookConfig struct {
 	BackoffInitial time.Duration `mapstructure:"backoff_initial" yaml:"backoff_initial" default:"1s"`
 	BackoffMax     time.Duration `mapstructure:"backoff_max" yaml:"backoff_max" default:"30s"`
 	// SigningSecret is the HMAC-SHA256 key used to sign every outbound
-	// DayDan-generated webhook payload. It is deliberately separate from
+	// Dydan-generated webhook payload. It is deliberately separate from
 	// jwt.secret and storage.media_secret; when unset it is auto-created as
 	// a random secret file (or HKDF-derived from jwt.secret when no data dir
 	// is writable — see resolveWebhookSigningKey). Receivers verify with
@@ -377,7 +382,7 @@ type LogConfig struct {
 func NewConfig() *Config {
 	return &Config{
 		DataDir: "data",
-		Name:    "daydan",
+		Name:    "dydan",
 		Database: DatabaseConfig{
 			Type:      "sqlite",
 			Migration: true,
@@ -471,19 +476,19 @@ func configEnvironmentOverrides(config *Config) {
 	if token := envPushoverToken(); token != "" {
 		config.Pushover.Token = token
 	}
-	if environmentIsTrue("DAYDAN_DISABLE_SIGNUP", "DONETICK_DISABLE_SIGNUP") {
+	if environmentIsTrue("DYDAN_DISABLE_SIGNUP", "DAYDAN_DISABLE_SIGNUP", "TASKIER_DISABLE_SIGNUP", "DONETICK_DISABLE_SIGNUP") {
 		config.IsUserCreationDisabled = true
 	}
-	if environmentIsTrue("DAYDAN_SINGLE_CIRCLE_INSTANCE", "DT_SINGLE_CIRCLE_INSTANCE") {
+	if environmentIsTrue("DYDAN_SINGLE_CIRCLE_INSTANCE", "DAYDAN_SINGLE_CIRCLE_INSTANCE", "TASKIER_SINGLE_CIRCLE_INSTANCE", "DONETICK_SINGLE_CIRCLE_INSTANCE", "DT_SINGLE_CIRCLE_INSTANCE") {
 		config.SingleCircleInstance = true
 	}
-	if environmentIsTrue("DAYDAN_DISABLE_PASSWORD_AUTH", "DT_DISABLE_PASSWORD_AUTH") {
+	if environmentIsTrue("DYDAN_DISABLE_PASSWORD_AUTH", "DAYDAN_DISABLE_PASSWORD_AUTH", "TASKIER_DISABLE_PASSWORD_AUTH", "DONETICK_DISABLE_PASSWORD_AUTH", "DT_DISABLE_PASSWORD_AUTH") {
 		config.DisablePasswordAuth = true
 	}
-	if raw := firstEnvironment("DAYDAN_OAUTH2_ADMIN_GROUPS", "DT_OAUTH2_ADMIN_GROUPS"); raw != "" {
+	if raw := firstEnvironment("DYDAN_OAUTH2_ADMIN_GROUPS", "DAYDAN_OAUTH2_ADMIN_GROUPS", "TASKIER_OAUTH2_ADMIN_GROUPS", "DONETICK_OAUTH2_ADMIN_GROUPS", "DT_OAUTH2_ADMIN_GROUPS"); raw != "" {
 		config.OAuth2Config.AdminGroups = splitEnvironmentList(raw)
 	}
-	if raw := firstEnvironment("DAYDAN_OAUTH2_MANAGER_GROUPS", "DT_OAUTH2_MANAGER_GROUPS"); raw != "" {
+	if raw := firstEnvironment("DYDAN_OAUTH2_MANAGER_GROUPS", "DAYDAN_OAUTH2_MANAGER_GROUPS", "TASKIER_OAUTH2_MANAGER_GROUPS", "DONETICK_OAUTH2_MANAGER_GROUPS", "DT_OAUTH2_MANAGER_GROUPS"); raw != "" {
 		config.OAuth2Config.ManagerGroups = splitEnvironmentList(raw)
 	}
 
@@ -498,13 +503,13 @@ func configEnvironmentOverrides(config *Config) {
 	if encoding := envLogEncoding(); encoding != "" {
 		config.Logging.Encoding = encoding
 	}
-	if environmentIsTrue("DAYDAN_LOG_DEVELOPMENT", "DONETICK_LOG_DEVELOPMENT") {
+	if environmentIsTrue("DYDAN_LOG_DEVELOPMENT", "DAYDAN_LOG_DEVELOPMENT", "TASKIER_LOG_DEVELOPMENT", "DONETICK_LOG_DEVELOPMENT") {
 		config.Logging.Development = true
 	}
 
 	// Trusted proxies come in as a comma-separated list because Viper does not
 	// split raw environment values into slices on its own.
-	if raw := firstEnvironment("DAYDAN_TRUSTED_PROXIES", "DT_SERVER_TRUSTED_PROXIES", "TASKIER_TRUSTED_PROXIES"); raw != "" {
+	if raw := firstEnvironment("DYDAN_TRUSTED_PROXIES", "DAYDAN_TRUSTED_PROXIES", "TASKIER_TRUSTED_PROXIES", "DONETICK_TRUSTED_PROXIES", "DT_SERVER_TRUSTED_PROXIES"); raw != "" {
 		var proxies []string
 		for _, part := range strings.Split(raw, ",") {
 			if trimmed := strings.TrimSpace(part); trimmed != "" {
@@ -524,7 +529,7 @@ func splitEnvironmentList(raw string) []string {
 	}
 	return values
 }
-func setDayDanDefaults(v *viper.Viper) {
+func setDydanDefaults(v *viper.Viper) {
 	cfg := NewConfig()
 	v.SetDefault("name", cfg.Name)
 	v.SetDefault("data_dir", cfg.DataDir)
@@ -604,21 +609,31 @@ func setDayDanDefaults(v *viper.Viper) {
 func LoadConfig() *Config {
 	cfg, err := LoadConfigE()
 	if err != nil {
-		panic(fmt.Sprintf("DayDan configuration error: %v", err))
+		panic(fmt.Sprintf("Dydan configuration error: %v", err))
 	}
 	return cfg
 }
 
-func applyDayDanCloudConfigAliases(v *viper.Viper, config *Config) error {
-	if v.IsSet("is_daydan_cloud") {
-		config.IsDayDanCloud = v.GetBool("is_daydan_cloud")
+func applyDydanCloudConfigAliases(v *viper.Viper, config *Config) error {
+	if v.IsSet("is_dydan_cloud") {
+		config.IsDydanCloud = v.GetBool("is_dydan_cloud")
 	}
-	if v.IsSet("daydan_cloud") {
-		var alias DayDanCloudConfig
+	if v.IsSet("dydan_cloud") {
+		var alias DydanCloudConfig
+		if err := v.UnmarshalKey("dydan_cloud", &alias); err != nil {
+			return fmt.Errorf("decode dydan_cloud alias: %w", err)
+		}
+		config.DydanCloudConfig = alias
+	}
+	if !v.IsSet("is_dydan_cloud") && v.IsSet("is_daydan_cloud") {
+		config.IsDydanCloud = v.GetBool("is_daydan_cloud")
+	}
+	if !v.IsSet("dydan_cloud") && v.IsSet("daydan_cloud") {
+		var alias DydanCloudConfig
 		if err := v.UnmarshalKey("daydan_cloud", &alias); err != nil {
 			return fmt.Errorf("decode daydan_cloud alias: %w", err)
 		}
-		config.DayDanCloudConfig = alias
+		config.DydanCloudConfig = alias
 	}
 	return nil
 }
@@ -644,14 +659,17 @@ func readOptionalConfigFile(v *viper.Viper) error {
 		return nil
 	}
 
-	// Prefer daydan.{yaml,yml}; fall back to legacy taskier.{yaml,yml}.
-	if err := readNamedConfigFile(v, "daydan"); err != nil {
+	// Prefer dydan.{yaml,yml}, then the legacy daydan name, then older names.
+	if err := readNamedConfigFile(v, "dydan"); err != nil {
 		var configNotFoundError viper.ConfigFileNotFoundError
 		if !errors.As(err, &configNotFoundError) {
-			return fmt.Errorf("read daydan config: %w", err)
+			return fmt.Errorf("read dydan config: %w", err)
 		}
-		if err := readNamedConfigFile(v, "taskier"); err != nil {
+		if err := readNamedConfigFile(v, "daydan"); err != nil {
 			if !errors.As(err, &configNotFoundError) {
+				return fmt.Errorf("read daydan config: %w", err)
+			}
+			if err := readNamedConfigFile(v, "taskier"); err != nil && !errors.As(err, &configNotFoundError) {
 				return fmt.Errorf("read taskier config: %w", err)
 			}
 		}
@@ -667,7 +685,7 @@ func readNamedConfigFile(v *viper.Viper, name string) error {
 func LoadConfigE() (*Config, error) {
 	// https://github.com/spf13/viper/issues/1895#issuecomment-3316091229
 	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
-	setDayDanDefaults(v)
+	setDydanDefaults(v)
 
 	v.SetEnvPrefix("DT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -677,8 +695,8 @@ func LoadConfigE() (*Config, error) {
 	v.AddConfigPath(".")
 	// Config type is inferred from the file extension. Do not call
 	// SetConfigType here: viper treats a non-empty config type as permission to
-	// match a config file with no extension, which collides with the "/daydan"
-	// binary present in the container's working directory and panics parsing it
+	// match a config file with no extension, which collides with the legacy
+	// "/daydan" binary alias in the container and panics parsing it
 	// as YAML.
 
 	if err := readOptionalConfigFile(v); err != nil {
@@ -703,7 +721,7 @@ func LoadConfigE() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode config: %w", err)
 	}
-	if err := applyDayDanCloudConfigAliases(v, &config); err != nil {
+	if err := applyDydanCloudConfigAliases(v, &config); err != nil {
 		return nil, err
 	}
 
@@ -958,6 +976,11 @@ func resolveMediaSigningKey(cfg *Config) error {
 		return fmt.Errorf("derive media signing secret: %w", err)
 	}
 	cfg.Storage.MediaSecret = hex.EncodeToString(derived)
+	legacy, err := deriveLegacyMediaSigningKey([]byte(cfg.Jwt.Secret))
+	if err != nil {
+		return fmt.Errorf("derive legacy media signing secret: %w", err)
+	}
+	cfg.Storage.LegacyMediaSecret = hex.EncodeToString(legacy)
 	return nil
 }
 
@@ -965,12 +988,23 @@ func resolveMediaSigningKey(cfg *Config) error {
 // labels binding the derived media key to exactly this purpose. They must
 // never be reused for another credential family (JWTs use raw jwt.secret).
 const (
-	mediaSigningKeyInfo = "daydan media-url-signing v1"
-	mediaSigningKeySalt = "daydan/storage/media-url"
+	mediaSigningKeyInfo       = "dydan media-url-signing v1"
+	mediaSigningKeySalt       = "dydan/storage/media-url"
+	legacyMediaSigningKeyInfo = "daydan media-url-signing v1"
+	legacyMediaSigningKeySalt = "daydan/storage/media-url"
 )
 
 func deriveMediaSigningKey(jwtSecret []byte) ([]byte, error) {
 	reader := hkdf.New(sha256.New, jwtSecret, []byte(mediaSigningKeySalt), []byte(mediaSigningKeyInfo))
+	derived := make([]byte, 32)
+	if _, err := io.ReadFull(reader, derived); err != nil {
+		return nil, err
+	}
+	return derived, nil
+}
+
+func deriveLegacyMediaSigningKey(jwtSecret []byte) ([]byte, error) {
+	reader := hkdf.New(sha256.New, jwtSecret, []byte(legacyMediaSigningKeySalt), []byte(legacyMediaSigningKeyInfo))
 	derived := make([]byte, 32)
 	if _, err := io.ReadFull(reader, derived); err != nil {
 		return nil, err

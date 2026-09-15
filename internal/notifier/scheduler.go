@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
-	"github.com/alamoudimoh/daydan-server/internal/events"
-	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
-	nService "github.com/alamoudimoh/daydan-server/internal/notifier/service"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	chRepo "github.com/alamoudimoh/dydan-server/internal/chore/repo"
+	"github.com/alamoudimoh/dydan-server/internal/events"
+	nRepo "github.com/alamoudimoh/dydan-server/internal/notifier/repo"
+	nService "github.com/alamoudimoh/dydan-server/internal/notifier/service"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/logging"
 )
 
 type keyType string
@@ -113,6 +113,7 @@ func (s *Scheduler) loadAndSendNotificationJob(c context.Context) (time.Duration
 	s.notificationRepo.MarkNotificationsAsSent(getAllPendingNotifications)
 	return time.Since(startTime), nil
 }
+
 // runScheduler runs `job` sequentially every `interval`, measured from the
 // start of each run (a run longer than the interval never overlaps itself —
 // the next tick simply fires immediately). Cancellation is honored between

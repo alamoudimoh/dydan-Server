@@ -13,22 +13,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	auth "github.com/alamoudimoh/daydan-server/internal/auth"
-	"github.com/alamoudimoh/daydan-server/internal/auth/apple"
-	"github.com/alamoudimoh/daydan-server/internal/authlimit"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	"github.com/alamoudimoh/daydan-server/internal/email"
-	"github.com/alamoudimoh/daydan-server/internal/mfa"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	"github.com/alamoudimoh/daydan-server/internal/outbound"
-	storage "github.com/alamoudimoh/daydan-server/internal/storage"
-	storageRepo "github.com/alamoudimoh/daydan-server/internal/storage/repo"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
-	"github.com/alamoudimoh/daydan-server/internal/utils"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	auth "github.com/alamoudimoh/dydan-server/internal/auth"
+	"github.com/alamoudimoh/dydan-server/internal/auth/apple"
+	"github.com/alamoudimoh/dydan-server/internal/authlimit"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	"github.com/alamoudimoh/dydan-server/internal/email"
+	"github.com/alamoudimoh/dydan-server/internal/mfa"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/dydan-server/internal/outbound"
+	storage "github.com/alamoudimoh/dydan-server/internal/storage"
+	storageRepo "github.com/alamoudimoh/dydan-server/internal/storage/repo"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/internal/utils"
+	"github.com/alamoudimoh/dydan-server/logging"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -46,9 +46,9 @@ type Handler struct {
 	tokenService           *auth.TokenService
 	email                  email.Sender
 	identityProvider       *auth.IdentityProvider
-	isDayDanCloud          bool
+	isDydanCloud           bool
 	IsUserCreationDisabled bool
-	DayDanCloudConfig      config.DayDanCloudConfig
+	DydanCloudConfig       config.DydanCloudConfig
 	storage                storage.Storage
 	storageRepo            *storageRepo.StorageRepository
 	signer                 storage.URLSigner
@@ -82,9 +82,9 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		tokenService:           tokenService,
 		email:                  email,
 		identityProvider:       idp,
-		isDayDanCloud:          config.IsDayDanCloud,
+		isDydanCloud:           config.IsDydanCloud,
 		IsUserCreationDisabled: config.IsUserCreationDisabled,
-		DayDanCloudConfig:      config.DayDanCloudConfig,
+		DydanCloudConfig:       config.DydanCloudConfig,
 		storage:                storage,
 		storageRepo:            storageRepo,
 		signer:                 signer,
@@ -297,6 +297,8 @@ func (h *Handler) syncOIDCRole(c *gin.Context, userID, circleID int, groups []st
 // mobile clients. They are constants of the client applications and are not
 // attacker-controlled.
 var nativeOAuthRedirectURIs = []string{
+	"dydan://auth/oauth2",
+	// Retained for installed Donetick clients during the deep-link migration.
 	"donetick://auth/oauth2",
 }
 
@@ -430,7 +432,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			})
 			return
 		}
-		if tokenInfo.Audience != h.DayDanCloudConfig.GoogleClientID && tokenInfo.Audience != h.DayDanCloudConfig.GoogleIOSClientID && tokenInfo.Audience != h.DayDanCloudConfig.GoogleAndroidClientID {
+		if tokenInfo.Audience != h.DydanCloudConfig.GoogleClientID && tokenInfo.Audience != h.DydanCloudConfig.GoogleIOSClientID && tokenInfo.Audience != h.DydanCloudConfig.GoogleAndroidClientID {
 			logger.Errorw("account.handler.thirdPartyAuthCallback token audience mismatch", "audience", tokenInfo.Audience)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid token",
@@ -854,7 +856,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 
 		// Identity hardening: the IdP's email assertion is only trusted for
 		// account linking when explicitly verified. An unverified external
-		// address must never grant access to an existing DayDan account.
+		// address must never grant access to an existing Dydan account.
 		if claims.EmailVerified != nil && !*claims.EmailVerified {
 			logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) rejected unverified email claim")
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -1071,7 +1073,7 @@ func (h *Handler) resetPassword(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		user, err := h.userRepo.FindByEmail(ctx, normalizedEmail)
-		if err != nil || user.Provider != uModel.AuthProviderDayDan {
+		if err != nil || user.Provider != uModel.AuthProviderDydan {
 			return
 		}
 		token, err := auth.GenerateEmailResetToken(ctx)
@@ -1353,9 +1355,9 @@ func (h *Handler) UpdateNotificationTarget(c *gin.Context) {
 // so other devices must re-authenticate, while the device performing the
 // change keeps its current session.
 func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
-	if h.isDayDanCloud {
+	if h.isDydanCloud {
 		// only enable this feature for self-hosted instances
-		c.JSON(http.StatusForbidden, gin.H{"error": "This action is not allowed on the hosted DayDan service"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "This action is not allowed on the hosted Dydan service"})
 		return
 	}
 	logger := logging.FromContext(c)
@@ -1709,8 +1711,8 @@ func (h *Handler) createChildUser(c *gin.Context) {
 		return
 	}
 
-	// Check current child user count to enforce limit (only for hosted DayDan service)
-	if h.isDayDanCloud {
+	// Check current child user count to enforce the hosted Dydan service limit.
+	if h.isDydanCloud {
 		currentChildCount, err := h.userRepo.GetChildUserCount(c, currentUser.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing subaccounts"})
@@ -1762,7 +1764,7 @@ func (h *Handler) createChildUser(c *gin.Context) {
 		CircleID:     currentUser.CircleID,
 		ParentUserID: &currentUser.ID,
 		UserType:     uModel.UserTypeChild,
-		Provider:     uModel.AuthProviderDayDan,
+		Provider:     uModel.AuthProviderDydan,
 		CreatedAt:    time.Now().UTC(),
 		UpdatedAt:    time.Now().UTC(),
 	}

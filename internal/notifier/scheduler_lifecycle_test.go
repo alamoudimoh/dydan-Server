@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 // TestSchedulerStopsOnCancel replaces the old non-cancellable time.Sleep loop:

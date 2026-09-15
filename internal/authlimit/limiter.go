@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/config"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

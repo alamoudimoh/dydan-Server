@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
-	"github.com/alamoudimoh/daydan-server/logging"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	nRepo "github.com/alamoudimoh/dydan-server/internal/notifier/repo"
+	"github.com/alamoudimoh/dydan-server/logging"
 )
 
 type NotificationPlanner struct {

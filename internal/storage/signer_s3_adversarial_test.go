@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -103,7 +103,7 @@ func TestS3SignerTTLClampAndConfig(t *testing.T) {
 		t.Fatalf("expected configured 1h lifetime, got %ds", expiresIn)
 	}
 
-	over := NewURLSignerS3(st, s3CfgWithTTL(30 * 24 * time.Hour))
+	over := NewURLSignerS3(st, s3CfgWithTTL(30*24*time.Hour))
 	signed, err = over.Sign("users/1/photo.jpg")
 	if err != nil {
 		t.Fatal(err)

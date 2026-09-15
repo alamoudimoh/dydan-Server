@@ -1,6 +1,6 @@
 # Reverse-proxy deployment guide
 
-DayDan is designed to be safely exposed either directly to the internet or
+Dydan is designed to be safely exposed either directly to the internet or
 behind a reverse proxy. This document explains the proxy-trust model
 introduced with the Phase 3 authentication hardening and exactly what
 operators of Nginx, Caddy, and Traefik must configure.
@@ -14,7 +14,7 @@ Forwarding headers (`X-Forwarded-Proto`, `X-Forwarded-Host`,
 2. which origins are accepted as "same deployment" by the CSRF origin check
    on cookie-authenticated endpoints (`/auth/refresh`, `/auth/logout`).
 
-Because a directly exposed DayDan instance receives these headers from
+Because a directly exposed Dydan instance receives these headers from
 untrusted clients, headers are honored **only** when the TCP peer is in the
 configured allowlist:
 
@@ -26,12 +26,12 @@ server:
 Environment variable equivalent:
 
 ```bash
-DAYDAN_TRUSTED_PROXIES=10.0.0.5,172.18.0.0/16
+DYDAN_TRUSTED_PROXIES=10.0.0.5,172.18.0.0/16
 ```
 
 * **Direct exposure** — keep the default. Clients can send whatever headers
   they like; they are ignored. Requests are treated as plain HTTP (or HTTPS
-  if TLS terminates inside DayDan itself).
+  if TLS terminates inside Dydan itself).
 * **Proxy on the same host / same container network gateway** — the default
   loopback list usually already matches.
 * **Proxy on another host or a Docker bridge network** — add the proxy's IP
@@ -46,7 +46,7 @@ the real client address behind a trusted proxy instead of the proxy's own.
 
 Your proxy must **overwrite** (not append to) the forwarding headers it sets,
 so a malicious client can never smuggle their own values past your proxy into
-DayDan.
+Dydan.
 
 ### Nginx
 
@@ -61,10 +61,10 @@ location / {
 }
 ```
 
-Then set on the DayDan side:
+Then set on the Dydan side:
 
 ```bash
-DAYDAN_TRUSTED_PROXIES=127.0.0.1
+DYDAN_TRUSTED_PROXIES=127.0.0.1
 ```
 
 ### Caddy
@@ -77,15 +77,15 @@ example.com {
 }
 ```
 
-If DayDan runs on another host, set `DAYDAN_TRUSTED_PROXIES` to that Caddy
-host's source IP as seen by DayDan.
+If Dydan runs on another host, set `DYDAN_TRUSTED_PROXIES` to that Caddy
+host's source IP as seen by Dydan.
 
 ### Traefik
 
 Traefik overwrites `X-Forwarded-*` itself. Only make sure no entrypoint
-forwards raw client headers through to DayDan unmodified (do not enable the
+forwards raw client headers through to Dydan unmodified (do not enable the
 `forwardHeader` passthrough custom options), then set
-`DAYDAN_TRUSTED_PROXIES` to Traefik's container/host IP as seen by DayDan
+`DYDAN_TRUSTED_PROXIES` to Traefik's container/host IP as seen by Dydan
 (e.g. the compose network gateway).
 
 ## Access-token lifetimes

@@ -1,0 +1,900 @@
+ID,Repository,Identity,File,Line,Matched Value,Classification,Risk,Action,Reason
+FINAL-PX-0001,Product Experience,DayDan,src/imports/DayDan-Brand-Summary.md,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0002,Product Experience,DayDan,src/imports/DayDan-Brand-Summary.md,3,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0003,Product Experience,DayDan,src/imports/DayDan-Brand-Summary.md,4,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0004,Product Experience,DayDan,src/imports/DayDan-Brand-Summary.md,8,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0005,Product Experience,DayDan,src/imports/DayDan-Brand-Summary.md,49,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0006,Product Experience,DayDan,src/imports/DayDan-Brand-Summary.md,79,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0007,Product Experience,DayDan,src/imports/DayDan-Brand-Summary.md,99,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0008,Product Experience,DayDan,src/imports/Sovereign-Brand-Summary.md,127,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0009,Product Experience,DayDan,src/imports/Sovereign-Brand-Summary.md,128,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0010,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0011,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,8,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0012,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,12,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0013,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,32,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0014,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,43,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0015,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,56,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0016,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,118,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0017,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,119,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0018,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,203,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0019,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,216,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0020,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,490,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-PX-0021,Product Experience,DayDan,src/imports/pasted_text/daydan-product-brief.md,502,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief and brand summary documentation preserved for provenance
+FINAL-APP-0001,App,DayDan,.github/workflows/build.yml,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Workflow name or build artifact label
+FINAL-APP-0002,App,DayDan,.github/workflows/build.yml,154,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Workflow name or build artifact label
+FINAL-APP-0003,App,DayDan,.migration/README.md,11,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Migration evidence documentation preserving historical commit SHA anchor
+FINAL-APP-0004,App,Donetick,AUTOMATED_RELEASE.md,33,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0005,App,Donetick,AUTOMATED_RELEASE.md,34,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0006,App,Donetick,AUTOMATED_RELEASE.md,38,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0007,App,Donetick,AUTOMATED_RELEASE.md,42,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0008,App,Donetick,AUTOMATED_RELEASE.md,43,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0009,App,Donetick,AUTOMATED_RELEASE.md,43,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0010,App,Donetick,AUTOMATED_RELEASE.md,44,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0011,App,Donetick,AUTOMATED_RELEASE.md,45,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0012,App,Donetick,AUTOMATED_RELEASE.md,46,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0013,App,Donetick,AUTOMATED_RELEASE.md,47,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0014,App,Donetick,AUTOMATED_RELEASE.md,48,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0015,App,Donetick,AUTOMATED_RELEASE.md,57,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0016,App,Donetick,AUTOMATED_RELEASE.md,62,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0017,App,Donetick,AUTOMATED_RELEASE.md,63,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0018,App,Donetick,AUTOMATED_RELEASE.md,70,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0019,App,Donetick,AUTOMATED_RELEASE.md,70,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0020,App,Donetick,AUTOMATED_RELEASE.md,74,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0021,App,Donetick,AUTOMATED_RELEASE.md,74,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Apple Developer distribution profile and Vaultwarden secret names
+FINAL-APP-0022,App,DayDan,README.md,11,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository reference pending remote repository slug rename
+FINAL-APP-0023,App,Donetick,README.md,13,Donetick,DOCUMENTATION_ONLY,LOW,KEEP,Historical attribution acknowledging origin of open-source project
+FINAL-APP-0024,App,DayDan,README.md,60,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository reference pending remote repository slug rename
+FINAL-APP-0025,App,DayDan,README.md,86,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository reference pending remote repository slug rename
+FINAL-APP-0026,App,DayDan,README.md,119,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository reference pending remote repository slug rename
+FINAL-APP-0027,App,Donetick,android/app/build.gradle,10,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0028,App,Donetick,android/app/build.gradle,13,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0029,App,Donetick,android/app/release/output-metadata.json,7,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0030,App,Donetick,android/app/src/main/AndroidManifest.xml,25,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Deep link intent filter for donetick:// URLs and applinks domain
+FINAL-APP-0031,App,Donetick,android/app/src/main/AndroidManifest.xml,30,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Deep link intent filter for donetick:// URLs and applinks domain
+FINAL-APP-0032,App,Donetick,android/app/src/main/AndroidManifest.xml,33,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Deep link intent filter for donetick:// URLs and applinks domain
+FINAL-APP-0033,App,Donetick,android/app/src/main/AndroidManifest.xml,40,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Deep link intent filter for donetick:// URLs and applinks domain
+FINAL-APP-0034,App,Donetick,android/app/src/main/AndroidManifest.xml,44,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Deep link intent filter for donetick:// URLs and applinks domain
+FINAL-APP-0035,App,Donetick,android/app/src/main/AndroidManifest.xml,48,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Deep link intent filter for donetick:// URLs and applinks domain
+FINAL-APP-0036,App,Donetick,android/app/src/main/java/com/donetick/app/MainActivity.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0037,App,Donetick,android/app/src/main/java/com/donetick/app/MainActivity.java,15,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0038,App,Donetick,android/app/src/main/java/com/donetick/app/MainActivity.java,26,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0039,App,Donetick,android/app/src/main/java/com/donetick/app/MainActivity.java,31,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0040,App,Donetick,android/app/src/main/java/com/donetick/app/widget/AvatarCache.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0041,App,Donetick,android/app/src/main/java/com/donetick/app/widget/AvatarCache.java,29,Donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Android SharedPreferences name and logging tag for widget bridge
+FINAL-APP-0042,App,Donetick,android/app/src/main/java/com/donetick/app/widget/PeopleWidgetProvider.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0043,App,Donetick,android/app/src/main/java/com/donetick/app/widget/PeopleWidgetProvider.java,7,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0044,App,Donetick,android/app/src/main/java/com/donetick/app/widget/QuickCaptureWidgetProvider.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0045,App,Donetick,android/app/src/main/java/com/donetick/app/widget/QuickCaptureWidgetProvider.java,11,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0046,App,Donetick,android/app/src/main/java/com/donetick/app/widget/QuickCaptureWidgetProvider.java,20,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Widget deep link scheme donetick:// preserving existing user shortcuts
+FINAL-APP-0047,App,Donetick,android/app/src/main/java/com/donetick/app/widget/QuickCaptureWidgetProvider.java,21,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Widget deep link scheme donetick:// preserving existing user shortcuts
+FINAL-APP-0048,App,Donetick,android/app/src/main/java/com/donetick/app/widget/QuickCaptureWidgetProvider.java,22,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Widget deep link scheme donetick:// preserving existing user shortcuts
+FINAL-APP-0049,App,Donetick,android/app/src/main/java/com/donetick/app/widget/QuickCaptureWidgetProvider.java,40,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0050,App,Donetick,android/app/src/main/java/com/donetick/app/widget/TodayWidgetProvider.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0051,App,Donetick,android/app/src/main/java/com/donetick/app/widget/TodayWidgetProvider.java,7,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0052,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WeekWidgetProvider.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0053,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WeekWidgetProvider.java,7,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0054,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetBridgePlugin.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0055,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetConfigActivity.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0056,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetConfigActivity.java,9,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0057,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetListService.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0058,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetListService.java,14,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0059,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetListService.java,237,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Widget deep link scheme donetick:// preserving existing user shortcuts
+FINAL-APP-0060,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetListService.java,258,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Widget deep link scheme donetick:// preserving existing user shortcuts
+FINAL-APP-0061,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetStore.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0062,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetStore.java,40,Donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Android SharedPreferences name and logging tag for widget bridge
+FINAL-APP-0063,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetStore.java,41,donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Android SharedPreferences name and logging tag for widget bridge
+FINAL-APP-0064,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetUi.java,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0065,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetUi.java,12,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0066,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetUi.java,13,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0067,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetUi.java,25,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0068,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetUi.java,97,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Widget deep link scheme donetick:// preserving existing user shortcuts
+FINAL-APP-0069,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetUi.java,111,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android Java package namespace com.donetick.app for shipped application
+FINAL-APP-0070,App,Donetick,android/app/src/main/java/com/donetick/app/widget/WidgetUi.java,116,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Widget deep link scheme donetick:// preserving existing user shortcuts
+FINAL-APP-0071,App,Donetick,android/app/src/main/res/values/strings.xml,5,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android package name and custom URL scheme resource string
+FINAL-APP-0072,App,Donetick,android/app/src/main/res/values/strings.xml,6,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android package name and custom URL scheme resource string
+FINAL-APP-0073,App,Donetick,android/app/src/main/res/xml/network_security_config.xml,5,Donetick,DOCUMENTATION_ONLY,LOW,KEEP,XML configuration comment citing upstream issue for self-signed certificates
+FINAL-APP-0074,App,Donetick,android/app/src/main/res/xml/network_security_config.xml,7,donetick,DOCUMENTATION_ONLY,LOW,KEEP,XML configuration comment citing upstream issue for self-signed certificates
+FINAL-APP-0075,App,Donetick,android/app/src/main/res/xml/network_security_config.xml,7,donetick,DOCUMENTATION_ONLY,LOW,KEEP,XML configuration comment citing upstream issue for self-signed certificates
+FINAL-APP-0076,App,Donetick,android/app/src/main/res/xml/widget_today_info.xml,15,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android widget configuration activity class name under package namespace
+FINAL-APP-0077,App,Donetick,android/app/src/main/res/xml/widget_week_info.xml,15,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Android widget configuration activity class name under package namespace
+FINAL-APP-0078,App,Donetick,capacitor.config.ts,4,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0079,App,Donetick,crowdin.yml,4,donetick,EXTERNAL_PENDING,LOW,OWNER_ACTION,Crowdin translation project identifier in external localization service
+FINAL-APP-0080,App,DayDan,design-source/figma-make/src/imports/DayDan-Brand-Summary.md,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief imported from Figma Make preserved for provenance
+FINAL-APP-0081,App,DayDan,design-source/figma-make/src/imports/DayDan-Brand-Summary.md,3,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief imported from Figma Make preserved for provenance
+FINAL-APP-0082,App,DayDan,design-source/figma-make/src/imports/DayDan-Brand-Summary.md,7,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief imported from Figma Make preserved for provenance
+FINAL-APP-0083,App,DayDan,design-source/figma-make/src/imports/DayDan-Brand-Summary.md,48,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief imported from Figma Make preserved for provenance
+FINAL-APP-0084,App,DayDan,design-source/figma-make/src/imports/DayDan-Brand-Summary.md,78,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief imported from Figma Make preserved for provenance
+FINAL-APP-0085,App,DayDan,design-source/figma-make/src/imports/DayDan-Brand-Summary.md,98,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief imported from Figma Make preserved for provenance
+FINAL-APP-0086,App,DayDan,design-source/figma-make/src/imports/Sovereign-Brand-Summary.md,127,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief imported from Figma Make preserved for provenance
+FINAL-APP-0087,App,DayDan,design-source/figma-make/src/imports/Sovereign-Brand-Summary.md,128,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Historical design brief imported from Figma Make preserved for provenance
+FINAL-APP-0088,App,DayDan,docs/development.md,65,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository reference pending remote repository slug rename
+FINAL-APP-0089,App,Donetick,fastlane/Appfile,1,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0090,App,Donetick,fastlane/Fastfile,28,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0091,App,Donetick,fastlane/Fastfile,28,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0092,App,Donetick,fastlane/Fastfile,29,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0093,App,Donetick,fastlane/Fastfile,29,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0094,App,Donetick,fastlane/Fastfile,104,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Shipped Android/iOS application identifier com.donetick.app and build metadata
+FINAL-APP-0095,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,22,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0096,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,22,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0097,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,23,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0098,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,23,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0099,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,44,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0100,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,44,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0101,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,45,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0102,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,45,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0103,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,47,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0104,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,47,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0105,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,57,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0106,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,70,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0107,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,105,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0108,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,113,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0109,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,116,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0110,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,118,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0111,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,120,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0112,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,127,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0113,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,184,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0114,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,186,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0115,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,196,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0116,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,197,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0117,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,198,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0118,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,237,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0119,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,318,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0120,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,327,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0121,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,471,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0122,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,487,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0123,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,494,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0124,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,505,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0125,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,505,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0126,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,509,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0127,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,513,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0128,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,526,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0129,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,526,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0130,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,529,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0131,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,532,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0132,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,536,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0133,App,Donetick,ios/App/App.xcodeproj/project.pbxproj,565,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Xcode build configuration preserving widget target and bundle identifiers
+FINAL-APP-0134,App,Donetick,ios/App/App/App.entitlements,9,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS App Groups and Universal Link entitlements for shipped app
+FINAL-APP-0135,App,Donetick,ios/App/App/App.entitlements,13,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS App Groups and Universal Link entitlements for shipped app
+FINAL-APP-0136,App,Donetick,ios/App/App/Info.plist,70,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0137,App,Donetick,ios/App/App/Info.plist,73,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0138,App,Donetick,ios/App/App/WidgetBridgePlugin.swift,17,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS App Groups and Universal Link entitlements for shipped app
+FINAL-APP-0139,App,Donetick,ios/App/DonetickWidget/DonetickWidget.entitlements,7,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS App Groups and Universal Link entitlements for shipped app
+FINAL-APP-0140,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,58,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS widget deep link scheme preserving widget interaction
+FINAL-APP-0141,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,80,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS App Groups and Universal Link entitlements for shipped app
+FINAL-APP-0142,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,403,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0143,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,460,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS widget deep link scheme preserving widget interaction
+FINAL-APP-0144,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,686,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS widget deep link scheme preserving widget interaction
+FINAL-APP-0145,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,718,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0146,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,720,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0147,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,858,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0148,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,860,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0149,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,989,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0150,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,1013,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS widget deep link scheme preserving widget interaction
+FINAL-APP-0151,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,1019,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS widget deep link scheme preserving widget interaction
+FINAL-APP-0152,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,1025,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS widget deep link scheme preserving widget interaction
+FINAL-APP-0153,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,1086,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0154,App,Donetick,ios/App/DonetickWidget/DonetickWidget.swift,1100,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,iOS Info.plist and Widget extension bundle identifiers and URL schemes
+FINAL-APP-0155,App,Donetick,public/.well-known/apple-app-site-association,6,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Universal link association metadata for Apple App Site and Android Asset Links
+FINAL-APP-0156,App,Donetick,public/.well-known/apple-app-site-association.json,6,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Universal link association metadata for Apple App Site and Android Asset Links
+FINAL-APP-0157,App,Donetick,public/.well-known/assetlinks.json,6,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Universal link association metadata for Apple App Site and Android Asset Links
+FINAL-APP-0158,App,Donetick,scripts/check-runtime-artifacts.sh,5,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Integrity script forbidding committed legacy database files
+FINAL-APP-0159,App,Donetick,scripts/pull-secrets.sh,43,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0160,App,Donetick,scripts/pull-secrets.sh,46,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0161,App,Donetick,scripts/pull-secrets.sh,46,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0162,App,Donetick,scripts/pull-secrets.sh,48,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0163,App,Donetick,scripts/pull-secrets.sh,51,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0164,App,Donetick,scripts/pull-secrets.sh,58,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0165,App,Donetick,scripts/pull-secrets.sh,62,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0166,App,Donetick,scripts/pull-secrets.sh,65,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0167,App,Donetick,scripts/pull-secrets.sh,69,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0168,App,Donetick,scripts/push-secrets.sh,39,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0169,App,Donetick,scripts/push-secrets.sh,44,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0170,App,Donetick,scripts/push-secrets.sh,45,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0171,App,Donetick,scripts/push-secrets.sh,49,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0172,App,Donetick,scripts/push-secrets.sh,50,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0173,App,Donetick,scripts/push-secrets.sh,54,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0174,App,Donetick,scripts/push-secrets.sh,59,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0175,App,Donetick,scripts/push-secrets.sh,64,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0176,App,Donetick,scripts/push-secrets.sh,69,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External Vaultwarden secure note names and deployment secret references
+FINAL-APP-0177,App,Donetick,src/CapacitorListener.js,55,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0178,App,Donetick,src/CapacitorListener.js,59,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0179,App,Donetick,src/CapacitorListener.js,79,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0180,App,Donetick,src/CapacitorListener.js,90,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0181,App,Donetick,src/CapacitorListener.js,105,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0182,App,Donetick,src/CapacitorListener.js,107,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0183,App,Donetick,src/MarketingApp.jsx,22,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0184,App,Donetick,src/components/UserProfileAvatar.jsx,87,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0185,App,Donetick,src/components/UserProfileAvatar.jsx,501,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0186,App,DayDan,src/config/AppBranding.js,24,daydan,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,GitHub issues URL destination pending remote repository slug rename
+FINAL-APP-0187,App,DayDan,src/config/AppBranding.test.js,39,daydan,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,GitHub issues URL destination pending remote repository slug rename
+FINAL-APP-0188,App,DayDan,src/config/ReportDestinations.js,14,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Backward-compatible environment variable fallback for build configuration
+FINAL-APP-0189,App,DayDan,src/config/ReportDestinations.js,16,daydan,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,Default repository URL fallback pointing to GitHub repo slug
+FINAL-APP-0190,App,DayDan,src/config/ReportDestinations.js,23,daydan,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,External reporting source identifier registered with telemetry intake
+FINAL-APP-0191,App,DayDan,src/config/ReportDestinations.test.js,13,daydan,TEST_COMPAT,LOW,KEEP,Test verifying fallback repository URL and report source compatibility
+FINAL-APP-0192,App,DayDan,src/config/ReportDestinations.test.js,16,daydan,TEST_COMPAT,LOW,KEEP,Test verifying fallback repository URL and report source compatibility
+FINAL-APP-0193,App,DayDan,src/config/ReportDestinations.test.js,18,daydan,TEST_COMPAT,LOW,KEEP,Test verifying fallback repository URL and report source compatibility
+FINAL-APP-0194,App,DayDan,src/config/ReportDestinations.test.js,26,DAYDAN,TEST_COMPAT,LOW,KEEP,Test verifying fallback repository URL and report source compatibility
+FINAL-APP-0195,App,DayDan,src/config/ReportDestinations.test.js,26,DayDan,TEST_COMPAT,LOW,KEEP,Test verifying fallback repository URL and report source compatibility
+FINAL-APP-0196,App,DayDan,src/config/ReportDestinations.test.js,33,DAYDAN,TEST_COMPAT,LOW,KEEP,Test verifying fallback repository URL and report source compatibility
+FINAL-APP-0197,App,DayDan,src/config/ReportDestinations.test.js,33,DayDan,TEST_COMPAT,LOW,KEEP,Test verifying fallback repository URL and report source compatibility
+FINAL-APP-0198,App,DayDan,src/config/ReportDestinations.test.js,36,DayDan,TEST_COMPAT,LOW,KEEP,Test verifying fallback repository URL and report source compatibility
+FINAL-APP-0199,App,Donetick,src/main.jsx,23,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0200,App,Donetick,src/main.jsx,23,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0201,App,Donetick,src/navigation/routeSmokeAccounting.js,375,donetick,TEST_COMPAT,LOW,KEEP,E2E route smoke accounting regex matching historical heading patterns
+FINAL-APP-0202,App,DayDan,src/observability/sentry.jsx,132,daydan,EXTERNAL_PENDING,MEDIUM,EXTERNAL_ACTION,Sentry release identifier pending project migration in external Sentry service
+FINAL-APP-0203,App,Donetick,src/service/FeedbackService.js,25,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0204,App,Donetick,src/service/FeedbackService.js,336,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0205,App,Donetick,src/utils/FeatureToggle.js,2,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0206,App,Donetick,src/utils/FeatureToggle.js,9,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0207,App,Donetick,src/utils/FeatureToggle.test.js,6,donetick,TEST_COMPAT,LOW,KEEP,Test asserting hosted donetick.com domain recognition
+FINAL-APP-0208,App,Donetick,src/utils/FeatureToggle.test.js,7,donetick,TEST_COMPAT,LOW,KEEP,Test asserting hosted donetick.com domain recognition
+FINAL-APP-0209,App,Donetick,src/utils/FeatureToggle.test.js,8,donetick,TEST_COMPAT,LOW,KEEP,Test asserting hosted donetick.com domain recognition
+FINAL-APP-0210,App,Donetick,src/utils/FeatureToggle.test.js,9,DONETICK,TEST_COMPAT,LOW,KEEP,Test asserting hosted donetick.com domain recognition
+FINAL-APP-0211,App,DayDan,src/utils/OfflineFeatureToggle.js,3,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Dual-emitted custom DOM event preserved for client listener compatibility
+FINAL-APP-0212,App,DayDan,src/utils/OfflineFeatureToggle.js,3,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Dual-emitted custom DOM event preserved for client listener compatibility
+FINAL-APP-0213,App,Donetick,src/utils/OfflineFeatureToggle.js,4,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0214,App,DayDan,src/utils/OfflineFeatureToggle.js,25,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Dual-emitted custom DOM event preserved for client listener compatibility
+FINAL-APP-0215,App,DayDan,src/utils/OfflineFeatureToggle.js,45,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Dual-emitted custom DOM event preserved for client listener compatibility
+FINAL-APP-0216,App,DayDan,src/utils/OfflineFeatureToggle.js,51,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Dual-emitted custom DOM event preserved for client listener compatibility
+FINAL-APP-0217,App,DayDan,src/utils/OfflineFeatureToggle.test.js,32,DAYDAN,TEST_COMPAT,LOW,KEEP,Test asserting backward-compatible event emission and listener dispatch
+FINAL-APP-0218,App,DayDan,src/utils/OfflineFeatureToggle.test.js,44,DayDan,TEST_COMPAT,LOW,KEEP,Test asserting backward-compatible event emission and listener dispatch
+FINAL-APP-0219,App,DayDan,src/utils/OfflineFeatureToggle.test.js,49,DAYDAN,TEST_COMPAT,LOW,KEEP,Test asserting backward-compatible event emission and listener dispatch
+FINAL-APP-0220,App,DayDan,src/utils/OfflineFeatureToggle.test.js,56,DAYDAN,TEST_COMPAT,LOW,KEEP,Test asserting backward-compatible event emission and listener dispatch
+FINAL-APP-0221,App,DayDan,src/utils/OfflineFeatureToggle.test.js,61,DayDan,TEST_COMPAT,LOW,KEEP,Test asserting backward-compatible event emission and listener dispatch
+FINAL-APP-0222,App,Donetick,src/utils/backupFilenames.test.js,17,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying legacy donetick backup filename import compatibility
+FINAL-APP-0223,App,Donetick,src/utils/backupFilenames.test.js,18,donetick,TEST_COMPAT,LOW,KEEP,Test verifying legacy donetick backup filename import compatibility
+FINAL-APP-0224,App,DayDan,src/utils/notificationChannels.js,4,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Immutable Android notification channel ID registered on existing user devices
+FINAL-APP-0225,App,DayDan,src/utils/notificationChannels.js,4,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Immutable Android notification channel ID registered on existing user devices
+FINAL-APP-0226,App,Donetick,src/utils/notificationChannels.js,5,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy donetick_notifications FCM channel fallback for existing devices
+FINAL-APP-0227,App,Donetick,src/utils/notificationChannels.js,5,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy donetick_notifications FCM channel fallback for existing devices
+FINAL-APP-0228,App,DayDan,src/utils/notificationChannels.js,9,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Immutable Android notification channel ID registered on existing user devices
+FINAL-APP-0229,App,Donetick,src/utils/notificationChannels.js,17,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy donetick_notifications FCM channel fallback for existing devices
+FINAL-APP-0230,App,DayDan,src/utils/notificationChannels.test.js,5,DAYDAN,TEST_COMPAT,LOW,KEEP,Test verifying legacy FCM notification channel identifier constancy
+FINAL-APP-0231,App,Donetick,src/utils/notificationChannels.test.js,6,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying legacy donetick FCM notification channel ID
+FINAL-APP-0232,App,DayDan,src/utils/notificationChannels.test.js,10,DAYDAN,TEST_COMPAT,LOW,KEEP,Test verifying legacy FCM notification channel identifier constancy
+FINAL-APP-0233,App,DayDan,src/utils/notificationChannels.test.js,10,daydan,TEST_COMPAT,LOW,KEEP,Test verifying legacy FCM notification channel identifier constancy
+FINAL-APP-0234,App,Donetick,src/utils/notificationChannels.test.js,13,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying legacy donetick FCM notification channel ID
+FINAL-APP-0235,App,Donetick,src/utils/notificationChannels.test.js,14,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying legacy donetick FCM notification channel ID
+FINAL-APP-0236,App,Donetick,src/utils/notificationChannels.test.js,14,donetick,TEST_COMPAT,LOW,KEEP,Test verifying legacy donetick FCM notification channel ID
+FINAL-APP-0237,App,DayDan,src/utils/notificationChannels.test.js,15,DAYDAN,TEST_COMPAT,LOW,KEEP,Test verifying legacy FCM notification channel identifier constancy
+FINAL-APP-0238,App,Donetick,src/utils/notificationChannels.test.js,15,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying legacy donetick FCM notification channel ID
+FINAL-APP-0239,App,DayDan,src/utils/storageKeys.js,6,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy localStorage and IndexedDB keys retained for automatic user data migration
+FINAL-APP-0240,App,Donetick,src/utils/storageKeys.js,6,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy storage keys retained for automatic client data migration
+FINAL-APP-0241,App,DayDan,src/utils/storageKeys.js,10,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy localStorage and IndexedDB keys retained for automatic user data migration
+FINAL-APP-0242,App,DayDan,src/utils/storageKeys.js,15,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy localStorage and IndexedDB keys retained for automatic user data migration
+FINAL-APP-0243,App,Donetick,src/utils/storageKeys.js,23,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy storage keys retained for automatic client data migration
+FINAL-APP-0244,App,DayDan,src/utils/storageKeys.js,24,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy localStorage and IndexedDB keys retained for automatic user data migration
+FINAL-APP-0245,App,Donetick,src/utils/storageKeys.js,24,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Legacy storage keys retained for automatic client data migration
+FINAL-APP-0246,App,DayDan,src/utils/storageMigration.test.js,158,daydan,TEST_COMPAT,LOW,KEEP,Test asserting automatic migration from legacy storage keys to Dydan keys
+FINAL-APP-0247,App,DayDan,src/utils/storageMigration.test.js,160,daydan,TEST_COMPAT,LOW,KEEP,Test asserting automatic migration from legacy storage keys to Dydan keys
+FINAL-APP-0248,App,DayDan,src/utils/storageMigration.test.js,172,daydan,TEST_COMPAT,LOW,KEEP,Test asserting automatic migration from legacy storage keys to Dydan keys
+FINAL-APP-0249,App,Donetick,src/utils/storageMigration.test.js,183,donetick,TEST_COMPAT,LOW,KEEP,Test asserting client data migration from legacy donetick storage keys
+FINAL-APP-0250,App,DayDan,src/utils/storageMigration.test.js,238,daydan,TEST_COMPAT,LOW,KEEP,Test asserting automatic migration from legacy storage keys to Dydan keys
+FINAL-APP-0251,App,DayDan,src/utils/storageMigration.test.js,243,daydan,TEST_COMPAT,LOW,KEEP,Test asserting automatic migration from legacy storage keys to Dydan keys
+FINAL-APP-0252,App,Donetick,src/views/Authorization/Authenticating.jsx,95,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0253,App,Donetick,src/views/Authorization/LoginView.jsx,369,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0254,App,Donetick,src/views/Chores/MyChores.jsx,446,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0255,App,Donetick,src/views/Chores/components/ChoreModals.jsx,16,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0256,App,Donetick,src/views/Landing/GettingStarted.jsx,331,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0257,App,Donetick,src/views/Landing/HomeHero.jsx,93,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0258,App,Donetick,src/views/Landing/HomeHero.jsx,93,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0259,App,Donetick,src/views/Landing/HomeHero.jsx,95,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0260,App,Donetick,src/views/Landing/HomeHero.jsx,96,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0261,App,Donetick,src/views/Landing/Landing.jsx,22,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0262,App,Donetick,src/views/Landing/Landing.jsx,22,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0263,App,Donetick,src/views/Landing/Landing.jsx,23,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0264,App,Donetick,src/views/Modals/Inputs/NudgeModal.jsx,36,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0265,App,Donetick,src/views/Onboarding/WorkspaceReadyView.jsx,60,Donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Active in-app subscription entitlement name Donetick Plus in external RevenueCat service
+FINAL-APP-0266,App,DayDan,src/views/PrivacyPolicy/PrivacyPolicyView.jsx,64,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0267,App,Donetick,src/views/PrivacyPolicy/PrivacyPolicyView.jsx,172,donetick,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal terms and privacy contact address referencing donetick.com infrastructure
+FINAL-APP-0268,App,Donetick,src/views/PrivacyPolicy/PrivacyPolicyView.jsx,173,donetick,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal terms and privacy contact address referencing donetick.com infrastructure
+FINAL-APP-0269,App,Donetick,src/views/Settings/AccountSettings.jsx,139,Donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Active in-app subscription entitlement name Donetick Plus in external RevenueCat service
+FINAL-APP-0270,App,Donetick,src/views/Settings/CircleSettings.jsx,140,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0271,App,Donetick,src/views/Settings/CircleSettings.jsx,141,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0272,App,Donetick,src/views/Settings/NotificationSetting.jsx,104,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0273,App,Donetick,src/views/Settings/NotificationSetting.jsx,763,Donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0274,App,Donetick,src/views/Settings/Settings.jsx,765,Donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Active in-app subscription entitlement name Donetick Plus in external RevenueCat service
+FINAL-APP-0275,App,Donetick,src/views/Settings/SettingsOverview.jsx,424,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0276,App,Donetick,src/views/Settings/SettingsOverview.jsx,424,donetick,EXTERNAL_PENDING,MEDIUM,OWNER_ACTION,"External support email, Google Play listing, Telegram bot, or repo URL"
+FINAL-APP-0277,App,DayDan,src/views/Terms/TermsView.jsx,93,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0278,App,DayDan,src/views/Terms/TermsView.jsx,94,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0279,App,DayDan,src/views/Terms/TermsView.jsx,116,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0280,App,Donetick,src/views/Terms/TermsView.jsx,121,donetick,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal terms and privacy contact address referencing donetick.com infrastructure
+FINAL-APP-0281,App,DayDan,src/views/Terms/TermsView.jsx,139,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0282,App,Donetick,src/views/Terms/TermsView.jsx,140,donetick,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal terms and privacy contact address referencing donetick.com infrastructure
+FINAL-APP-0283,App,DayDan,src/views/Terms/TermsView.jsx,144,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0284,App,Donetick,src/views/Terms/TermsView.jsx,187,donetick,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal terms and privacy contact address referencing donetick.com infrastructure
+FINAL-APP-0285,App,DayDan,src/views/Terms/TermsView.jsx,272,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0286,App,DayDan,src/views/Terms/TermsView.jsx,285,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0287,App,Donetick,src/views/Terms/TermsView.jsx,400,donetick,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal terms and privacy contact address referencing donetick.com infrastructure
+FINAL-APP-0288,App,DayDan,src/views/Terms/TermsView.jsx,408,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0289,App,DayDan,src/views/Terms/TermsView.jsx,423,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0290,App,Donetick,src/views/Terms/TermsView.jsx,573,donetick,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal terms and privacy contact address referencing donetick.com infrastructure
+FINAL-APP-0291,App,DayDan,src/views/Terms/TermsView.jsx,577,DayDan,LEGAL_REQUIRED,MEDIUM,OWNER_ACTION,Legal contract and policy text requiring formal legal review before amendment
+FINAL-APP-0292,App,Donetick,src/views/components/AddTaskModal.jsx,353,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Native deep link scheme handler for donetick:// intents and OAuth redirects
+FINAL-APP-0293,App,Donetick,src/views/components/NavBar.jsx,86,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0294,App,Donetick,src/views/components/NavBar.jsx,86,donetick,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Domain check for official hosted infrastructure domain donetick.com
+FINAL-APP-0295,App,DayDan,vite.allowed-hosts.mjs,6,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Legacy build-time environment variable fallback for host security allowlist
+FINAL-APP-0296,App,DayDan,vite.allowed-hosts.test.mjs,13,DAYDAN,TEST_COMPAT,LOW,KEEP,Test verifying legacy build environment variable fallback resolution
+FINAL-APP-0297,App,DayDan,vite.allowed-hosts.test.mjs,13,daydan,TEST_COMPAT,LOW,KEEP,Test verifying legacy build environment variable fallback resolution
+FINAL-APP-0298,App,DayDan,vite.allowed-hosts.test.mjs,20,DAYDAN,TEST_COMPAT,LOW,KEEP,Test verifying legacy build environment variable fallback resolution
+FINAL-APP-0299,App,DayDan,vite.allowed-hosts.test.mjs,20,daydan,TEST_COMPAT,LOW,KEEP,Test verifying legacy build environment variable fallback resolution
+FINAL-APP-0300,App,DayDan,vite.allowed-hosts.test.mjs,23,daydan,TEST_COMPAT,LOW,KEEP,Test verifying legacy build environment variable fallback resolution
+FINAL-SRV-0001,Server,DayDan,.dockerignore,2,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Named Docker volume fallback preventing data detachment on existing setups
+FINAL-SRV-0002,Server,DayDan,.dockerignore,9,daydan,GENERATED_OR_IRRELEVANT,LOW,NO_ACTION,Git and Docker ignore rules for legacy database and temp artifacts
+FINAL-SRV-0003,Server,DayDan,.dockerignore,10,daydan,GENERATED_OR_IRRELEVANT,LOW,NO_ACTION,Git and Docker ignore rules for legacy database and temp artifacts
+FINAL-SRV-0004,Server,DayDan,.dockerignore,11,daydan,GENERATED_OR_IRRELEVANT,LOW,NO_ACTION,Git and Docker ignore rules for legacy database and temp artifacts
+FINAL-SRV-0005,Server,DayDan,.github/ISSUE_TEMPLATE/bug_report.md,3,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0006,Server,DayDan,.github/ISSUE_TEMPLATE/bug_report.md,34,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0007,Server,DayDan,.github/workflows/beta-release.yml,52,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0008,Server,DayDan,.github/workflows/beta-release.yml,52,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0009,Server,DayDan,.github/workflows/beta-release.yml,62,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0010,Server,DayDan,.github/workflows/beta-release.yml,101,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0011,Server,DayDan,.github/workflows/beta-release.yml,104,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0012,Server,DayDan,.github/workflows/beta-release.yml,106,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0013,Server,DayDan,.github/workflows/go-build.yml,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,CI workflow display name
+FINAL-SRV-0014,Server,DayDan,.github/workflows/go-build.yml,31,DAYDAN,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0015,Server,DayDan,.github/workflows/go-build.yml,42,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0016,Server,DayDan,.github/workflows/go-build.yml,46,DAYDAN,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0017,Server,DayDan,.github/workflows/go-build.yml,59,daydan,TEST_COMPAT,LOW,KEEP,Ephemeral CI database credentials and environment variable
+FINAL-SRV-0018,Server,DayDan,.github/workflows/go-build.yml,60,daydan,TEST_COMPAT,LOW,KEEP,Ephemeral CI database credentials and environment variable
+FINAL-SRV-0019,Server,DayDan,.github/workflows/go-build.yml,61,daydan,TEST_COMPAT,LOW,KEEP,Ephemeral CI database credentials and environment variable
+FINAL-SRV-0020,Server,DayDan,.github/workflows/go-build.yml,65,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0021,Server,DayDan,.github/workflows/go-build.yml,65,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0022,Server,DayDan,.github/workflows/go-build.yml,79,DAYDAN,TEST_COMPAT,LOW,KEEP,Ephemeral CI database credentials and environment variable
+FINAL-SRV-0023,Server,DayDan,.github/workflows/go-build.yml,79,daydan,TEST_COMPAT,LOW,KEEP,Ephemeral CI database credentials and environment variable
+FINAL-SRV-0024,Server,DayDan,.github/workflows/go-build.yml,79,daydan,TEST_COMPAT,LOW,KEEP,Ephemeral CI database credentials and environment variable
+FINAL-SRV-0025,Server,DayDan,.github/workflows/go-build.yml,79,daydan,TEST_COMPAT,LOW,KEEP,Ephemeral CI database credentials and environment variable
+FINAL-SRV-0026,Server,DayDan,.github/workflows/go-release.yml,17,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0027,Server,DayDan,.github/workflows/go-release.yml,17,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0028,Server,DayDan,.github/workflows/go-release.yml,49,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0029,Server,Donetick,.github/workflows/go-release.yml,50,Donetick,DOCUMENTATION_ONLY,LOW,KEEP,Documentation comment in release workflow
+FINAL-SRV-0030,Server,DayDan,.github/workflows/go-release.yml,54,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0031,Server,DayDan,.github/workflows/go-release.yml,58,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0032,Server,DayDan,.github/workflows/go-release.yml,71,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0033,Server,DayDan,.github/workflows/go-release.yml,77,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0034,Server,DayDan,.github/workflows/go-release.yml,122,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0035,Server,DayDan,.github/workflows/go-release.yml,147,DAYDAN,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0036,Server,DayDan,.github/workflows/go-release.yml,148,DAYDAN,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0037,Server,DayDan,.github/workflows/go-release.yml,175,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,CI workflow referencing external GitHub repository slugs for release packaging
+FINAL-SRV-0038,Server,Donetick,.gitignore,1,donetick,GENERATED_OR_IRRELEVANT,LOW,NO_ACTION,Git ignore rule for legacy database artifact
+FINAL-SRV-0039,Server,DayDan,.gitignore,3,daydan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0040,Server,DayDan,.gitignore,14,daydan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0041,Server,DayDan,.gitignore,15,daydan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0042,Server,DayDan,Dockerfile,7,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0043,Server,DayDan,Dockerfile,86,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container symlink preserving legacy execution paths for backward compatibility
+FINAL-SRV-0044,Server,Donetick,Dockerfile,86,donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container symlink ln -sf /dydan /donetick for backward compatibility
+FINAL-SRV-0045,Server,DayDan,Dockerfile,90,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container symlink preserving legacy execution paths for backward compatibility
+FINAL-SRV-0046,Server,DayDan,Dockerfile,102,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0047,Server,DayDan,Dockerfile,113,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,OCI image source metadata URL pointing to GitHub repository slug
+FINAL-SRV-0048,Server,DayDan,Dockerfile.dev,20,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container symlink preserving legacy execution paths for backward compatibility
+FINAL-SRV-0049,Server,Donetick,Dockerfile.dev,20,donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container symlink ln -sf /dydan /donetick for backward compatibility
+FINAL-SRV-0050,Server,DayDan,README.md,9,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0051,Server,DayDan,README.md,9,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0052,Server,DayDan,README.md,43,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0053,Server,DayDan,README.md,43,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0054,Server,DayDan,README.md,44,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0055,Server,DayDan,README.md,44,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0056,Server,DayDan,README.md,45,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0057,Server,DayDan,README.md,50,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0058,Server,DayDan,README.md,82,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0059,Server,Donetick,README.md,86,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Historical attribution acknowledging project origin
+FINAL-SRV-0060,Server,Donetick,README.md,92,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Historical attribution acknowledging project origin
+FINAL-SRV-0061,Server,DayDan,README.md,93,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0062,Server,DayDan,README.md,114,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0063,Server,Donetick,README.md,114,DONETICK,DOCUMENTATION_ONLY,LOW,KEEP,Historical attribution acknowledging project origin
+FINAL-SRV-0064,Server,DayDan,README.md,119,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0065,Server,DayDan,README.md,120,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0066,Server,DayDan,cmd/dydanctl/main.go,12,DayDan,INTENTIONAL_COMPAT,MEDIUM,KEEP,CLI backup and restore tool recognizing legacy daydan database and backup prefixes
+FINAL-SRV-0067,Server,DayDan,cmd/dydanctl/main.go,40,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,CLI backup and restore tool recognizing legacy daydan database and backup prefixes
+FINAL-SRV-0068,Server,DayDan,cmd/dydanctl/main.go,89,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,CLI backup and restore tool recognizing legacy daydan database and backup prefixes
+FINAL-SRV-0069,Server,DayDan,cmd/dydanctl/main.go,290,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,CLI backup and restore tool recognizing legacy daydan database and backup prefixes
+FINAL-SRV-0070,Server,Donetick,cmd/dydanctl/main.go,290,donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,CLI restore command candidate path checking for legacy donetick.db
+FINAL-SRV-0071,Server,DayDan,cmd/dydanctl/main_test.go,16,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0072,Server,DayDan,cmd/dydanctl/main_test.go,63,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0073,Server,DayDan,cmd/dydanctl/main_test.go,84,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0074,Server,DayDan,cmd/dydanctl/main_test.go,114,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0075,Server,DayDan,config/config.go,47,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0076,Server,DayDan,config/config.go,50,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0077,Server,DayDan,config/config.go,50,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0078,Server,Donetick,config/config.go,50,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0079,Server,Donetick,config/config.go,50,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0080,Server,Donetick,config/config.go,86,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0081,Server,DayDan,config/config.go,131,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0082,Server,DayDan,config/config.go,339,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0083,Server,DayDan,config/config.go,383,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0084,Server,DayDan,config/config.go,477,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0085,Server,Donetick,config/config.go,477,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0086,Server,DayDan,config/config.go,480,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0087,Server,Donetick,config/config.go,480,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0088,Server,DayDan,config/config.go,483,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0089,Server,Donetick,config/config.go,483,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0090,Server,DayDan,config/config.go,486,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0091,Server,Donetick,config/config.go,486,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0092,Server,DayDan,config/config.go,489,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0093,Server,Donetick,config/config.go,489,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0094,Server,DayDan,config/config.go,504,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0095,Server,Donetick,config/config.go,504,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0096,Server,DayDan,config/config.go,510,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0097,Server,Donetick,config/config.go,510,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0098,Server,DayDan,config/config.go,617,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0099,Server,DayDan,config/config.go,620,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0100,Server,DayDan,config/config.go,624,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0101,Server,DayDan,config/config.go,626,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0102,Server,DayDan,config/config.go,627,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0103,Server,DayDan,config/config.go,627,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0104,Server,DayDan,config/config.go,629,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0105,Server,DayDan,config/config.go,630,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0106,Server,DayDan,config/config.go,631,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0107,Server,DayDan,config/config.go,632,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0108,Server,DayDan,config/config.go,634,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0109,Server,DayDan,config/config.go,660,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0110,Server,DayDan,config/config.go,666,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0111,Server,DayDan,config/config.go,668,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0112,Server,DayDan,config/config.go,696,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0113,Server,DayDan,config/config.go,991,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0114,Server,DayDan,config/config.go,992,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0115,Server,Donetick,config/config.go,1129,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0116,Server,DayDan,config/config_test.go,16,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0117,Server,DayDan,config/config_test.go,16,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0118,Server,DayDan,config/config_test.go,16,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0119,Server,DayDan,config/config_test.go,16,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0120,Server,DayDan,config/config_test.go,16,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0121,Server,DayDan,config/config_test.go,103,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0122,Server,DayDan,config/config_test.go,244,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0123,Server,Donetick,config/config_test.go,244,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0124,Server,Donetick,config/config_test.go,247,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0125,Server,DayDan,config/config_test.go,256,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0126,Server,DayDan,config/config_test.go,257,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0127,Server,DayDan,config/config_test.go,258,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0128,Server,Donetick,config/config_test.go,261,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0129,Server,DayDan,config/config_test.go,278,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0130,Server,DayDan,config/config_test.go,281,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0131,Server,DayDan,config/config_test.go,281,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0132,Server,DayDan,config/config_test.go,288,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0133,Server,DayDan,config/config_test.go,293,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0134,Server,DayDan,config/config_test.go,308,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0135,Server,DayDan,config/config_test.go,311,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0136,Server,DayDan,config/config_test.go,311,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0137,Server,DayDan,config/config_test.go,319,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0138,Server,DayDan,config/config_test.go,327,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0139,Server,DayDan,config/config_test.go,327,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0140,Server,DayDan,config/config_test.go,352,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0141,Server,DayDan,config/config_test.go,368,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0142,Server,DayDan,config/config_test.go,369,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0143,Server,DayDan,config/config_test.go,371,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0144,Server,DayDan,config/config_test.go,377,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0145,Server,DayDan,config/config_test.go,388,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0146,Server,Donetick,config/config_test.go,390,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0147,Server,DayDan,config/config_test.go,401,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0148,Server,DayDan,config/config_test.go,404,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0149,Server,DayDan,config/config_test.go,405,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0150,Server,DayDan,config/config_test.go,407,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0151,Server,DayDan,config/config_test.go,408,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0152,Server,DayDan,config/config_test.go,412,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0153,Server,DayDan,config/config_test.go,418,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0154,Server,DayDan,config/config_test.go,420,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0155,Server,Donetick,config/config_test.go,421,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0156,Server,DayDan,config/config_test.go,423,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0157,Server,DayDan,config/config_test.go,434,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0158,Server,DayDan,config/config_test.go,435,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0159,Server,DayDan,config/config_test.go,437,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0160,Server,DayDan,config/config_test.go,438,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0161,Server,DayDan,config/config_test.go,440,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0162,Server,DayDan,config/config_test.go,441,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0163,Server,DayDan,config/config_test.go,482,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0164,Server,DayDan,config/config_test.go,492,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0165,Server,DayDan,config/config_test.go,524,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0166,Server,DayDan,config/config_test.go,528,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0167,Server,DayDan,config/dydan.example.yaml,5,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
+FINAL-SRV-0168,Server,DayDan,config/dydan.example.yaml,5,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
+FINAL-SRV-0169,Server,DayDan,config/dydan.example.yaml,9,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
+FINAL-SRV-0170,Server,Donetick,config/dydan.example.yaml,9,DONETICK,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation or example tag for legacy compatibility
+FINAL-SRV-0171,Server,DayDan,config/env.go,6,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0172,Server,Donetick,config/env.go,6,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0173,Server,DayDan,config/env.go,18,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0174,Server,Donetick,config/env.go,18,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0175,Server,DayDan,config/env.go,22,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0176,Server,Donetick,config/env.go,22,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0177,Server,DayDan,config/env.go,26,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0178,Server,Donetick,config/env.go,26,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0179,Server,DayDan,config/env.go,30,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0180,Server,Donetick,config/env.go,30,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0181,Server,DayDan,config/env.go,34,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0182,Server,Donetick,config/env.go,34,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0183,Server,DayDan,config/env.go,40,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0184,Server,Donetick,config/env.go,40,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0185,Server,DayDan,config/env.go,46,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0186,Server,Donetick,config/env.go,46,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0187,Server,DayDan,config/env.go,50,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0188,Server,Donetick,config/env.go,50,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0189,Server,DayDan,config/env.go,54,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0190,Server,Donetick,config/env.go,54,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0191,Server,DayDan,config/env.go,58,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0192,Server,Donetick,config/env.go,58,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0193,Server,DayDan,config/env.go,62,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0194,Server,Donetick,config/env.go,62,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0195,Server,DayDan,config/env.go,66,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0196,Server,Donetick,config/env.go,66,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0197,Server,DayDan,config/env.go,70,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0198,Server,Donetick,config/env.go,70,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0199,Server,DayDan,config/env.go,74,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0200,Server,Donetick,config/env.go,74,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0201,Server,DayDan,config/env.go,78,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback preserving backward compatibility
+FINAL-SRV-0202,Server,Donetick,config/env.go,78,DONETICK,INTENTIONAL_COMPAT,HIGH,KEEP,Runtime environment variable fallback DONETICK_* and legacy config tag
+FINAL-SRV-0203,Server,DayDan,config/env_test.go,9,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0204,Server,DayDan,config/env_test.go,17,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0205,Server,DayDan,config/env_test.go,17,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0206,Server,DayDan,config/env_test.go,17,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0207,Server,DayDan,config/env_test.go,17,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0208,Server,DayDan,config/env_test.go,17,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0209,Server,DayDan,config/env_test.go,18,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0210,Server,DayDan,config/env_test.go,18,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0211,Server,DayDan,config/env_test.go,18,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0212,Server,DayDan,config/env_test.go,19,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0213,Server,DayDan,config/env_test.go,19,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0214,Server,DayDan,config/env_test.go,19,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0215,Server,DayDan,config/env_test.go,20,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0216,Server,DayDan,config/env_test.go,20,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0217,Server,DayDan,config/env_test.go,21,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0218,Server,DayDan,config/env_test.go,21,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0219,Server,Donetick,config/env_test.go,26,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0220,Server,Donetick,config/env_test.go,26,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0221,Server,Donetick,config/env_test.go,26,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0222,Server,Donetick,config/env_test.go,27,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0223,Server,Donetick,config/env_test.go,27,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0224,Server,Donetick,config/env_test.go,27,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0225,Server,DayDan,config/env_test.go,34,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0226,Server,DayDan,config/env_test.go,39,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0227,Server,DayDan,config/env_test.go,39,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0228,Server,Donetick,config/env_test.go,39,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0229,Server,DayDan,config/env_test.go,40,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0230,Server,DayDan,config/env_test.go,40,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0231,Server,Donetick,config/env_test.go,40,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0232,Server,Donetick,config/env_test.go,41,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0233,Server,Donetick,config/env_test.go,41,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0234,Server,Donetick,config/env_test.go,42,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0235,Server,Donetick,config/env_test.go,42,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0236,Server,DayDan,config/env_test.go,45,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0237,Server,DayDan,config/env_test.go,59,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0238,Server,DayDan,config/env_test.go,60,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0239,Server,DayDan,config/env_test.go,61,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0240,Server,DayDan,config/env_test.go,62,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0241,Server,DayDan,config/env_test.go,64,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0242,Server,DayDan,config/env_test.go,80,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0243,Server,DayDan,config/env_test.go,97,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0244,Server,DayDan,config/env_test.go,98,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0245,Server,DayDan,config/env_test.go,100,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0246,Server,DayDan,config/env_test.go,100,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0247,Server,DayDan,config/env_test.go,102,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0248,Server,DayDan,config/env_test.go,102,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0249,Server,DayDan,config/env_test.go,108,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0250,Server,DayDan,config/env_test.go,108,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0251,Server,DayDan,config/env_test.go,115,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0252,Server,Donetick,config/env_test.go,120,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0253,Server,DayDan,config/env_test.go,121,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0254,Server,Donetick,config/env_test.go,124,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0255,Server,DayDan,config/env_test.go,135,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0256,Server,Donetick,config/env_test.go,135,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0257,Server,DayDan,config/env_test.go,136,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0258,Server,DayDan,config/env_test.go,139,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0259,Server,DayDan,config/env_test.go,139,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0260,Server,Donetick,config/env_test.go,140,DONETICK,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0261,Server,DayDan,config/env_test.go,146,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0262,Server,DayDan,config/env_test.go,151,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0263,Server,DayDan,config/env_test.go,152,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0264,Server,DayDan,config/env_test.go,153,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0265,Server,DayDan,config/env_test.go,154,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0266,Server,DayDan,config/env_test.go,155,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0267,Server,DayDan,config/env_test.go,156,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0268,Server,DayDan,config/env_test.go,177,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0269,Server,Donetick,config/local.yaml,96,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation or example tag for legacy compatibility
+FINAL-SRV-0270,Server,Donetick,config/local.yaml,100,donetick,DOCUMENTATION_ONLY,LOW,RESOLVED,FINDING-2 resolved: apple_client_id default corrected from legacy com.donetick.app to canonical com.dydan.app
+FINAL-SRV-0271,Server,DayDan,config/media_key.go,22,DayDan,INTENTIONAL_COMPAT,MEDIUM,KEEP,HKDF derivation salt string for legacy media URL signature verification
+FINAL-SRV-0272,Server,Donetick,config/selfhosted.yaml,74,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation or example tag for legacy compatibility
+FINAL-SRV-0273,Server,Donetick,config/selfhosted.yaml,76,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation or example tag for legacy compatibility
+FINAL-SRV-0274,Server,DayDan,config/sqlite_path.go,14,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Automatic SQLite database path resolution and migration from daydan.db to dydan.db
+FINAL-SRV-0275,Server,DayDan,config/sqlite_path.go,14,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Automatic SQLite database path resolution and migration from daydan.db to dydan.db
+FINAL-SRV-0276,Server,Donetick,config/sqlite_path.go,16,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Automatic SQLite database path resolution recognizing donetick.db
+FINAL-SRV-0277,Server,Donetick,config/sqlite_path.go,16,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Automatic SQLite database path resolution recognizing donetick.db
+FINAL-SRV-0278,Server,DayDan,config/sqlite_path.go,26,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Automatic SQLite database path resolution and migration from daydan.db to dydan.db
+FINAL-SRV-0279,Server,Donetick,config/sqlite_path.go,28,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Automatic SQLite database path resolution recognizing donetick.db
+FINAL-SRV-0280,Server,Donetick,config/sqlite_path.go,31,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Automatic SQLite database path resolution recognizing donetick.db
+FINAL-SRV-0281,Server,DayDan,config/sqlite_path_test.go,30,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0282,Server,DayDan,config/sqlite_path_test.go,30,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0283,Server,DayDan,config/sqlite_path_test.go,32,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0284,Server,DayDan,config/sqlite_path_test.go,32,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0285,Server,DayDan,config/sqlite_path_test.go,41,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0286,Server,DayDan,config/sqlite_path_test.go,42,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0287,Server,DayDan,config/sqlite_path_test.go,46,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0288,Server,DayDan,config/sqlite_path_test.go,48,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0289,Server,DayDan,config/sqlite_path_test.go,48,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0290,Server,DayDan,config/sqlite_path_test.go,50,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0291,Server,DayDan,config/sqlite_path_test.go,51,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0292,Server,DayDan,config/sqlite_path_test.go,67,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0293,Server,DayDan,config/sqlite_path_test.go,68,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0294,Server,Donetick,config/sqlite_path_test.go,72,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0295,Server,Donetick,config/sqlite_path_test.go,74,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0296,Server,DayDan,config/sqlite_path_test.go,75,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0297,Server,Donetick,config/sqlite_path_test.go,76,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0298,Server,DayDan,config/sqlite_path_test.go,83,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0299,Server,DayDan,config/sqlite_path_test.go,86,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0300,Server,DayDan,config/sqlite_path_test.go,95,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0301,Server,DayDan,config/sqlite_path_test.go,95,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0302,Server,DayDan,config/sqlite_path_test.go,97,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0303,Server,DayDan,config/sqlite_path_test.go,99,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0304,Server,DayDan,config/sqlite_path_test.go,110,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0305,Server,DayDan,config/sqlite_path_test.go,110,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0306,Server,DayDan,config/sqlite_path_test.go,160,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0307,Server,DayDan,config/sqlite_path_test.go,161,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0308,Server,DayDan,config/sqlite_path_test.go,163,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0309,Server,DayDan,config/sqlite_path_test.go,165,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0310,Server,DayDan,config/sqlite_path_test.go,177,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0311,Server,DayDan,config/sqlite_path_test.go,193,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0312,Server,DayDan,config/sqlite_path_test.go,208,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0313,Server,DayDan,config/sqlite_path_test.go,209,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0314,Server,DayDan,config/sqlite_path_test.go,211,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0315,Server,DayDan,config/sqlite_path_test.go,211,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0316,Server,DayDan,config/sqlite_path_test.go,213,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0317,Server,DayDan,config/sqlite_path_test.go,213,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0318,Server,DayDan,config/sqlite_path_test.go,220,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0319,Server,DayDan,config/sqlite_path_test.go,226,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0320,Server,DayDan,config/sqlite_path_test.go,231,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0321,Server,DayDan,config/sqlite_path_test.go,232,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0322,Server,DayDan,config/storage_security_test.go,98,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0323,Server,DayDan,config/storage_security_test.go,159,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0324,Server,DayDan,config/storage_security_test.go,165,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0325,Server,DayDan,config/taskier.example.yaml,1,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
+FINAL-SRV-0326,Server,DayDan,config/taskier.example.yaml,4,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
+FINAL-SRV-0327,Server,DayDan,config/taskier.example.yaml,7,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
+FINAL-SRV-0328,Server,DayDan,config/taskier.example.yaml,7,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
+FINAL-SRV-0329,Server,DayDan,config/taskier.example.yaml,8,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
+FINAL-SRV-0330,Server,DayDan,docker-compose.yaml,7,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0331,Server,DayDan,docker-compose.yaml,10,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0332,Server,DayDan,docker-compose.yaml,10,daydan,DOCUMENTATION_ONLY,LOW,RESOLVED,FINDING-1 resolved: frontend build-context default is now canonical ../dydan-app; ../daydan-app remains only as an existence-guarded fallback
+FINAL-SRV-0333,Server,DayDan,docker-compose.yaml,12,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0334,Server,DayDan,docker-compose.yaml,13,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0335,Server,DayDan,docker-compose.yaml,32,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0336,Server,DayDan,docker-compose.yaml,32,daydan,DOCUMENTATION_ONLY,LOW,RESOLVED,FINDING-1 resolved: frontend build-context default is now canonical ../dydan-app; ../daydan-app remains only as an existence-guarded fallback
+FINAL-SRV-0337,Server,DayDan,docker-compose.yaml,34,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0338,Server,DayDan,docker-compose.yaml,35,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0339,Server,DayDan,docker-compose.yaml,39,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0340,Server,DayDan,docker-compose.yaml,42,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0341,Server,DayDan,docker-compose.yaml,47,DAYDAN,INTENTIONAL_COMPAT,HIGH,KEEP,Named Docker volume fallback preventing data detachment on existing setups
+FINAL-SRV-0342,Server,DayDan,docker-compose.yaml,47,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Named Docker volume fallback preventing data detachment on existing setups
+FINAL-SRV-0343,Server,DayDan,docker-entrypoint.sh,16,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0344,Server,Donetick,docker-entrypoint.sh,50,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,Container entrypoint migrating permissions on legacy donetick files
+FINAL-SRV-0345,Server,DayDan,docs/architecture.md,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0346,Server,DayDan,docs/architecture.md,5,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0347,Server,DayDan,docs/architecture.md,25,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0348,Server,DayDan,docs/architecture.md,48,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0349,Server,DayDan,docs/backup-restore.md,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0350,Server,DayDan,docs/backup-restore.md,3,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0351,Server,DayDan,docs/backup-restore.md,3,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0352,Server,DayDan,docs/backup-restore.md,10,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0353,Server,DayDan,docs/backup-restore.md,23,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0354,Server,DayDan,docs/backup-restore.md,23,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0355,Server,DayDan,docs/backup-restore.md,24,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0356,Server,DayDan,docs/backup-restore.md,25,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0357,Server,DayDan,docs/backup-restore.md,35,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0358,Server,DayDan,docs/backup-restore.md,36,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0359,Server,DayDan,docs/backup-restore.md,36,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0360,Server,DayDan,docs/backup-restore.md,44,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0361,Server,DayDan,docs/backup-restore.md,45,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0362,Server,DayDan,docs/backup-restore.md,52,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0363,Server,DayDan,docs/backup-restore.md,55,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0364,Server,DayDan,docs/backup-restore.md,58,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0365,Server,DayDan,docs/backup-restore.md,59,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0366,Server,DayDan,docs/backup-restore.md,61,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0367,Server,DayDan,docs/backup-restore.md,81,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0368,Server,DayDan,docs/backup-restore.md,86,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0369,Server,DayDan,docs/docs.go,15,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0370,Server,DayDan,docs/handler.go,39,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0371,Server,DayDan,docs/handler.go,51,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0372,Server,DayDan,docs/product-implementation-review.md,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0373,Server,DayDan,docs/product-implementation-review.md,5,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0374,Server,DayDan,docs/product-implementation-review.md,6,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0375,Server,DayDan,docs/product-implementation-review.md,13,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0376,Server,DayDan,docs/product-implementation-review.md,72,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0377,Server,DayDan,docs/product-implementation-review.md,75,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0378,Server,DayDan,docs/product-implementation-review.md,80,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0379,Server,DayDan,docs/product-implementation-review.md,85,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0380,Server,DayDan,docs/product-implementation-review.md,121,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0381,Server,DayDan,docs/reverse-proxy.md,3,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0382,Server,DayDan,docs/reverse-proxy.md,17,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0383,Server,DayDan,docs/reverse-proxy.md,29,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0384,Server,DayDan,docs/reverse-proxy.md,34,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0385,Server,DayDan,docs/reverse-proxy.md,49,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0386,Server,DayDan,docs/reverse-proxy.md,64,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0387,Server,DayDan,docs/reverse-proxy.md,67,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0388,Server,DayDan,docs/reverse-proxy.md,80,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0389,Server,DayDan,docs/reverse-proxy.md,80,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0390,Server,DayDan,docs/reverse-proxy.md,81,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0391,Server,DayDan,docs/reverse-proxy.md,86,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0392,Server,DayDan,docs/reverse-proxy.md,88,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0393,Server,DayDan,docs/reverse-proxy.md,88,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0394,Server,DayDan,docs/security.md,1,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0395,Server,DayDan,docs/security.md,8,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0396,Server,DayDan,docs/security.md,18,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0397,Server,DayDan,docs/security.md,19,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0398,Server,DayDan,docs/security.md,20,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0399,Server,DayDan,docs/security.md,21,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0400,Server,DayDan,docs/security.md,24,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0401,Server,DayDan,docs/security.md,26,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0402,Server,DayDan,docs/security.md,63,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0403,Server,DayDan,docs/security.md,83,daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0404,Server,DayDan,docs/swagger.json,9,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0405,Server,DayDan,docs/swagger.yaml,891,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,External GitHub repository slug reference in documentation pending rename
+FINAL-SRV-0406,Server,DayDan,docs/webhook-signing.md,17,Daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0407,Server,DayDan,docs/webhook-signing.md,17,Daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0408,Server,DayDan,docs/webhook-signing.md,38,Daydan,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0409,Server,DayDan,docs/webhook-signing.md,69,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,"Historical architectural, operational, or compatibility documentation"
+FINAL-SRV-0410,Server,DayDan,frontend/handler.go,17,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0411,Server,DayDan,frontend/handler.go,18,daydan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0412,Server,DayDan,internal/auth/apple/service.go,60,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0413,Server,DayDan,internal/auth/identity_provider.go,213,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0414,Server,DayDan,internal/auth/proxy.go,12,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0415,Server,DayDan,internal/auth/session_cookie_test.go,169,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0416,Server,DayDan,internal/auth/session_cookie_test.go,176,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0417,Server,DayDan,internal/auth/session_cookie_test.go,176,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0418,Server,DayDan,internal/auth/session_cookie_test.go,220,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0419,Server,DayDan,internal/auth/session_cookie_test.go,222,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0420,Server,DayDan,internal/auth/session_cookie_test.go,237,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0421,Server,DayDan,internal/auth/session_cookie_test.go,238,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0422,Server,DayDan,internal/auth/session_cookie_test.go,256,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0423,Server,DayDan,internal/auth/session_cookie_test.go,258,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0424,Server,DayDan,internal/circle/handler.go,31,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0425,Server,DayDan,internal/circle/handler.go,58,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0426,Server,DayDan,internal/circle/handler.go,58,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0427,Server,DayDan,internal/circle/handler.go,524,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0428,Server,DayDan,internal/database/database.go,115,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0429,Server,DayDan,internal/database/migration_lock_postgres_test.go,16,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0430,Server,DayDan,internal/database/migration_lock_postgres_test.go,18,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0431,Server,DayDan,internal/database/migration_postgres_test.go,19,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0432,Server,DayDan,internal/database/migration_postgres_test.go,22,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0433,Server,DayDan,internal/database/migration_postgres_test.go,24,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0434,Server,Donetick,internal/database/migration_test.go,19,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0435,Server,DayDan,internal/database/sqlite_dsn_test.go,9,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0436,Server,DayDan,internal/database/sqlite_dsn_test.go,10,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0437,Server,DayDan,internal/database/zero_config_test.go,15,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0438,Server,DayDan,internal/database/zero_config_test.go,15,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0439,Server,DayDan,internal/database/zero_config_test.go,15,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0440,Server,DayDan,internal/database/zero_config_test.go,15,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0441,Server,DayDan,internal/database/zero_config_test.go,15,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0442,Server,DayDan,internal/database/zero_config_test.go,21,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0443,Server,Donetick,internal/email/smtp2go_sender.go,15,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Comment mentioning production email relay configuration host
+FINAL-SRV-0444,Server,DayDan,internal/events/headers.go,8,Daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0445,Server,DayDan,internal/events/headers.go,9,Daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0446,Server,DayDan,internal/events/producer.go,58,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0447,Server,DayDan,internal/events/producer.go,172,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0448,Server,DayDan,internal/events/signing.go,14,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0449,Server,DayDan,internal/events/signing.go,16,Daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0450,Server,DayDan,internal/events/signing.go,17,Daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0451,Server,DayDan,internal/events/signing.go,57,Daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0452,Server,DayDan,internal/events/signing.go,59,Daydan,INTENTIONAL_COMPAT,HIGH,KEEP,Dual-emitted X-Daydan webhook signature headers for external consumers
+FINAL-SRV-0453,Server,DayDan,internal/events/signing_test.go,79,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0454,Server,DayDan,internal/events/signing_test.go,80,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0455,Server,DayDan,internal/httpx/recovery.go,23,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0456,Server,DayDan,internal/httpx/redact.go,13,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0457,Server,DayDan,internal/httpx/redact.go,88,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0458,Server,DayDan,internal/notifier/service/fcm/channels.go,7,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,FCM notification channel routing preserving existing device registrations
+FINAL-SRV-0459,Server,DayDan,internal/notifier/service/fcm/channels.go,9,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,FCM notification channel routing preserving existing device registrations
+FINAL-SRV-0460,Server,DayDan,internal/notifier/service/fcm/channels.go,9,daydan,INTENTIONAL_COMPAT,HIGH,KEEP,FCM notification channel routing preserving existing device registrations
+FINAL-SRV-0461,Server,Donetick,internal/notifier/service/fcm/channels.go,10,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,FCM notification channel routing preserving donetick_notifications
+FINAL-SRV-0462,Server,Donetick,internal/notifier/service/fcm/channels.go,11,Donetick,INTENTIONAL_COMPAT,HIGH,KEEP,FCM notification channel routing preserving donetick_notifications
+FINAL-SRV-0463,Server,Donetick,internal/notifier/service/fcm/channels.go,11,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,FCM notification channel routing preserving donetick_notifications
+FINAL-SRV-0464,Server,DayDan,internal/notifier/service/fcm/channels.go,15,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,FCM notification channel routing preserving existing device registrations
+FINAL-SRV-0465,Server,DayDan,internal/notifier/service/fcm/channels_test.go,6,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0466,Server,DayDan,internal/notifier/service/fcm/channels_test.go,7,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0467,Server,DayDan,internal/notifier/service/fcm/channels_test.go,12,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0468,Server,DayDan,internal/notifier/service/fcm/channels_test.go,12,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0469,Server,DayDan,internal/notifier/service/fcm/channels_test.go,13,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0470,Server,DayDan,internal/notifier/service/fcm/channels_test.go,13,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0471,Server,Donetick,internal/notifier/service/fcm/channels_test.go,17,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0472,Server,Donetick,internal/notifier/service/fcm/channels_test.go,18,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0473,Server,Donetick,internal/notifier/service/fcm/channels_test.go,18,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0474,Server,Donetick,internal/notifier/service/fcm/channels_test.go,19,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0475,Server,Donetick,internal/notifier/service/fcm/channels_test.go,19,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0476,Server,DayDan,internal/notifier/service/fcm/channels_test.go,21,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0477,Server,Donetick,internal/notifier/service/fcm/channels_test.go,21,Donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0478,Server,DayDan,internal/realtime/revocation_enforcement_test.go,14,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0479,Server,DayDan,internal/realtime/revocation_enforcement_test.go,31,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0480,Server,DayDan,internal/realtime/revocation_enforcement_test.go,88,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0481,Server,DayDan,internal/realtime/revocation_enforcement_test.go,92,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0482,Server,DayDan,internal/realtime/revocation_enforcement_test.go,113,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0483,Server,DayDan,internal/storage/signer_media_key_test.go,58,Daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0484,Server,DayDan,internal/storage/signer_media_key_test.go,81,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0485,Server,DayDan,internal/storage/storage_s3_integration_test.go,21,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0486,Server,DayDan,internal/storage/storage_s3_integration_test.go,23,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0487,Server,DayDan,internal/storage/storage_s3_integration_test.go,24,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0488,Server,DayDan,internal/storage/storage_s3_integration_test.go,24,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0489,Server,DayDan,internal/storage/storage_s3_integration_test.go,28,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0490,Server,DayDan,internal/storage/storage_s3_integration_test.go,30,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0491,Server,DayDan,internal/storage/storage_s3_integration_test.go,61,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0492,Server,DayDan,internal/storage/storage_s3_integration_test.go,61,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0493,Server,DayDan,internal/user/handler.go,49,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0494,Server,DayDan,internal/user/handler.go,51,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0495,Server,DayDan,internal/user/handler.go,51,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0496,Server,DayDan,internal/user/handler.go,85,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0497,Server,DayDan,internal/user/handler.go,85,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0498,Server,DayDan,internal/user/handler.go,87,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0499,Server,DayDan,internal/user/handler.go,87,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0500,Server,Donetick,internal/user/handler.go,300,donetick,INTENTIONAL_COMPAT,HIGH,KEEP,OAuth allowed redirect URI whitelist preserving donetick://auth/oauth2
+FINAL-SRV-0501,Server,DayDan,internal/user/handler.go,433,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0502,Server,DayDan,internal/user/handler.go,433,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0503,Server,DayDan,internal/user/handler.go,433,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0504,Server,DayDan,internal/user/handler.go,857,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0505,Server,DayDan,internal/user/handler.go,1074,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0506,Server,DayDan,internal/user/handler.go,1356,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0507,Server,DayDan,internal/user/handler.go,1712,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0508,Server,DayDan,internal/user/handler.go,1713,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0509,Server,DayDan,internal/user/handler.go,1765,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0510,Server,DayDan,internal/user/hosted_restriction_test.go,12,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0511,Server,DayDan,internal/user/hosted_restriction_test.go,14,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0512,Server,Donetick,internal/user/hosted_restriction_test.go,30,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0513,Server,Donetick,internal/user/hosted_restriction_test.go,31,donetick,TEST_COMPAT,LOW,KEEP,Test verifying backward compatibility for Donetick fallbacks
+FINAL-SRV-0514,Server,DayDan,internal/user/model/model.go,93,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Authentication provider enum constant preserving persisted database values
+FINAL-SRV-0515,Server,DayDan,internal/user/model/model.go,94,DayDan,INTENTIONAL_COMPAT,HIGH,KEEP,Authentication provider enum constant preserving persisted database values
+FINAL-SRV-0516,Server,DayDan,internal/user/model/model_test.go,5,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0517,Server,DayDan,internal/user/model/model_test.go,9,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0518,Server,DayDan,internal/user/model/model_test.go,10,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0519,Server,DayDan,internal/user/model/model_test.go,10,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0520,Server,DayDan,internal/user/oauth2_hardening_test.go,71,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0521,Server,DayDan,internal/user/oauth2_hardening_test.go,112,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0522,Server,DayDan,internal/user/oauth2_hardening_test.go,131,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0523,Server,DayDan,internal/user/oauth2_hardening_test.go,187,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0524,Server,DayDan,internal/user/recovery_test.go,66,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0525,Server,DayDan,internal/user/repo/password_reset_test.go,26,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0526,Server,DayDan,internal/user/repo/postgres_integration_test.go,22,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0527,Server,DayDan,internal/user/repo/postgres_integration_test.go,24,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0528,Server,DayDan,internal/user/repo/postgres_integration_test.go,24,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0529,Server,DayDan,internal/user/repo/postgres_integration_test.go,25,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0530,Server,DayDan,internal/user/repo/postgres_integration_test.go,25,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0531,Server,DayDan,internal/user/repo/postgres_integration_test.go,31,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0532,Server,DayDan,internal/user/repo/postgres_integration_test.go,33,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0533,Server,DayDan,internal/user/repo/repository.go,78,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0534,Server,DayDan,internal/user/repo/repository.go,82,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0535,Server,DayDan,internal/user/repo/repository.go,147,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0536,Server,DayDan,internal/user/repo/repository.go,170,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0537,Server,DayDan,internal/user/repo/repository.go,384,DayDan,INTENTIONAL_COMPAT,LOW,KEEP,Internal technical compatibility field or comment
+FINAL-SRV-0538,Server,DayDan,internal/user/sync_oidc_role_test.go,40,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0539,Server,DayDan,internal/user/sync_oidc_role_test.go,41,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0540,Server,DayDan,internal/user/sync_oidc_role_test.go,54,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0541,Server,DayDan,internal/user/sync_oidc_role_test.go,55,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0542,Server,DayDan,internal/user/sync_oidc_role_test.go,75,daydan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
+FINAL-SRV-0543,Server,DayDan,scripts/check-runtime-artifacts.sh,5,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Sanity check script forbidding committed legacy sqlite database artifacts
+FINAL-SRV-0544,Server,DayDan,scripts/check-runtime-artifacts.sh,5,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Sanity check script forbidding committed legacy sqlite database artifacts
+FINAL-SRV-0545,Server,Donetick,scripts/check-runtime-artifacts.sh,5,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Sanity check forbidding committed legacy database files
+FINAL-SRV-0546,Server,DayDan,scripts/prepare-release.sh,2,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0547,Server,DayDan,scripts/prepare-release.sh,7,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0548,Server,DayDan,scripts/prepare-release.sh,16,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0549,Server,DayDan,scripts/prepare-release.sh,36,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script frontend default is now canonical ../dydan-app with existence-guarded ../daydan-app fallback; final checkout rename remains an owner decision
+FINAL-SRV-0550,Server,DayDan,scripts/prepare-release.sh,89,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0551,Server,DayDan,scripts/prepare-release.sh,93,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0552,Server,DayDan,scripts/prepare-release.sh,106,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0553,Server,DayDan,scripts/prepare-release.sh,107,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0554,Server,DayDan,scripts/prepare-release.sh,116,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0555,Server,DayDan,scripts/resolve-frontend-ref.sh,2,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0556,Server,DayDan,scripts/resolve-frontend-ref.sh,6,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0557,Server,DayDan,scripts/resolve-frontend-ref.sh,9,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0558,Server,DayDan,scripts/resolve-frontend-ref.sh,14,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0559,Server,DayDan,scripts/resolve-frontend-ref.sh,18,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0560,Server,DayDan,scripts/resolve-frontend-ref.sh,35,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0561,Server,DayDan,scripts/resolve-frontend-ref.sh,62,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0562,Server,DayDan,scripts/verify-auth-e2e.sh,4,DayDan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0563,Server,DayDan,scripts/verify-auth-e2e.sh,25,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0564,Server,DayDan,scripts/verify-auth-e2e.sh,26,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0565,Server,DayDan,scripts/verify-auth-e2e.sh,27,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0566,Server,DayDan,scripts/verify-auth-e2e.sh,47,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0567,Server,DayDan,scripts/verify-auth-e2e.sh,47,daydan,INTENTIONAL_COMPAT,MEDIUM,RESOLVED,FINDING-1 resolved: frontend build-context fallback updated from ../daydan-app to canonical ../dydan-app
+FINAL-SRV-0568,Server,DayDan,scripts/verify-auth-e2e.sh,55,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0569,Server,DayDan,scripts/verify-container.sh,29,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0570,Server,DayDan,scripts/verify-container.sh,30,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0571,Server,DayDan,scripts/verify-container.sh,30,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0572,Server,DayDan,scripts/verify-container.sh,38,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0573,Server,DayDan,scripts/verify-container.sh,38,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0574,Server,Donetick,scripts/verify-container.sh,38,donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container verification check asserting /donetick symlink presence
+FINAL-SRV-0575,Server,DayDan,scripts/verify-container.sh,124,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0576,Server,DayDan,scripts/verify-container.sh,124,daydan,INTENTIONAL_COMPAT,MEDIUM,RESOLVED,FINDING-1 resolved: frontend build-context fallback updated from ../daydan-app to canonical ../dydan-app
+FINAL-SRV-0577,Server,Donetick,scripts/verify-container.sh,175,donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container verification check asserting /donetick symlink presence
+FINAL-SRV-0578,Server,DayDan,scripts/verify.sh,20,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks

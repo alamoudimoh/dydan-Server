@@ -1,3 +1,4 @@
+# Legacy database names remain ignored during migration.
 donetick.db
 /taskier.db
 /daydan.db

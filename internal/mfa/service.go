@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 )
@@ -17,7 +17,7 @@ type MFAService struct {
 }
 
 func NewService(cfg *config.Config) *MFAService {
-	appName := "DayDan"
+	appName := "Dydan"
 	if cfg.Name != "" {
 		appName = cfg.Name
 	}

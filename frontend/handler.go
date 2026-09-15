@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,8 +14,8 @@ import (
 var embeddedFiles embed.FS
 
 // contentSecurityPolicy is derived from an inventory of what the production
-// DayDan frontend actually loads (verified against a real `vite build` of the
-// daydan-app bundle):
+// Dydan frontend actually loads (verified against a real `vite build` of the
+// Dydan AppWeb bundle):
 //
 //   - default-src 'self'            — everything same-origin unless opened below;
 //   - script-src 'self' plus Google Identity Services, Sign in with Apple,

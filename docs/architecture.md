@@ -1,8 +1,8 @@
-# DayDan-Server architecture
+# Dydan Server architecture
 
 ## Application shape
 
-DayDan-Server is a Go monolith. `main.go` wires configuration, database
+Dydan Server is a Go monolith. `main.go` wires configuration, database
 connections, startup migrations, repositories, HTTP handlers, authentication,
 notifications, schedulers, storage, payment adapters, event delivery,
 realtime, and frontend serving.
@@ -22,7 +22,7 @@ WAL mode, busy timeouts, bounded connections, and startup migrations. PostgreSQL
 is supported for deployments that need a separately managed database.
 
 Migrations are applied at startup with migration locking. The canonical
-database is `/data/daydan.db`; existing installations may be migrated from
+database is `/data/dydan.db`; existing installations may be migrated from
 legacy database filenames without changing application behavior.
 
 Local uploads live below `/data/uploads`. S3-compatible storage is available
@@ -45,6 +45,6 @@ destination isolation, retries, backoff, and HMAC signing.
 
 The Docker build compiles the frontend and backend, embeds the frontend into
 the production image, and exposes a single origin for the SPA and `/api`.
-Compose persists `/data` in `daydan-data`. The image includes a healthcheck
+Compose persists `/data` in the legacy `daydan-data` volume so upgrades retain existing data. The image includes a healthcheck
 and runs without root privileges. Reverse-proxy deployments must configure
 the trusted-proxy allowlist explicitly.

@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/config"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -63,7 +63,7 @@ func TestRecoveryResponseDoesNotRevealAccountOrProvider(t *testing.T) {
 	sender := &recoverySender{sent: make(chan string, 1)}
 	router, db := recoveryHarness(t, sender)
 	users := []uModel.User{
-		{Username: "password-user", Email: "password@example.com", Provider: uModel.AuthProviderDayDan},
+		{Username: "password-user", Email: "password@example.com", Provider: uModel.AuthProviderDydan},
 		{Username: "oidc-user", Email: "oidc@example.com", Provider: uModel.AuthProviderOAuth2},
 	}
 	if err := db.Create(&users).Error; err != nil {

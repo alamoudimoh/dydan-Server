@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/config"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
@@ -23,7 +23,7 @@ func passwordResetRepo(t *testing.T) (*UserRepository, *gorm.DB) {
 	if err := db.AutoMigrate(&cModel.Circle{}, &uModel.User{}, &uModel.UserPasswordReset{}, &uModel.UserSession{}, &uModel.MFASession{}); err != nil {
 		t.Fatal(err)
 	}
-	return NewUserRepository(db, &config.Config{IsDayDanCloud: false}), db
+	return NewUserRepository(db, &config.Config{IsDydanCloud: false}), db
 }
 
 func TestUpdatePasswordByTokenRevokesAllRefreshSessions(t *testing.T) {

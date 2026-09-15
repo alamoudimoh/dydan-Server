@@ -885,11 +885,11 @@ definitions:
     type: object
 info:
   contact: {}
-  description: DayDan swagger documentation.
+  description: Dydan swagger documentation.
   license:
     name: GNU Affero General Public License v3.0
     url: https://github.com/alamoudimoh/daydan-server/blob/main/LICENSE.md
-  title: DayDan Swagger API
+  title: Dydan Swagger API
   version: "1.0"
 paths:
   /chores:
@@ -3644,7 +3644,7 @@ paths:
       - things
 securityDefinitions:
   APIKeyAuth:
-    description: DayDan issued apikey
+    description: Dydan issued apikey
     in: header
     name: secretkey
     type: apiKey

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
 )
 
 type User struct {
@@ -52,9 +52,9 @@ type UserPasswordReset struct {
 }
 
 type APIToken struct {
-	ID        int       `json:"id" gorm:"primary_key"`              // Unique identifier
-	Name      string    `json:"name" gorm:"column:name"`            // Name (display only, not unique)
-	UserID    int       `json:"userId" gorm:"column:user_id;index"` // Index on userID
+	ID     int    `json:"id" gorm:"primary_key"`              // Unique identifier
+	Name   string `json:"name" gorm:"column:name"`            // Name (display only, not unique)
+	UserID int    `json:"userId" gorm:"column:user_id;index"` // Index on userID
 	// Token is the reusable credential. It is never serialized (shown once in
 	// the creation response) and must not be retrievable via list/read.
 	Token     string    `json:"-" gorm:"column:token;index"` // Index on token
@@ -84,11 +84,14 @@ type UserDeviceToken struct {
 type AuthProviderType int
 
 const (
-	AuthProviderDayDan AuthProviderType = iota
+	AuthProviderDydan AuthProviderType = iota
 	AuthProviderOAuth2
 	AuthProviderGoogle
 	AuthProviderApple
 )
+
+// AuthProviderDayDan preserves the persisted provider value used by existing users.
+const AuthProviderDayDan = AuthProviderDydan
 
 type UserType int
 

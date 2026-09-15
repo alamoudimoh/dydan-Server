@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/gin-gonic/gin"
 )
 

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
-	auth "github.com/alamoudimoh/daydan-server/internal/auth"
-	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
-	lRepo "github.com/alamoudimoh/daydan-server/internal/label/repo"
+	auth "github.com/alamoudimoh/dydan-server/internal/auth"
+	lModel "github.com/alamoudimoh/dydan-server/internal/label/model"
+	lRepo "github.com/alamoudimoh/dydan-server/internal/label/repo"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 )

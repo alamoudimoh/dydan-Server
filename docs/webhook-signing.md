@@ -1,6 +1,6 @@
 # Outbound webhook signing
 
-DayDan signs every outbound webhook it generates (circle activity webhooks
+Dydan signs every outbound webhook it generates (circle activity webhooks
 and notification webhooks) so receivers can verify **authenticity**,
 **integrity** and **freshness** of each delivery.
 
@@ -9,10 +9,13 @@ and notification webhooks) so receivers can verify **authenticity**,
 Every delivery carries:
 
 ```
-X-Daydan-Signature: t=<unix-seconds>,v1=<hex>
-X-Daydan-Timestamp: <unix-seconds>
+X-Dydan-Signature: t=<unix-seconds>,v1=<hex>
+X-Dydan-Timestamp: <unix-seconds>
 Content-Type: application/json
 ```
+
+`X-Daydan-Signature` and `X-Daydan-Timestamp` are emitted with identical
+values for existing receivers. New integrations must use the Dydan headers.
 
 ## Canonical signing input
 
@@ -31,7 +34,8 @@ by design.
 ## Verification procedure (receivers)
 
 1. Read the raw request body into memory.
-2. Parse `t` from `X-Daydan-Signature` (or `X-Daydan-Timestamp`).
+2. Parse `t` from `X-Dydan-Signature` (or `X-Dydan-Timestamp`). Existing
+   receivers may continue using the legacy `X-Daydan-*` headers.
 3. Reject the delivery if `|now - t| > tolerance` (we recommend 5 minutes).
 4. Compute `HMAC-SHA256(shared_secret, t + "." + raw_body)`.
 5. Compare against `v1` using a **constant-time** comparison
@@ -61,8 +65,8 @@ func verify(secret string, tolerance time.Duration, body []byte,
 * The key is an independent credential family. It is **not** the JWT secret,
   the media-signing secret, or any provider secret.
 * Configuration precedence:
-  1. `webhook.signing_secret` in config (or `DAYDAN_WEBHOOK_SIGNING_SECRET`
-     / `DT_WEBHOOK_SIGNING_SECRET` environment variable);
+   1. `webhook.signing_secret` in config (or `DYDAN_WEBHOOK_SIGNING_SECRET`;
+      `DAYDAN_WEBHOOK_SIGNING_SECRET` and older prefixes remain aliases);
   2. `webhook.signing_secret_file`, auto-created with 32 random bytes
      (0600) on first boot at `<data_dir>/webhook-signing-secret`;
 * Rotation: set a new secret (or replace the secret file) and restart.

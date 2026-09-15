@@ -3,14 +3,14 @@ package notifier
 import (
 	"context"
 
-	"github.com/alamoudimoh/daydan-server/internal/events"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	"github.com/alamoudimoh/daydan-server/internal/notifier/service/discord"
-	"github.com/alamoudimoh/daydan-server/internal/notifier/service/fcm"
-	pushover "github.com/alamoudimoh/daydan-server/internal/notifier/service/pushover"
-	telegram "github.com/alamoudimoh/daydan-server/internal/notifier/service/telegram"
+	"github.com/alamoudimoh/dydan-server/internal/events"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/dydan-server/internal/notifier/service/discord"
+	"github.com/alamoudimoh/dydan-server/internal/notifier/service/fcm"
+	pushover "github.com/alamoudimoh/dydan-server/internal/notifier/service/pushover"
+	telegram "github.com/alamoudimoh/dydan-server/internal/notifier/service/telegram"
 
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/logging"
 )
 
 type Notifier struct {

@@ -3,7 +3,7 @@ package migrations
 import (
 	"context"
 
-	"github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/internal/user/repo"
 	"gorm.io/gorm"
 )
 

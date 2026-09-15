@@ -3,16 +3,16 @@ package payment
 import (
 	"net/http"
 
-	auth "github.com/alamoudimoh/daydan-server/internal/auth"
-	"github.com/alamoudimoh/daydan-server/logging"
+	auth "github.com/alamoudimoh/dydan-server/internal/auth"
+	"github.com/alamoudimoh/dydan-server/logging"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 
-	"github.com/alamoudimoh/daydan-server/external/payment/model"
-	pDB "github.com/alamoudimoh/daydan-server/external/payment/repo"
-	stripeService "github.com/alamoudimoh/daydan-server/external/payment/service"
+	"github.com/alamoudimoh/dydan-server/external/payment/model"
+	pDB "github.com/alamoudimoh/dydan-server/external/payment/repo"
+	stripeService "github.com/alamoudimoh/dydan-server/external/payment/service"
 )
 
 type Handler struct {

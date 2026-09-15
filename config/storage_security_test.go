@@ -62,7 +62,7 @@ func TestValidatePublicReadRequiresBucket(t *testing.T) {
 // anonymous readability.
 func TestPublicReadMalformedValuesCannotEnable(t *testing.T) {
 	clearConfigSelection(t)
-	t.Setenv("TASKIER_DATA_DIR", t.TempDir())
+	t.Setenv("DYDAN_DATA_DIR", t.TempDir())
 	for _, raw := range []string{"garbage", "yes-please"} {
 		t.Setenv("DT_STORAGE_PUBLIC_READ", raw)
 		if _, err := LoadConfigE(); err == nil {
@@ -94,8 +94,8 @@ func TestPublicReadMalformedValuesCannotEnable(t *testing.T) {
 func TestMediaSigningKeyResolution(t *testing.T) {
 	clearConfigSelection(t)
 	dataDir := t.TempDir()
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
-	t.Setenv("DAYDAN_JWT_SECRET", "unit-test-jwt-secret-0123456789abcdef")
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_JWT_SECRET", "unit-test-jwt-secret-0123456789abcdef")
 
 	// Zero-config: derived key is stable across loads (restart keeps URLs
 	// valid), differs from the JWT secret, and is strong material.
@@ -156,12 +156,12 @@ func TestMediaSigningKeyResolution(t *testing.T) {
 	}
 
 	// Explicit env override beats everything else configured in files.
-	t.Setenv("DAYDAN_STORAGE_MEDIA_SECRET", strings.Repeat("e", 32))
+	t.Setenv("DYDAN_STORAGE_MEDIA_SECRET", strings.Repeat("e", 32))
 	envWins, err := LoadConfigE()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if envWins.Storage.MediaSecret != strings.Repeat("e", 32) {
-		t.Fatal("DAYDAN_STORAGE_MEDIA_SECRET override must win")
+		t.Fatal("DYDAN_STORAGE_MEDIA_SECRET override must win")
 	}
 }

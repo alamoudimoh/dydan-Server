@@ -1,5 +1,5 @@
 #!/bin/sh
-# DayDan container entrypoint.
+# Dydan container entrypoint.
 #
 # Starts as root with exactly one job: make sure the unprivileged runtime user
 # can access the persistent data directory (/data). This keeps existing
@@ -9,18 +9,18 @@
 #   1. prepare ownership/permissions of /data (db, WAL/SHM sidecars,
 #      jwt-secret, uploads)
 #   2. drop privileges permanently (su-exec)
-#   3. exec DayDan as the unprivileged user (signal handling preserved: the
+#   3. exec Dydan as the unprivileged user (signal handling preserved: the
 #      Go binary replaces this shell via exec and receives SIGTERM directly)
 set -eu
 
-DATA_DIR="${DAYDAN_DATA_DIR:-/data}"
-RUN_USER="daydan"
+DATA_DIR="${DYDAN_DATA_DIR:-${DAYDAN_DATA_DIR:-/data}}"
+RUN_USER="dydan"
 
 TARGET_UID="$(id -u "$RUN_USER")"
 TARGET_GID="$(id -g "$RUN_USER")"
 
 log() {
-  echo "[daydan-entrypoint] $*" >&2
+  echo "[dydan-entrypoint] $*" >&2
 }
 
 # ensure_owner takes a cheap stat-based check before touching anything so that
@@ -61,6 +61,6 @@ if [ -d "$DATA_DIR/uploads" ]; then
   ensure_owner "$DATA_DIR/uploads" yes
 fi
 
-# Drop privileges permanently and exec DayDan in the same PID so PID 1 signal
+# Drop privileges permanently and exec Dydan in the same PID so PID 1 signal
 # semantics (SIGTERM graceful shutdown) keep working.
-exec su-exec "$TARGET_UID:$TARGET_GID" "${@:-/daydan}"
+exec su-exec "$TARGET_UID:$TARGET_GID" "${@:-/dydan}"

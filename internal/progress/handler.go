@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/internal/auth"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	pModel "github.com/alamoudimoh/daydan-server/internal/points"
+	"github.com/alamoudimoh/dydan-server/internal/auth"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	pModel "github.com/alamoudimoh/dydan-server/internal/points"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

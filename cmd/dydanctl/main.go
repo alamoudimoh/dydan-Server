@@ -1,15 +1,15 @@
-// daydanctl is the DayDan operator toolkit for self-hosted instances.
+// dydanctl is the Dydan operator toolkit for self-hosted instances.
 //
 // It provides safe SQLite online backup/restore plus retention management:
 //
-//	daydanctl backup  --data-dir /data --out /backups [--keep 7]
-//	daydanctl verify  /backups/daydan-backup-20260823-120000
-//	daydanctl restore --backup /backups/daydan-backup-20260823-120000 \
+//	dydanctl backup  --data-dir /data --out /backups [--keep 7]
+//	dydanctl verify  /backups/dydan-backup-20260823-120000
+//	dydanctl restore --backup /backups/dydan-backup-20260823-120000 \
 //	                  --data-dir /data [--force]
-//	daydanctl prune   --root /backups --keep 7
+//	dydanctl prune   --root /backups --keep 7
 //
 // Backups use VACUUM INTO (SQLite's supported consistent online snapshot) so
-// DayDan keeps running and WAL contents are included. A manifest.json records
+// Dydan keeps running and WAL contents are included. A manifest.json records
 // timestamp, server version, integrity result, file names, sizes, and SHA-256
 // checksums. The JWT secret is copied but never logged.
 package main
@@ -34,9 +34,10 @@ import (
 )
 
 const (
-	jwtSecretFilename = "jwt-secret"
-	manifestFilename  = "manifest.json"
-	backupPrefix      = "daydan-backup-"
+	jwtSecretFilename  = "jwt-secret"
+	manifestFilename   = "manifest.json"
+	backupPrefix       = "dydan-backup-"
+	legacyBackupPrefix = "daydan-backup-"
 )
 
 type fileEntry struct {
@@ -55,14 +56,14 @@ type manifest struct {
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "daydanctl: %v\n", err)
+		fmt.Fprintf(os.Stderr, "dydanctl: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: daydanctl <backup|verify|restore|prune> [flags]")
+		return errors.New("usage: dydanctl <backup|verify|restore|prune> [flags]")
 	}
 	switch args[0] {
 	case "backup":
@@ -83,7 +84,11 @@ func run(args []string) error {
 
 // appVersion reports the build version; overridable via -ldflags.
 var appVersion = func() string {
-	v := os.Getenv("DAYDAN_VERSION")
+	v := os.Getenv("DYDAN_VERSION")
+	if v == "" {
+		// Preserve the previous build environment contract.
+		v = os.Getenv("DAYDAN_VERSION")
+	}
 	if v == "" {
 		v = "dev"
 	}
@@ -92,7 +97,7 @@ var appVersion = func() string {
 
 func cmdBackup(args []string) error {
 	fs := flag.NewFlagSet("backup", flag.ExitOnError)
-	dataDir := fs.String("data-dir", "/data", "DayDan data directory")
+	dataDir := fs.String("data-dir", "/data", "Dydan data directory")
 	out := fs.String("out", "/backups", "directory that receives the timestamped backup")
 	keep := fs.Int("keep", 0, "optional retention: keep only the N newest backups in -out")
 	if err := fs.Parse(args); err != nil {
@@ -110,7 +115,7 @@ func cmdBackup(args []string) error {
 		return err
 	}
 
-	fmt.Printf("daydanctl: backing up %s -> %s\n", dbPath, dest)
+	fmt.Printf("dydanctl: backing up %s -> %s\n", dbPath, dest)
 
 	// Consistent online snapshot. VACUUM INTO reads a coherent view of the
 	// database (including committed WAL content) while writers keep working;
@@ -143,7 +148,7 @@ func cmdBackup(args []string) error {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("copy %s failed: %w", jwtSecretFilename, err)
 		}
-		fmt.Println("daydanctl: note: no jwt-secret file present (secret may be configured externally)")
+		fmt.Println("dydanctl: note: no jwt-secret file present (secret may be configured externally)")
 	} else if err := addFileToManifest(&m, *dataDir, dest, filepath.Join(dest, jwtSecretFilename)); err != nil {
 		return err
 	}
@@ -168,7 +173,7 @@ func cmdBackup(args []string) error {
 		return err
 	}
 
-	fmt.Printf("daydanctl: backup complete (%d files recorded, db integrity %s)\n", len(m.Files), m.Integrity)
+	fmt.Printf("dydanctl: backup complete (%d files recorded, db integrity %s)\n", len(m.Files), m.Integrity)
 
 	if *keep > 0 {
 		return pruneBackups(*out, *keep)
@@ -178,13 +183,13 @@ func cmdBackup(args []string) error {
 
 func cmdVerify(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: daydanctl verify <backup-directory>")
+		return errors.New("usage: dydanctl verify <backup-directory>")
 	}
 	m, _, err := validateBackup(args[0])
 	if err != nil {
 		return err
 	}
-	fmt.Printf("daydanctl: backup OK (%s, version %s, db integrity %s, %d files)\n",
+	fmt.Printf("dydanctl: backup OK (%s, version %s, db integrity %s, %d files)\n",
 		m.Timestamp, m.Version, m.Integrity, len(m.Files))
 	return nil
 }
@@ -192,7 +197,7 @@ func cmdVerify(args []string) error {
 func cmdRestore(args []string) error {
 	fs := flag.NewFlagSet("restore", flag.ExitOnError)
 	backup := fs.String("backup", "", "backup directory to restore from")
-	dataDir := fs.String("data-dir", "/data", "DayDan data directory")
+	dataDir := fs.String("data-dir", "/data", "Dydan data directory")
 	force := fs.Bool("force", false, "override the running-instance safety check")
 	noSafety := fs.Bool("no-safety-backup", false, "skip preserving current live data (dangerous)")
 	if err := fs.Parse(args); err != nil {
@@ -217,7 +222,7 @@ func cmdRestore(args []string) error {
 	// Never restore over an apparently-running instance without --force.
 	if !*force {
 		if err := probeNoActiveWriter(liveDB); err != nil {
-			return fmt.Errorf("database appears to be in use (is DayDan still running? required downtime applies); use --force to override: %w", err)
+			return fmt.Errorf("database appears to be in use (is Dydan still running? required downtime applies); use --force to override: %w", err)
 		}
 	}
 
@@ -226,7 +231,7 @@ func cmdRestore(args []string) error {
 	// Preserve the live data unless explicitly overridden.
 	if !*noSafety {
 		safety := filepath.Join(*dataDir, fmt.Sprintf("pre-restore-%s", stamp))
-		fmt.Printf("daydanctl: preserving current live data in %s\n", safety)
+		fmt.Printf("dydanctl: preserving current live data in %s\n", safety)
 		if err := os.MkdirAll(safety, 0o700); err != nil {
 			return err
 		}
@@ -259,14 +264,14 @@ func cmdRestore(args []string) error {
 		if err := copyFileMode(src, target, 0o600); err != nil {
 			return err
 		}
-		fmt.Printf("daydanctl: restored %s\n", e.Path)
+		fmt.Printf("dydanctl: restored %s\n", e.Path)
 	}
 	// Post-restore integrity check of the live file.
 	integrity, err := integrityCheck(liveDB)
 	if err != nil || integrity != "ok" {
 		return fmt.Errorf("post-restore integrity check failed (%q): %v", integrity, err)
 	}
-	fmt.Printf("daydanctl: restore complete; start DayDan and verify login/data before deleting any pre-restore-* directory\n")
+	fmt.Printf("dydanctl: restore complete; start Dydan and verify login/data before deleting any pre-restore-* directory\n")
 	return nil
 }
 
@@ -283,8 +288,8 @@ func cmdPrune(args []string) error {
 // ---------- helpers ----------
 
 func resolveDBPath(dataDir string) string {
-	candidates := []string{"daydan.db", "taskier.db", "donetick.db"}
-	for _, c := range candidates {
+	canonicalAndLegacyDatabaseFilenames := []string{"dydan.db", "daydan.db", "taskier.db", "donetick.db"}
+	for _, c := range canonicalAndLegacyDatabaseFilenames {
 		p := filepath.Join(dataDir, c)
 		if info, err := os.Stat(p); err == nil && !info.IsDir() {
 			return p
@@ -511,7 +516,7 @@ func listBackups(root string) ([]string, error) {
 	}
 	var dirs []string
 	for _, e := range entries {
-		if e.IsDir() && strings.HasPrefix(e.Name(), backupPrefix) {
+		if e.IsDir() && (strings.HasPrefix(e.Name(), backupPrefix) || strings.HasPrefix(e.Name(), legacyBackupPrefix)) {
 			dirs = append(dirs, filepath.Join(root, e.Name()))
 		}
 	}
@@ -529,7 +534,7 @@ func pruneBackups(root string, keep int) error {
 	}
 	old := dirs[:len(dirs)-keep]
 	for _, dir := range old {
-		fmt.Printf("daydanctl: pruning old backup %s\n", dir)
+		fmt.Printf("dydanctl: pruning old backup %s\n", dir)
 		if err := os.RemoveAll(dir); err != nil {
 			return err
 		}

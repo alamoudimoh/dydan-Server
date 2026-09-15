@@ -9,7 +9,7 @@ import (
 
 // ProxyTrust decides whether the client in front of the current request is
 // allowed to set forwarding headers (X-Forwarded-Proto, X-Forwarded-Host,
-// Forwarded). DayDan is frequently exposed directly to the internet, where
+// Forwarded). Dydan is frequently exposed directly to the internet, where
 // every such header is attacker-controlled input; it is also commonly run
 // behind nginx/Caddy/Traefik on localhost or a private network, where those
 // same headers are the only way to see the real scheme and host.

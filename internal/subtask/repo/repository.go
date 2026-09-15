@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	stModel "github.com/alamoudimoh/daydan-server/internal/subtask/model"
+	stModel "github.com/alamoudimoh/dydan-server/internal/subtask/model"
 	"gorm.io/gorm"
 )
 

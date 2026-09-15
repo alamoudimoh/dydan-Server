@@ -3,8 +3,8 @@ package user
 import (
 	"context"
 
-	exUser "github.com/alamoudimoh/daydan-server/external/user/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	exUser "github.com/alamoudimoh/dydan-server/external/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 )
 

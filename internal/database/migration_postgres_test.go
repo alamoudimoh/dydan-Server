@@ -1,27 +1,31 @@
 package database
 
 import (
+	"cmp"
 	"context"
 	"os"
 	"testing"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/migrations"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/migrations"
 )
 
 // TestMigrationScriptsPostgres runs the full schema + script migration chain
 // against a live PostgreSQL instance and proves the child-role normalization
-// migration applies cleanly there too. Skipped unless DAYDAN_TEST_POSTGRES_DSN
+// migration applies cleanly there too. Skipped unless DYDAN_TEST_POSTGRES_DSN
 // is set.
 func TestMigrationScriptsPostgres(t *testing.T) {
-	dsn := os.Getenv("DAYDAN_TEST_POSTGRES_DSN")
+	dsn := cmp.Or(
+		os.Getenv("DYDAN_TEST_POSTGRES_DSN"),
+		os.Getenv("DAYDAN_TEST_POSTGRES_DSN"),
+	)
 	if dsn == "" {
-		t.Skip("DAYDAN_TEST_POSTGRES_DSN not set; skipping live PostgreSQL migration coverage")
+		t.Skip("DYDAN_TEST_POSTGRES_DSN not set; skipping live PostgreSQL migration coverage")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {

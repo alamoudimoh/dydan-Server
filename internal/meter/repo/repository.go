@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
-	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
+	syncModel "github.com/alamoudimoh/dydan-server/internal/sync/model"
 	"gorm.io/gorm"
 )
 

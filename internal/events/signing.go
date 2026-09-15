@@ -11,10 +11,10 @@ import (
 
 // Outbound webhook authenticity contract (docs/webhook-signing.md).
 //
-// Every DayDan-generated webhook carries:
+// Every Dydan-generated webhook carries canonical headers plus legacy aliases:
 //
-//	X-Daydan-Signature: t=<unix-seconds>,v1=<hex(HMAC-SHA256(secret, canonical))>
-//	X-Daydan-Timestamp: <unix-seconds>
+//	X-Dydan-Signature: t=<unix-seconds>,v1=<hex(HMAC-SHA256(secret, canonical))>
+//	X-Dydan-Timestamp: <unix-seconds>
 //
 // The canonical signing input is exactly
 //
@@ -54,9 +54,9 @@ func (s *webhookSigner) computeSignature(timestamp time.Time, body []byte) strin
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-// signatureHeader renders the delivery headers. X-Daydan-Signature carries
+// signatureHeader renders the delivery headers. X-Dydan-Signature carries
 // both parts ("t=<unix>,v1=<hex>") so verification is self-contained;
-// X-Daydan-Timestamp duplicates the timestamp for convenience parsing.
+// X-Dydan-Timestamp duplicates the timestamp for convenience parsing.
 func (s *webhookSigner) signatureHeader(now time.Time, body []byte) (string, string, string) {
 	ts := now.UTC()
 	sig := s.computeSignature(ts, body)

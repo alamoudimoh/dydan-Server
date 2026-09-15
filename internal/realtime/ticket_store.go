@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	config "github.com/alamoudimoh/daydan-server/config"
-	"github.com/alamoudimoh/daydan-server/logging"
+	config "github.com/alamoudimoh/dydan-server/config"
+	"github.com/alamoudimoh/dydan-server/logging"
 )
 
 const (

@@ -166,14 +166,14 @@ func doCSRFRequestFromPeer(allowed []string, method, origin, host, peer string) 
 }
 
 func TestCSRFCrossOriginRejected(t *testing.T) {
-	w := doCSRFRequest(nil, http.MethodPost, "https://evil.example.com", "daydan.example.com")
+	w := doCSRFRequest(nil, http.MethodPost, "https://evil.example.com", "dydan.example.com")
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("cross-site POST must be rejected with 403, got %d", w.Code)
 	}
 }
 
 func TestCSRFSameOriginAllowed(t *testing.T) {
-	w := doCSRFRequest(nil, http.MethodPost, "https://daydan.example.com", "daydan.example.com")
+	w := doCSRFRequest(nil, http.MethodPost, "https://dydan.example.com", "dydan.example.com")
 	if w.Code != http.StatusOK {
 		t.Fatalf("same-origin POST must be allowed, got %d", w.Code)
 	}
@@ -217,9 +217,9 @@ func TestCSRFProxyAdvertisedOriginAllowed(t *testing.T) {
 	r.POST("/api/v1/auth/refresh", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{}) })
 	req := requestFrom(http.MethodPost, "/api/v1/auth/refresh", loopbackPeer)
 	req.Host = "internal-host:2021"
-	req.Header.Set("X-Forwarded-Host", "daydan.example.com")
+	req.Header.Set("X-Forwarded-Host", "dydan.example.com")
 	req.Header.Set("X-Forwarded-Proto", "https")
-	req.Header.Set("Origin", "https://daydan.example.com")
+	req.Header.Set("Origin", "https://dydan.example.com")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -234,8 +234,8 @@ func TestCSRFSpoofedForwardedHostRejected(t *testing.T) {
 	// the request comes from a non-loopback peer, so those headers are ignored
 	// and the Host-based candidate (http://api.example.com) cannot match.
 	w := doCSRFRequestFromPeer(nil, http.MethodPost,
-		"https://daydan.example.com", "internal-host:2021", externalPeer)
-	reqHost := "daydan.example.com"
+		"https://dydan.example.com", "internal-host:2021", externalPeer)
+	reqHost := "dydan.example.com"
 	_ = reqHost
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("spoofed forwarding headers must not legitimize a cross-origin POST, got %d", w.Code)
@@ -253,9 +253,9 @@ func TestCSRFTrustedProxySameOriginAllowedFromExternalPeer(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", nil)
 	req.RemoteAddr = loopbackPeer
 	req.Host = "internal-host:2021"
-	req.Header.Set("X-Forwarded-Host", "daydan.example.com")
+	req.Header.Set("X-Forwarded-Host", "dydan.example.com")
 	req.Header.Set("X-Forwarded-Proto", "https")
-	req.Header.Set("Origin", "https://daydan.example.com")
+	req.Header.Set("Origin", "https://dydan.example.com")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {

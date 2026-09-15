@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

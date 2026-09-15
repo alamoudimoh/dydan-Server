@@ -1,11 +1,11 @@
-# DayDan-Server security model
+# Dydan Server security model
 
 This is an implementation summary for operators and contributors, not a
 substitute for threat modeling or deployment-specific security review.
 
 ## Authentication and sessions
 
-DayDan supports local credentials and configured OAuth/OIDC providers,
+Dydan supports local credentials and configured OAuth/OIDC providers,
 including Google and Apple integrations. TOTP MFA uses recovery codes and
 bounded verification attempts.
 
@@ -15,15 +15,15 @@ For a self-hosted household that uses an identity provider as its source of
 truth, enable the following canonical environment variables:
 
 ```bash
-DAYDAN_SINGLE_CIRCLE_INSTANCE=true
-DAYDAN_DISABLE_PASSWORD_AUTH=true
-DAYDAN_OAUTH2_ADMIN_GROUPS=household-admins
-DAYDAN_OAUTH2_MANAGER_GROUPS=household-managers
+DYDAN_SINGLE_CIRCLE_INSTANCE=true
+DYDAN_DISABLE_PASSWORD_AUTH=true
+DYDAN_OAUTH2_ADMIN_GROUPS=household-admins
+DYDAN_OAUTH2_MANAGER_GROUPS=household-managers
 ```
 
-`DAYDAN_SINGLE_CIRCLE_INSTANCE` places new OIDC users into the shared
+`DYDAN_SINGLE_CIRCLE_INSTANCE` places new OIDC users into the shared
 household circle and hides circle-management flows intended for multi-circle
-instances. `DAYDAN_DISABLE_PASSWORD_AUTH` makes the instance SSO-only.
+instances. `DYDAN_DISABLE_PASSWORD_AUTH` makes the instance SSO-only.
 
 On each OIDC login, if either group list is configured, role synchronization
 resolves an exact, case-sensitive group match. Administrator groups take
@@ -60,7 +60,7 @@ database-backed buckets so replicas sharing PostgreSQL observe the same
 limits.
 
 Forwarded headers are trusted only from configured proxy addresses. Configure
-`DAYDAN_TRUSTED_PROXIES` when a reverse proxy terminates TLS or forwards the
+`DYDAN_TRUSTED_PROXIES` when a reverse proxy terminates TLS or forwards the
 client address. The application also sets security headers and rejects unsafe
 CORS configurations.
 
@@ -80,5 +80,5 @@ raw body, signature, and replay tolerance before processing a delivery.
 Keep `/data` on a protected persistent volume and restrict access to backup
 archives because they contain application state and the persisted JWT secret.
 Use HTTPS at the edge, configure trusted proxies narrowly, and use the
-operator's native backup tooling for PostgreSQL. The included `daydanctl`
+operator's native backup tooling for PostgreSQL. The included `dydanctl`
 backup flow is SQLite-focused.

@@ -1,8 +1,8 @@
-# DayDan Server Verification Policy
+# Dydan Server Verification Policy
 
 - Run `./scripts/verify.sh` before completing substantial backend changes. It
   includes the zero-config container smoke test. Set
-  `DAYDAN_SKIP_CONTAINER_SMOKE=true` only when that check runs separately, as
+  `DYDAN_SKIP_CONTAINER_SMOKE=true` only when that check runs separately, as
   it does in parallel CI jobs.
 - Complete the applicable local verification in a clean worktree before
   declaring work complete. GitHub Actions may run when infrastructure permits

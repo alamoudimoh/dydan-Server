@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	"github.com/alamoudimoh/daydan-server/internal/httpx"
-	"github.com/alamoudimoh/daydan-server/internal/outbound"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/internal/utils"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	"github.com/alamoudimoh/dydan-server/internal/httpx"
+	"github.com/alamoudimoh/dydan-server/internal/outbound"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/internal/utils"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"go.uber.org/zap"
 )
 
@@ -55,7 +55,7 @@ type ChoreData struct {
 	Note        string         `json:"note"`
 }
 
-// EventsProducer delivers DayDan-generated webhooks to external consumer
+// EventsProducer delivers Dydan-generated webhooks to external consumer
 // URLs.
 //
 // Architecture (Phase 8):
@@ -76,22 +76,22 @@ type EventsProducer struct {
 	base   context.Context
 
 	// Dispatcher state.
-	mu      sync.Mutex
-	buckets []*tenantBucket // round-robin ring of active destinations
-	byKey   map[string]*tenantBucket
-	cursor  int
-	sem     chan struct{} // global concurrency slots
-	idleMu  sync.Mutex
+	mu       sync.Mutex
+	buckets  []*tenantBucket // round-robin ring of active destinations
+	byKey    map[string]*tenantBucket
+	cursor   int
+	sem      chan struct{} // global concurrency slots
+	idleMu   sync.Mutex
 	idleCond *sync.Cond
 	inflight int
-	wake    chan struct{}
+	wake     chan struct{}
 
 	// Delivery policy.
-	signer        *webhookSigner
-	maxAttempts   int
-	backoffInit   time.Duration
-	backoffMax    time.Duration
-	perTenantCap  int
+	signer       *webhookSigner
+	maxAttempts  int
+	backoffInit  time.Duration
+	backoffMax   time.Duration
+	perTenantCap int
 
 	// Injectable clocks for deterministic tests.
 	nowFn  func() time.Time
@@ -169,7 +169,7 @@ func NewEventsProducer(cfg *config.Config) *EventsProducer {
 		// Config resolution normally guarantees a secret; an empty value in
 		// unit tests must still produce deterministic (unsigned-safe)
 		// behavior without panicking.
-		signingSecret = "daydan-webhook-unsigned-dev-fallback"
+		signingSecret = "dydan-webhook-unsigned-dev-fallback"
 	}
 	queueSize := cfg.WebhookConfig.QueueSize
 	if queueSize <= 0 {
@@ -295,6 +295,8 @@ func (p *EventsProducer) deliverWithRetriesSlot(ctx context.Context, event Event
 		req.Header.Set(HEAD_CONTENT_TYPE, CONTENT_TYPE_JSON)
 		req.Header.Set(signatureHeaderName, sigHeader)
 		req.Header.Set(timestampHeaderName, tsHeader)
+		req.Header.Set(legacySignatureHeaderName, sigHeader)
+		req.Header.Set(legacyTimestampHeaderName, tsHeader)
 
 		resp, err := p.client.Do(req)
 		if err != nil {

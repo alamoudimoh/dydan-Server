@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/internal/authlimit"
+	"github.com/alamoudimoh/dydan-server/internal/authlimit"
 	"github.com/gin-gonic/gin"
 )
 

@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	config "github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
-	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	config "github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	lModel "github.com/alamoudimoh/dydan-server/internal/label/model"
+	syncModel "github.com/alamoudimoh/dydan-server/internal/sync/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

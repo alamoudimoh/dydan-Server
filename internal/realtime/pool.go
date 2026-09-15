@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 // ConnectionPool manages WebSocket connections for a specific circle

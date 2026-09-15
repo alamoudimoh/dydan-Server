@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	gomail "gopkg.in/gomail.v2"
 )
 
@@ -73,7 +73,7 @@ func (es *EmailSender) SendVerificationEmail(to, code string) error {
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", es.fromMail)
 	msg.SetHeader("To", to)
-	msg.SetHeader("Subject", "Welcome to DayDan! Verify your email")
+	msg.SetHeader("Subject", "Welcome to Dydan! Verify your email")
 	// text/html for a html email
 	htmlBody := `
 	<!--
@@ -196,7 +196,7 @@ func (es *EmailSender) SendVerificationEmail(to, code string) error {
 		<![endif]-->
 		</head>
 		<body class="t0" style="min-width:100%;Marg
-		if you did not sign up with DayDan please Ignore this email. in:0px;padding:0px;background-color:#FFFFFF;"><div class="t1" style="background-color:#FFFFFF;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tbody><tr><td class="t130" style="font-size:0;line-height:0;mso-line-height-rule:exactly;" valign="top" align="center">
+		if you did not sign up with Dydan please Ignore this email. in:0px;padding:0px;background-color:#FFFFFF;"><div class="t1" style="background-color:#FFFFFF;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tbody><tr><td class="t130" style="font-size:0;line-height:0;mso-line-height-rule:exactly;" valign="top" align="center">
 		<!--[if mso]>
 		<v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false">
 		<v:fill color="#FFFFFF"/>
@@ -238,7 +238,7 @@ func (es *EmailSender) SendVerificationEmail(to, code string) error {
 		<!--[if !mso]><!--><td class="t43" style="width:480px;">
 		<!--<![endif]-->
 		<!--[if mso]><td class="t43" style="width:480px;"><![endif]-->
-		<h1 class="t49" style="margin:0;Margin:0;font-family:BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,sans-serif,'Albert Sans';line-height:35px;font-weight:800;font-style:normal;font-size:30px;text-decoration:none;text-transform:none;letter-spacing:-1.2px;direction:ltr;color:#333333;text-align:center;mso-line-height-rule:exactly;mso-text-raise:2px;">Welcome to DayDan!</h1></td>
+		<h1 class="t49" style="margin:0;Margin:0;font-family:BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,sans-serif,'Albert Sans';line-height:35px;font-weight:800;font-style:normal;font-size:30px;text-decoration:none;text-transform:none;letter-spacing:-1.2px;direction:ltr;color:#333333;text-align:center;mso-line-height-rule:exactly;mso-text-raise:2px;">Welcome to Dydan!</h1></td>
 		</tr></tbody></table>
 		</td></tr><tr><td><div class="t41" style="mso-line-height-rule:exactly;mso-line-height-alt:16px;line-height:16px;font-size:1px;display:block;">&nbsp;</div></td></tr><tr><td><p class="t39" style="margin:0;Margin:0;font-family:BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,sans-serif,'Inter Tight';line-height:21px;font-weight:400;font-style:normal;font-size:14px;text-decoration:none;text-transform:none;direction:ltr;color:#555555;text-align:center;mso-line-height-rule:exactly;mso-text-raise:2px;">Thank you for joining us. We're excited to have you on board.To complete your registration, click the button below</p></td></tr><tr><td><div class="t31" style="mso-line-height-rule:exactly;mso-line-height-alt:30px;line-height:30px;font-size:1px;display:block;">&nbsp;</div></td></tr><tr><td>
 		<table class="t52" role="presentation" cellpadding="0" cellspacing="0" align="center"><tbody><tr>
@@ -268,7 +268,7 @@ func (es *EmailSender) SendVerificationEmail(to, code string) error {
 		<!--[if !mso]><!--><td class="t94" style="width:480px;">
 		<!--<![endif]-->
 		<!--[if mso]><td class="t94" style="width:480px;"><![endif]-->
-		<p class="t100" style="margin:0;Margin:0;font-family:BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,sans-serif,'Inter Tight';line-height:18px;font-weight:400;font-style:normal;font-size:12px;text-decoration:none;text-transform:none;direction:ltr;color:#555555;text-align:center;mso-line-height-rule:exactly;mso-text-raise:2px;">if you did not sign up with DayDan please Ignore this email. </p></td>
+		<p class="t100" style="margin:0;Margin:0;font-family:BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,sans-serif,'Inter Tight';line-height:18px;font-weight:400;font-style:normal;font-size:12px;text-decoration:none;text-transform:none;direction:ltr;color:#555555;text-align:center;mso-line-height-rule:exactly;mso-text-raise:2px;">if you did not sign up with Dydan please Ignore this email. </p></td>
 		</tr></tbody></table>
 		</td></tr><tr><td><div class="t81" style="mso-line-height-rule:exactly;mso-line-height-alt:8px;line-height:8px;font-size:1px;display:block;">&nbsp;</div></td></tr><tr><td>
 		<table class="t83" role="presentation" cellpadding="0" cellspacing="0" align="center"><tbody><tr>
@@ -300,7 +300,7 @@ func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", es.fromMail)
 	msg.SetHeader("To", to)
-	msg.SetHeader("Subject", "DayDan! Password Reset")
+	msg.SetHeader("Subject", "Dydan! Password Reset")
 	htmlBody := `
 	<!--
 	********************************************************
@@ -422,7 +422,7 @@ func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string
 		<![endif]-->
 		</head>
 		<body class="t0" style="min-width:100%;Marg
-		if you did not sign up with DayDan please Ignore this email. in:0px;padding:0px;background-color:#FFFFFF;"><div class="t1" style="background-color:#FFFFFF;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tbody><tr><td class="t130" style="font-size:0;line-height:0;mso-line-height-rule:exactly;" valign="top" align="center">
+		if you did not sign up with Dydan please Ignore this email. in:0px;padding:0px;background-color:#FFFFFF;"><div class="t1" style="background-color:#FFFFFF;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" align="center"><tbody><tr><td class="t130" style="font-size:0;line-height:0;mso-line-height-rule:exactly;" valign="top" align="center">
 		<!--[if mso]>
 		<v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false">
 		<v:fill color="#FFFFFF"/>
@@ -494,7 +494,7 @@ func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string
 		<!--[if !mso]><!--><td class="t94" style="width:480px;">
 		<!--<![endif]-->
 		<!--[if mso]><td class="t94" style="width:480px;"><![endif]-->
-		<p class="t100" style="margin:0;Margin:0;font-family:BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,sans-serif,'Inter Tight';line-height:18px;font-weight:400;font-style:normal;font-size:12px;text-decoration:none;text-transform:none;direction:ltr;color:#555555;text-align:center;mso-line-height-rule:exactly;mso-text-raise:2px;">if you did not sign up with DayDan please Ignore this email. </p></td>
+		<p class="t100" style="margin:0;Margin:0;font-family:BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,sans-serif,'Inter Tight';line-height:18px;font-weight:400;font-style:normal;font-size:12px;text-decoration:none;text-transform:none;direction:ltr;color:#555555;text-align:center;mso-line-height-rule:exactly;mso-text-raise:2px;">if you did not sign up with Dydan please Ignore this email. </p></td>
 		</tr></tbody></table>
 		</td></tr><tr><td><div class="t81" style="mso-line-height-rule:exactly;mso-line-height-alt:8px;line-height:8px;font-size:1px;display:block;">&nbsp;</div></td></tr><tr><td>
 		<table class="t83" role="presentation" cellpadding="0" cellspacing="0" align="center"><tbody><tr>

@@ -1,8 +1,8 @@
 package notifier
 
 import (
-	"github.com/alamoudimoh/daydan-server/internal/auth"
-	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
+	"github.com/alamoudimoh/dydan-server/internal/auth"
+	nRepo "github.com/alamoudimoh/dydan-server/internal/notifier/repo"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"

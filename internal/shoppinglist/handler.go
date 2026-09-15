@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/alamoudimoh/daydan-server/internal/auth"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	slModel "github.com/alamoudimoh/daydan-server/internal/shoppinglist/model"
-	slRepo "github.com/alamoudimoh/daydan-server/internal/shoppinglist/repo"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/internal/auth"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	slModel "github.com/alamoudimoh/dydan-server/internal/shoppinglist/model"
+	slRepo "github.com/alamoudimoh/dydan-server/internal/shoppinglist/repo"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/gin-gonic/gin"
 )
 

@@ -1,7 +1,7 @@
 package model
 
 import (
-	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
+	lModel "github.com/alamoudimoh/dydan-server/internal/label/model"
 	"time"
 )
 

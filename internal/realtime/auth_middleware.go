@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	daydanAuth "github.com/alamoudimoh/daydan-server/internal/auth"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	dydanAuth "github.com/alamoudimoh/dydan-server/internal/auth"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/logging"
 	ginJWT "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
@@ -56,7 +56,7 @@ func (am *AuthMiddleware) AuthenticateConnection(c *gin.Context) (*uModel.User, 
 			return nil, 0, ErrInvalidToken
 		}
 
-		user, err := daydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, securityState.claims)
+		user, err := dydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, securityState.claims)
 		if err != nil || user.ID != securityState.userID {
 			logger.Errorw("SSE ticket security state is no longer valid", "error", err)
 			return nil, 0, ErrInvalidToken
@@ -85,7 +85,7 @@ func (am *AuthMiddleware) AuthenticateConnection(c *gin.Context) (*uModel.User, 
 		return nil, 0, ErrInvalidToken
 	}
 
-	user, err := daydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, map[string]interface{}(claims))
+	user, err := dydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, map[string]interface{}(claims))
 	if err != nil {
 		logger.Errorw("JWT security state is no longer valid", "error", err)
 		return nil, 0, ErrInvalidToken

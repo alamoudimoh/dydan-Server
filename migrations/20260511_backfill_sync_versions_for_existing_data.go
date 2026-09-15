@@ -3,8 +3,8 @@ package migrations
 import (
 	"context"
 
-	"github.com/alamoudimoh/daydan-server/internal/sync/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/internal/sync/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 )
 

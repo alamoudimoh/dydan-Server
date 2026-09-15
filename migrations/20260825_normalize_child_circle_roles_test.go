@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

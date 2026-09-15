@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
-	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
-	pModel "github.com/alamoudimoh/daydan-server/internal/points"
-	stModel "github.com/alamoudimoh/daydan-server/internal/subtask/model"
-	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	lModel "github.com/alamoudimoh/dydan-server/internal/label/model"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
+	pModel "github.com/alamoudimoh/dydan-server/internal/points"
+	stModel "github.com/alamoudimoh/dydan-server/internal/subtask/model"
+	syncModel "github.com/alamoudimoh/dydan-server/internal/sync/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
@@ -38,14 +38,14 @@ func benchRepository(b *testing.B, chores int) (*ChoreRepository, int, int) {
 	const circleID = 1
 	for i := 0; i < chores; i++ {
 		ch := chModel.Chore{
-			Name:           fmt.Sprintf("chore-%d", i),
-			CircleID:       circleID,
-			CreatedBy:      1,
-			UpdatedBy:      1,
-			AssignedTo:     ptrInt(1),
-			FrequencyType:  chModel.FrequencyTypeOnce,
-			Frequency:      1,
-			IsActive:       true,
+			Name:          fmt.Sprintf("chore-%d", i),
+			CircleID:      circleID,
+			CreatedBy:     1,
+			UpdatedBy:     1,
+			AssignedTo:    ptrInt(1),
+			FrequencyType: chModel.FrequencyTypeOnce,
+			Frequency:     1,
+			IsActive:      true,
 		}
 		if err := db.Create(&ch).Error; err != nil {
 			b.Fatal(err)

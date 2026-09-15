@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"github.com/gin-gonic/gin"
 )
 
@@ -97,9 +97,9 @@ func TestCanonicalAssetPath(t *testing.T) {
 		"users/1/a.jpg":      "users/1/a.jpg",
 		"/users/1/a.jpg":     "users/1/a.jpg",
 		"profiles/./a.png":   "profiles/a.png",
-		"profiles//x.jpg":      "profiles/x.jpg",
-		"uploads/profiles/x":   "uploads/profiles/x",
-		"./users/1/a.jpg":      "users/1/a.jpg",
+		"profiles//x.jpg":    "profiles/x.jpg",
+		"uploads/profiles/x": "uploads/profiles/x",
+		"./users/1/a.jpg":    "users/1/a.jpg",
 	}
 	bad := []string{
 		"..",

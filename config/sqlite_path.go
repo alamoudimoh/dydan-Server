@@ -10,23 +10,25 @@ import (
 )
 
 const (
-	daydanDBFilename   = "daydan.db"
-	taskierDBFilename  = "taskier.db"
-	donetickDBFilename = "donetick.db"
+	dydanDBFilename          = "dydan.db"
+	legacyDaydanDBFilename   = "daydan.db"
+	legacyTaskierDBFilename  = "taskier.db"
+	legacyDonetickDBFilename = "donetick.db"
 )
 
 func resolveDefaultSQLitePath(dataDir string, useLegacyWorkingDirectory bool) (string, error) {
-	canonical := filepath.Join(dataDir, daydanDBFilename)
+	canonical := filepath.Join(dataDir, dydanDBFilename)
 	if databaseFileExists(canonical) {
 		return canonical, nil
 	}
 
 	legacyCandidates := []string{
-		filepath.Join(dataDir, taskierDBFilename),
-		filepath.Join(dataDir, donetickDBFilename),
+		filepath.Join(dataDir, legacyDaydanDBFilename),
+		filepath.Join(dataDir, legacyTaskierDBFilename),
+		filepath.Join(dataDir, legacyDonetickDBFilename),
 	}
 	if useLegacyWorkingDirectory {
-		legacyCandidates = append(legacyCandidates, donetickDBFilename)
+		legacyCandidates = append(legacyCandidates, legacyDonetickDBFilename)
 	}
 
 	for _, legacyPath := range legacyCandidates {
@@ -35,16 +37,15 @@ func resolveDefaultSQLitePath(dataDir string, useLegacyWorkingDirectory bool) (s
 		}
 		migrated, err := migrateLegacySQLiteDatabase(legacyPath, canonical)
 		if err != nil {
-			log.Printf("DayDan: keeping legacy SQLite database at %s (migration to %s failed: %v)", legacyPath, canonical, err)
-			return legacyPath, nil
+			return "", fmt.Errorf("migrate legacy SQLite database from %s to %s: %w", legacyPath, canonical, err)
 		}
 		if migrated {
-			log.Printf("DayDan: migrated legacy SQLite database from %s to %s", legacyPath, canonical)
+			log.Printf("Dydan: migrated legacy SQLite database from %s to %s", legacyPath, canonical)
 		}
 		if databaseFileExists(canonical) {
 			return canonical, nil
 		}
-		return legacyPath, nil
+		return "", fmt.Errorf("legacy SQLite migration from %s did not create %s", legacyPath, canonical)
 	}
 
 	return canonical, nil
@@ -123,7 +124,7 @@ func copyDatabaseFile(sourcePath, targetPath string) error {
 func removeSQLiteDatabaseFiles(path string) {
 	for _, candidate := range []string{path, path + "-wal", path + "-shm"} {
 		if err := os.Remove(candidate); err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Printf("DayDan: failed to remove incomplete SQLite file %s: %v", candidate, err)
+			log.Printf("Dydan: failed to remove incomplete SQLite file %s: %v", candidate, err)
 		}
 	}
 }

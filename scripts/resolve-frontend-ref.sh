@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# resolve-frontend-ref.sh — resolve the daydan-app ref a release build must
+# resolve-frontend-ref.sh — resolve the Dydan AppWeb ref a release build must
 # embed, pinning it to exactly one immutable commit SHA.
 #
 # Inputs (environment):
-#   INPUT_REF     explicit daydan-app ref (tag/branch/full SHA); may be empty
+#   INPUT_REF     explicit Dydan AppWeb ref (tag/branch/full SHA); may be empty
 #   TAG           the server release tag being built (e.g. v1.2.3)
 #   IS_TAG_PUSH   "true" for official tagged releases (push of a vX.Y.Z tag)
-#   REPO_URL      URL of the daydan-app git repository
+#   REPO_URL      URL of the Dydan AppWeb git repository
 #   GITHUB_OUTPUT optional; when set (GitHub Actions), results are appended
 #                 there as well as printed to stdout as key=value lines.
 #
 # Resolution rules:
-# - Official tagged release: the exact same tag must exist in daydan-app,
+# - Official tagged release: the exact same tag must exist in AppWeb,
 #   otherwise this script FAILS. A release must never silently embed a moving
 #   branch such as develop.
 # - Manual dispatch with frontend_ref: that ref is used as-is.
-# - Manual dispatch without frontend_ref: daydan-app@develop HEAD is used and
+# - Manual dispatch without frontend_ref: AppWeb develop HEAD is used and
 #   the result is flagged reproducible=false (non-reproducible dev build).
 #
 # Outputs: "ref", "sha" and "reproducible" lines.
@@ -32,7 +32,7 @@ elif [ "${IS_TAG_PUSH:-false}" = "true" ]; then
     REF="$TAG"
     echo "Found synchronized frontend tag: $REF"
   else
-    echo "::error::Official release $TAG has no matching daydan-app tag."
+    echo "::error::Official release $TAG has no matching Dydan AppWeb tag."
     echo "::error::Refusing to build against a moving branch. Create the synchronized frontend tag first"
     echo "::error::(scripts/prepare-release.sh) or dispatch manually with an explicit frontend_ref."
     exit 1
@@ -59,7 +59,7 @@ else
   fi
 fi
 if [ -z "$SHA" ]; then
-  echo "::error::Could not resolve daydan-app ref '$REF' to a commit."
+  echo "::error::Could not resolve Dydan AppWeb ref '$REF' to a commit."
   exit 1
 fi
 

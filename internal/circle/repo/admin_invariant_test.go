@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

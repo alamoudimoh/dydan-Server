@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 )
 
 // Connection represents a WebSocket or SSE connection with metadata

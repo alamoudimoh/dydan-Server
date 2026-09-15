@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	config "github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	pModel "github.com/alamoudimoh/daydan-server/internal/project/model"
-	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	config "github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	pModel "github.com/alamoudimoh/dydan-server/internal/project/model"
+	syncModel "github.com/alamoudimoh/dydan-server/internal/sync/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 )
 

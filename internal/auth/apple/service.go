@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/sync/singleflight"
 )
@@ -57,7 +57,7 @@ type AppleClaims struct {
 
 func NewAppleService(config *config.Config) *AppleService {
 	return &AppleService{
-		clientID: config.DayDanCloudConfig.AppleClientID,
+		clientID: config.DydanCloudConfig.AppleClientID,
 		keys:     make(map[string]*rsa.PublicKey),
 		keysURL:  "https://appleid.apple.com/auth/keys",
 		httpClient: &http.Client{

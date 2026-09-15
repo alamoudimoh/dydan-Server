@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"gorm.io/gorm"
 )
 

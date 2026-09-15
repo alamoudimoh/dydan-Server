@@ -8,15 +8,15 @@ import (
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	rewardModel "github.com/alamoudimoh/daydan-server/internal/reward"
-	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/migrations"
+	"github.com/alamoudimoh/dydan-server/config"
+	rewardModel "github.com/alamoudimoh/dydan-server/internal/reward"
+	tModel "github.com/alamoudimoh/dydan-server/internal/thing/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/migrations"
 )
 
 func TestMigrationScriptsSQLite(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "test_donetick.db")
+	dbPath := filepath.Join(t.TempDir(), "test_dydan.db")
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)

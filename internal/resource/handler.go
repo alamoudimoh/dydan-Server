@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/config"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/ulule/limiter/v3"

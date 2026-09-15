@@ -10,7 +10,7 @@ import (
 // the percent-decoded name. Only values are replaced — parameter names and
 // non-sensitive pairs are preserved byte-for-byte so diagnostics stay useful.
 //
-// The list is derived from DayDan's actual credential-bearing parameters:
+// The list is derived from Dydan's actual credential-bearing parameters:
 //   - "ticket": single-use realtime/SSE connection tickets;
 //   - "c":      legacy password-reset links (?c=<code>);
 //   - "sig" / "X-Amz-Signature": signed media URL credentials;
@@ -85,7 +85,7 @@ func RedactURLString(raw string) string {
 }
 
 // RedactURL renders u as path?query with sensitive query values redacted.
-// userinfo/host are intentionally omitted: DayDan never needs them for
+// userinfo/host are intentionally omitted: Dydan never needs them for
 // debugging, and dropping them removes a class of accidental credential
 // exposure (https://user:pass@host).
 func RedactURL(u *url.URL) string {

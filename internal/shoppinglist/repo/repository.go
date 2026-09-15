@@ -6,18 +6,18 @@ import (
 	"strings"
 	"time"
 
-	slModel "github.com/alamoudimoh/daydan-server/internal/shoppinglist/model"
+	slModel "github.com/alamoudimoh/dydan-server/internal/shoppinglist/model"
 	"gorm.io/gorm"
 )
 
 var (
-	ErrListNotFound  = errors.New("shopping list not found")
-	ErrItemNotFound  = errors.New("shopping list item not found")
-	ErrForbidden     = errors.New("permission denied")
-	ErrInvalidScope  = errors.New("invalid list scope")
-	ErrArchived      = errors.New("shopping list is archived")
-	ErrInvalidName   = errors.New("invalid list name")
-	ErrInvalidItem   = errors.New("invalid item name")
+	ErrListNotFound = errors.New("shopping list not found")
+	ErrItemNotFound = errors.New("shopping list item not found")
+	ErrForbidden    = errors.New("permission denied")
+	ErrInvalidScope = errors.New("invalid list scope")
+	ErrArchived     = errors.New("shopping list is archived")
+	ErrInvalidName  = errors.New("invalid list name")
+	ErrInvalidItem  = errors.New("invalid item name")
 )
 
 type Repository struct {

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# prepare-release.sh — create a synchronized release tag across both DayDan
+# prepare-release.sh — create a synchronized release tag across both Dydan
 # repositories so an official vX.Y.Z release deterministically pairs one server
 # commit with one frontend commit.
 #
 # Usage:
-#   scripts/prepare-release.sh vX.Y.Z [/path/to/daydan-app]
+#   scripts/prepare-release.sh vX.Y.Z [/path/to/dydan-app]
 #
 # The script only creates LOCAL annotated tags after validating everything;
 # it never pushes and never overwrites anything. Pushing is a separate,
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 vX.Y.Z [/path/to/daydan-app]" >&2
+  echo "Usage: $0 vX.Y.Z [/path/to/dydan-app]" >&2
   exit 2
 }
 
@@ -33,7 +33,18 @@ SERVER_REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 if [ $# -eq 2 ]; then
   APP_REPO="$2"
 else
-  APP_REPO="$SERVER_REPO/../daydan-app"
+  # Canonical default is ../dydan-app; fall back to ../daydan-app if it exists
+  CANONICAL="$SERVER_REPO/../dydan-app"
+  LEGACY="$SERVER_REPO/../daydan-app"
+  if [ -d "$CANONICAL" ]; then
+    APP_REPO="$CANONICAL"
+  elif [ -d "$LEGACY" ]; then
+    APP_REPO="$LEGACY"
+  else
+    echo "ERROR: Frontend repository not found at canonical path '$CANONICAL' or legacy path '$LEGACY'." >&2
+    echo "       Provide an explicit path as the second argument." >&2
+    exit 1
+  fi
 fi
 APP_REPO=$(cd "$APP_REPO" && pwd)
 
@@ -86,11 +97,11 @@ APP_SUBJECT=$(git -C "$APP_REPO" log -1 --format=%s)
 
 echo "Release plan for $TAG"
 echo ""
-echo "  daydan-server ($(basename "$SERVER_REPO"))"
+echo "  dydan-server ($(basename "$SERVER_REPO"))"
 echo "    commit : $SERVER_SHA"
 echo "    subject: $SERVER_SUBJECT"
 echo ""
-echo "  daydan-app"
+echo "  dydan-app"
 echo "    commit : $APP_SHA"
 echo "    subject: $APP_SUBJECT"
 echo ""
@@ -103,8 +114,8 @@ case "$answer" in
   *) echo "Aborted; nothing was changed."; exit 1 ;;
 esac
 
-git -C "$SERVER_REPO" tag -a "$TAG" -m "DayDan release $TAG (server $SERVER_SHA, frontend $APP_SHA)"
-git -C "$APP_REPO" tag -a "$TAG" -m "DayDan release $TAG (server $SERVER_SHA, frontend $APP_SHA)"
+git -C "$SERVER_REPO" tag -a "$TAG" -m "Dydan release $TAG (server $SERVER_SHA, frontend $APP_SHA)"
+git -C "$APP_REPO" tag -a "$TAG" -m "Dydan release $TAG (server $SERVER_SHA, frontend $APP_SHA)"
 
 echo ""
 echo "Local tags created. Pushing them will trigger the official release build:"
@@ -113,4 +124,4 @@ echo "  git -C \"$SERVER_REPO\" push origin \"$TAG\""
 echo "  git -C \"$APP_REPO\" push origin \"$TAG\""
 echo ""
 echo "(The server tag push triggers go-release.yml, which resolves the matching"
-echo " daydan-app tag and builds the paired reproducible image.)"
+echo " Dydan AppWeb tag and builds the paired reproducible image.)"
