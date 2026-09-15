@@ -1355,7 +1355,7 @@ func (h *Handler) UpdateNotificationTarget(c *gin.Context) {
 func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
 	if h.isDayDanCloud {
 		// only enable this feature for self-hosted instances
-		c.JSON(http.StatusForbidden, gin.H{"error": "This action is not allowed on the hosted DayDan service"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "This action is not allowed on the hosted Dydan service"})
 		return
 	}
 	logger := logging.FromContext(c)

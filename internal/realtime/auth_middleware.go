@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/alamoudimoh/dydan-server/config"
-	daydanAuth "github.com/alamoudimoh/dydan-server/internal/auth"
+	dydanAuth "github.com/alamoudimoh/dydan-server/internal/auth"
 	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
@@ -56,7 +56,7 @@ func (am *AuthMiddleware) AuthenticateConnection(c *gin.Context) (*uModel.User, 
 			return nil, 0, ErrInvalidToken
 		}
 
-		user, err := daydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, securityState.claims)
+		user, err := dydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, securityState.claims)
 		if err != nil || user.ID != securityState.userID {
 			logger.Errorw("SSE ticket security state is no longer valid", "error", err)
 			return nil, 0, ErrInvalidToken
@@ -85,7 +85,7 @@ func (am *AuthMiddleware) AuthenticateConnection(c *gin.Context) (*uModel.User, 
 		return nil, 0, ErrInvalidToken
 	}
 
-	user, err := daydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, map[string]interface{}(claims))
+	user, err := dydanAuth.ValidateAccessClaims(c.Request.Context(), am.userRepo, map[string]interface{}(claims))
 	if err != nil {
 		logger.Errorw("JWT security state is no longer valid", "error", err)
 		return nil, 0, ErrInvalidToken

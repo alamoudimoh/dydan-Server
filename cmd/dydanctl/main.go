@@ -263,14 +263,14 @@ func cmdRestore(args []string) error {
 		if err := copyFileMode(src, target, 0o600); err != nil {
 			return err
 		}
-		fmt.Printf("daydanctl: restored %s\n", e.Path)
+		fmt.Printf("dydanctl: restored %s\n", e.Path)
 	}
 	// Post-restore integrity check of the live file.
 	integrity, err := integrityCheck(liveDB)
 	if err != nil || integrity != "ok" {
 		return fmt.Errorf("post-restore integrity check failed (%q): %v", integrity, err)
 	}
-	fmt.Printf("daydanctl: restore complete; start DayDan and verify login/data before deleting any pre-restore-* directory\n")
+	fmt.Printf("dydanctl: restore complete; start Dydan and verify login/data before deleting any pre-restore-* directory\n")
 	return nil
 }
 
@@ -533,7 +533,7 @@ func pruneBackups(root string, keep int) error {
 	}
 	old := dirs[:len(dirs)-keep]
 	for _, dir := range old {
-		fmt.Printf("daydanctl: pruning old backup %s\n", dir)
+		fmt.Printf("dydanctl: pruning old backup %s\n", dir)
 		if err := os.RemoveAll(dir); err != nil {
 			return err
 		}
