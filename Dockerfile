@@ -99,7 +99,7 @@ VOLUME ["/data"]
 
 # Release provenance (populated by go-release.yml; "unknown"/"dev" for plain
 # docker/compose builds). The pairing of server commit/version and the exact
-# daydan-app commit the embedded frontend came from is always discoverable
+# Dydan frontend commit the embedded frontend came from is always discoverable
 # via these immutable OCI labels. VERSION/COMMIT are re-declared here because
 # build args do not cross stage boundaries.
 ARG DYDAN_FRONTEND_COMMIT=unknown

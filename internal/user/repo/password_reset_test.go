@@ -23,7 +23,7 @@ func passwordResetRepo(t *testing.T) (*UserRepository, *gorm.DB) {
 	if err := db.AutoMigrate(&cModel.Circle{}, &uModel.User{}, &uModel.UserPasswordReset{}, &uModel.UserSession{}, &uModel.MFASession{}); err != nil {
 		t.Fatal(err)
 	}
-	return NewUserRepository(db, &config.Config{IsDayDanCloud: false}), db
+	return NewUserRepository(db, &config.Config{IsDydanCloud: false}), db
 }
 
 func TestUpdatePasswordByTokenRevokesAllRefreshSessions(t *testing.T) {

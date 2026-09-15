@@ -75,11 +75,11 @@ type IUserRepository interface {
 
 type UserRepository struct {
 	db            *gorm.DB
-	isDayDanCloud bool
+	isDydanCloud bool
 }
 
 func NewUserRepository(db *gorm.DB, cfg *config.Config) *UserRepository {
-	return &UserRepository{db, cfg.IsDayDanCloud}
+	return &UserRepository{db, cfg.IsDydanCloud}
 }
 
 func (r *UserRepository) GetAllUsers(c context.Context, circleID int) ([]*uModel.User, error) {
@@ -144,7 +144,7 @@ func (r *UserRepository) CreateChildWithMembership(c context.Context, user *uMod
 }
 func (r *UserRepository) GetUserByUsername(c context.Context, username string) (*uModel.UserDetails, error) {
 	var user *uModel.UserDetails
-	if r.isDayDanCloud {
+	if r.isDydanCloud {
 		now := time.Now().UTC()
 		if err := r.db.WithContext(c).Preload("UserNotificationTargets").Table("users u").Select("u.*, s.status as subscription, s.expires_at as expiration, c.webhook_url as webhook_url").Joins("left join subscriptions s on s.circle_id = u.circle_id AND s.status = 'active' AND (s.expires_at IS NULL OR s.expires_at > ?)", now).Joins("left join circles c on c.id = u.circle_id").Where("username = ?", username).First(&user).Error; err != nil {
 			return nil, err
@@ -167,7 +167,7 @@ func (r *UserRepository) GetUserByUsername(c context.Context, username string) (
 func (r *UserRepository) GetUserByID(c context.Context, userID int) (*uModel.User, error) {
 	var user *uModel.User
 	now := time.Now().UTC()
-	if r.isDayDanCloud {
+	if r.isDydanCloud {
 		if err := r.db.WithContext(c).Preload("UserNotificationTargets").
 			Table("users u").
 			Select("u.*, s.status as subscription, s.expires_at as expiration, c.webhook_url as webhook_url").
@@ -381,7 +381,7 @@ func (r *UserRepository) GetUserByToken(c context.Context, token string) (*uMode
 	var user *uModel.UserDetails
 	now := time.Now().UTC()
 
-	if r.isDayDanCloud {
+	if r.isDydanCloud {
 		if err := r.db.WithContext(c).Table("users u").Select("u.*, s.status as subscription, s.expires_at as expiration, c.webhook_url as webhook_url").Joins("left join api_tokens at on at.user_id = u.id").Joins("left join subscriptions s on s.circle_id = u.circle_id AND s.status = 'active' AND (s.expires_at IS NULL OR s.expires_at > ?)", now).Joins("left join circles c on c.id = u.circle_id").Where("at.id = ?", cred.ID).First(&user).Error; err != nil {
 			return nil, err
 		}

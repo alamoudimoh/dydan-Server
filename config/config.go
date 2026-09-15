@@ -27,27 +27,28 @@ var (
 )
 
 type Config struct {
-	DataDir                string              `mapstructure:"data_dir" yaml:"data_dir"`
-	Name                   string              `mapstructure:"name" yaml:"name"`
-	Telegram               TelegramConfig      `mapstructure:"telegram" yaml:"telegram"`
-	Pushover               PushoverConfig      `mapstructure:"pushover" yaml:"pushover"`
-	Database               DatabaseConfig      `mapstructure:"database" yaml:"database"`
-	Jwt                    JwtConfig           `mapstructure:"jwt" yaml:"jwt"`
-	Server                 ServerConfig        `mapstructure:"server" yaml:"server"`
-	SchedulerJobs          SchedulerConfig     `mapstructure:"scheduler_jobs" yaml:"scheduler_jobs"`
-	EmailConfig            EmailConfig         `mapstructure:"email" yaml:"email"`
-	StripeConfig           StripeConfig        `mapstructure:"stripe" yaml:"stripe"`
-	RevenueCatConfig       RevenueCatConfig    `mapstructure:"revenuecat" yaml:"revenuecat"`
-	IAPConfig              IAPConfig           `mapstructure:"iap" yaml:"iap"`
-	OAuth2Config           OAuth2Config        `mapstructure:"oauth2" yaml:"oauth2"`
-	WebhookConfig          WebhookConfig       `mapstructure:"webhook" yaml:"webhook"`
-	RealTimeConfig         RealTimeConfig      `mapstructure:"realtime" yaml:"realtime"`
-	MFAConfig              MFAConfig           `mapstructure:"mfa" yaml:"mfa"`
-	Logging                LogConfig           `mapstructure:"logging" yaml:"logging"`
-	IsDayDanCloud          bool                `mapstructure:"is_done_tick_dot_com" yaml:"is_done_tick_dot_com"`
+	DataDir          string           `mapstructure:"data_dir" yaml:"data_dir"`
+	Name             string           `mapstructure:"name" yaml:"name"`
+	Telegram         TelegramConfig   `mapstructure:"telegram" yaml:"telegram"`
+	Pushover         PushoverConfig   `mapstructure:"pushover" yaml:"pushover"`
+	Database         DatabaseConfig   `mapstructure:"database" yaml:"database"`
+	Jwt              JwtConfig        `mapstructure:"jwt" yaml:"jwt"`
+	Server           ServerConfig     `mapstructure:"server" yaml:"server"`
+	SchedulerJobs    SchedulerConfig  `mapstructure:"scheduler_jobs" yaml:"scheduler_jobs"`
+	EmailConfig      EmailConfig      `mapstructure:"email" yaml:"email"`
+	StripeConfig     StripeConfig     `mapstructure:"stripe" yaml:"stripe"`
+	RevenueCatConfig RevenueCatConfig `mapstructure:"revenuecat" yaml:"revenuecat"`
+	IAPConfig        IAPConfig        `mapstructure:"iap" yaml:"iap"`
+	OAuth2Config     OAuth2Config     `mapstructure:"oauth2" yaml:"oauth2"`
+	WebhookConfig    WebhookConfig    `mapstructure:"webhook" yaml:"webhook"`
+	RealTimeConfig   RealTimeConfig   `mapstructure:"realtime" yaml:"realtime"`
+	MFAConfig        MFAConfig        `mapstructure:"mfa" yaml:"mfa"`
+	Logging          LogConfig        `mapstructure:"logging" yaml:"logging"`
+	// Legacy keys remain readable; applyDydanCloudConfigAliases gives canonical keys precedence.
+	IsDydanCloud           bool                `mapstructure:"is_done_tick_dot_com" yaml:"is_done_tick_dot_com"`
 	IsUserCreationDisabled bool                `mapstructure:"is_user_creation_disabled" yaml:"is_user_creation_disabled"`
 	MinVersion             string              `mapstructure:"min_version" yaml:"min_version"`
-	DayDanCloudConfig      DayDanCloudConfig   `mapstructure:"donetick_cloud" yaml:"donetick_cloud"`
+	DydanCloudConfig       DydanCloudConfig    `mapstructure:"donetick_cloud" yaml:"donetick_cloud"`
 	FCM                    FCMConfig           `mapstructure:"fcm" yaml:"fcm"`
 	FeatureLimits          FeatureLimitsConfig `mapstructure:"feature_limits" yaml:"feature_limits"`
 	Storage                StorageConfig       `mapstructure:"storage" yaml:"storage"`
@@ -128,7 +129,7 @@ type StorageConfig struct {
 	// false immediately; new deployments get no benefit from enabling it.
 	AllowLegacyMediaSignatures bool `mapstructure:"allow_legacy_media_signatures" yaml:"allow_legacy_media_signatures"`
 }
-type DayDanCloudConfig struct {
+type DydanCloudConfig struct {
 	GoogleClientID        string `mapstructure:"google_client_id" yaml:"google_client_id"`
 	GoogleAndroidClientID string `mapstructure:"google_android_client_id" yaml:"google_android_client_id"`
 	GoogleIOSClientID     string `mapstructure:"google_ios_client_id" yaml:"google_ios_client_id"`
@@ -380,7 +381,7 @@ type LogConfig struct {
 func NewConfig() *Config {
 	return &Config{
 		DataDir: "data",
-		Name:    "daydan",
+		Name:    "dydan",
 		Database: DatabaseConfig{
 			Type:      "sqlite",
 			Migration: true,
@@ -614,24 +615,24 @@ func LoadConfig() *Config {
 
 func applyDydanCloudConfigAliases(v *viper.Viper, config *Config) error {
 	if v.IsSet("is_dydan_cloud") {
-		config.IsDayDanCloud = v.GetBool("is_dydan_cloud")
+		config.IsDydanCloud = v.GetBool("is_dydan_cloud")
 	}
 	if v.IsSet("dydan_cloud") {
-		var alias DayDanCloudConfig
+		var alias DydanCloudConfig
 		if err := v.UnmarshalKey("dydan_cloud", &alias); err != nil {
 			return fmt.Errorf("decode dydan_cloud alias: %w", err)
 		}
-		config.DayDanCloudConfig = alias
+		config.DydanCloudConfig = alias
 	}
 	if !v.IsSet("is_dydan_cloud") && v.IsSet("is_daydan_cloud") {
-		config.IsDayDanCloud = v.GetBool("is_daydan_cloud")
+		config.IsDydanCloud = v.GetBool("is_daydan_cloud")
 	}
 	if !v.IsSet("dydan_cloud") && v.IsSet("daydan_cloud") {
-		var alias DayDanCloudConfig
+		var alias DydanCloudConfig
 		if err := v.UnmarshalKey("daydan_cloud", &alias); err != nil {
 			return fmt.Errorf("decode daydan_cloud alias: %w", err)
 		}
-		config.DayDanCloudConfig = alias
+		config.DydanCloudConfig = alias
 	}
 	return nil
 }

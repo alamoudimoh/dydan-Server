@@ -9,9 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestUpdateUserPasswordBlockedOnHostedDayDanService(t *testing.T) {
+func TestUpdateUserPasswordBlockedOnHostedDydanService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := &Handler{isDayDanCloud: true}
+	handler := &Handler{isDydanCloud: true}
 
 	router := gin.New()
 	router.PUT("/change_password", handler.updateUserPasswordLoggedInOnly)

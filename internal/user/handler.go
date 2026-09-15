@@ -46,9 +46,9 @@ type Handler struct {
 	tokenService           *auth.TokenService
 	email                  email.Sender
 	identityProvider       *auth.IdentityProvider
-	isDayDanCloud          bool
+	isDydanCloud           bool
 	IsUserCreationDisabled bool
-	DayDanCloudConfig      config.DayDanCloudConfig
+	DydanCloudConfig       config.DydanCloudConfig
 	storage                storage.Storage
 	storageRepo            *storageRepo.StorageRepository
 	signer                 storage.URLSigner
@@ -82,9 +82,9 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		tokenService:           tokenService,
 		email:                  email,
 		identityProvider:       idp,
-		isDayDanCloud:          config.IsDayDanCloud,
+		isDydanCloud:           config.IsDydanCloud,
 		IsUserCreationDisabled: config.IsUserCreationDisabled,
-		DayDanCloudConfig:      config.DayDanCloudConfig,
+		DydanCloudConfig:       config.DydanCloudConfig,
 		storage:                storage,
 		storageRepo:            storageRepo,
 		signer:                 signer,
@@ -297,6 +297,8 @@ func (h *Handler) syncOIDCRole(c *gin.Context, userID, circleID int, groups []st
 // mobile clients. They are constants of the client applications and are not
 // attacker-controlled.
 var nativeOAuthRedirectURIs = []string{
+	"dydan://auth/oauth2",
+	// Retained for installed Donetick clients during the deep-link migration.
 	"donetick://auth/oauth2",
 }
 
@@ -430,7 +432,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 			})
 			return
 		}
-		if tokenInfo.Audience != h.DayDanCloudConfig.GoogleClientID && tokenInfo.Audience != h.DayDanCloudConfig.GoogleIOSClientID && tokenInfo.Audience != h.DayDanCloudConfig.GoogleAndroidClientID {
+		if tokenInfo.Audience != h.DydanCloudConfig.GoogleClientID && tokenInfo.Audience != h.DydanCloudConfig.GoogleIOSClientID && tokenInfo.Audience != h.DydanCloudConfig.GoogleAndroidClientID {
 			logger.Errorw("account.handler.thirdPartyAuthCallback token audience mismatch", "audience", tokenInfo.Audience)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid token",
@@ -1353,7 +1355,7 @@ func (h *Handler) UpdateNotificationTarget(c *gin.Context) {
 // so other devices must re-authenticate, while the device performing the
 // change keeps its current session.
 func (h *Handler) updateUserPasswordLoggedInOnly(c *gin.Context) {
-	if h.isDayDanCloud {
+	if h.isDydanCloud {
 		// only enable this feature for self-hosted instances
 		c.JSON(http.StatusForbidden, gin.H{"error": "This action is not allowed on the hosted Dydan service"})
 		return
@@ -1709,8 +1711,8 @@ func (h *Handler) createChildUser(c *gin.Context) {
 		return
 	}
 
-	// Check current child user count to enforce limit (only for hosted DayDan service)
-	if h.isDayDanCloud {
+	// Check current child user count to enforce the hosted Dydan service limit.
+	if h.isDydanCloud {
 		currentChildCount, err := h.userRepo.GetChildUserCount(c, currentUser.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing subaccounts"})

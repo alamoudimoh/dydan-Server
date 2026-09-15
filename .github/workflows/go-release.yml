@@ -144,8 +144,8 @@ jobs:
           build-args: |
             VERSION=${{ steps.resolve.outputs.tag }}
             COMMIT=${{ steps.commit.outputs.sha }}
-            DAYDAN_FRONTEND_COMMIT=${{ steps.frontend-ref.outputs.sha }}
-            DAYDAN_FRONTEND_REF=${{ steps.frontend-ref.outputs.ref }}
+            DYDAN_FRONTEND_COMMIT=${{ steps.frontend-ref.outputs.sha }}
+            DYDAN_FRONTEND_REF=${{ steps.frontend-ref.outputs.ref }}
 
       # Publish the GitHub release only after every distributable image is
       # available. This prevents a release page that advertises a version

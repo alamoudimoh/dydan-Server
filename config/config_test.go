@@ -100,7 +100,7 @@ func TestZeroConfigDefaultsAndPersistentSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Name != "daydan" || first.Database.Type != "sqlite" || !first.Database.Migration {
+	if first.Name != "dydan" || first.Database.Type != "sqlite" || !first.Database.Migration {
 		t.Fatalf("database defaults not populated: %#v", first.Database)
 	}
 	if first.Database.Path != filepath.Join(dataDir, "dydan.db") {
@@ -349,7 +349,7 @@ func TestZeroConfigStartupWithoutConfigFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Name != "daydan" {
+	if cfg.Name != "dydan" {
 		t.Fatalf("name=%q", cfg.Name)
 	}
 	if cfg.Server.Port != 2021 {
@@ -374,7 +374,7 @@ func TestConfigNameFileWithoutExtensionIsIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Name != "daydan" {
+	if cfg.Name != "dydan" {
 		t.Fatalf("name=%q", cfg.Name)
 	}
 }
@@ -398,14 +398,14 @@ func TestLegacyHostedCloudConfigKeysStillLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.IsDayDanCloud {
+	if !cfg.IsDydanCloud {
 		t.Fatal("legacy is_done_tick_dot_com was not loaded")
 	}
-	if cfg.DayDanCloudConfig.GoogleClientID != "legacy-google" {
-		t.Fatalf("google_client_id=%q", cfg.DayDanCloudConfig.GoogleClientID)
+	if cfg.DydanCloudConfig.GoogleClientID != "legacy-google" {
+		t.Fatalf("google_client_id=%q", cfg.DydanCloudConfig.GoogleClientID)
 	}
-	if cfg.DayDanCloudConfig.AppleClientID != "legacy-apple" {
-		t.Fatalf("apple_client_id=%q", cfg.DayDanCloudConfig.AppleClientID)
+	if cfg.DydanCloudConfig.AppleClientID != "legacy-apple" {
+		t.Fatalf("apple_client_id=%q", cfg.DydanCloudConfig.AppleClientID)
 	}
 }
 
@@ -431,14 +431,14 @@ func TestDayDanHostedCloudConfigAliasesOverrideLegacyKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.IsDayDanCloud {
+	if !cfg.IsDydanCloud {
 		t.Fatal("is_daydan_cloud alias was not applied")
 	}
-	if cfg.DayDanCloudConfig.GoogleClientID != "alias-google" {
-		t.Fatalf("google_client_id=%q", cfg.DayDanCloudConfig.GoogleClientID)
+	if cfg.DydanCloudConfig.GoogleClientID != "alias-google" {
+		t.Fatalf("google_client_id=%q", cfg.DydanCloudConfig.GoogleClientID)
 	}
-	if cfg.DayDanCloudConfig.AppleClientID != "alias-apple" {
-		t.Fatalf("apple_client_id=%q", cfg.DayDanCloudConfig.AppleClientID)
+	if cfg.DydanCloudConfig.AppleClientID != "alias-apple" {
+		t.Fatalf("apple_client_id=%q", cfg.DydanCloudConfig.AppleClientID)
 	}
 }
 

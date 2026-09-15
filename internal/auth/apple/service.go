@@ -57,7 +57,7 @@ type AppleClaims struct {
 
 func NewAppleService(config *config.Config) *AppleService {
 	return &AppleService{
-		clientID: config.DayDanCloudConfig.AppleClientID,
+		clientID: config.DydanCloudConfig.AppleClientID,
 		keys:     make(map[string]*rsa.PublicKey),
 		keysURL:  "https://appleid.apple.com/auth/keys",
 		httpClient: &http.Client{

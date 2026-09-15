@@ -52,6 +52,16 @@ func newFakeIdP(t *testing.T, userInfo map[string]any) *fakeIdPUserPackage {
 	return f
 }
 
+func TestNativeOAuthRedirectURIsUseDydanAndKeepLegacyFallback(t *testing.T) {
+	allowed := (&Handler{}).allowedOAuthRedirectURIs()
+	if !allowed["dydan://auth/oauth2"] {
+		t.Fatal("canonical Dydan redirect URI is not allowed")
+	}
+	if !allowed["donetick://auth/oauth2"] {
+		t.Fatal("legacy Donetick redirect URI is not allowed")
+	}
+}
+
 func newOAuthHarness(t *testing.T, userInfo map[string]any, allowLegacy bool) *oauthTestHarness {
 	t.Helper()
 	gin.SetMode(gin.TestMode)

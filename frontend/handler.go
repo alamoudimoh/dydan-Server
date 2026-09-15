@@ -14,7 +14,7 @@ import (
 var embeddedFiles embed.FS
 
 // contentSecurityPolicy is derived from an inventory of what the production
-// DayDan frontend actually loads (verified against a real `vite build` of the
+// Dydan frontend actually loads (verified against a real `vite build` of the
 // daydan-app bundle):
 //
 //   - default-src 'self'            — everything same-origin unless opened below;

@@ -9,7 +9,7 @@
 //	dydanctl prune   --root /backups --keep 7
 //
 // Backups use VACUUM INTO (SQLite's supported consistent online snapshot) so
-// DayDan keeps running and WAL contents are included. A manifest.json records
+// Dydan keeps running and WAL contents are included. A manifest.json records
 // timestamp, server version, integrity result, file names, sizes, and SHA-256
 // checksums. The JWT secret is copied but never logged.
 package main
