@@ -589,7 +589,7 @@ FINAL-SRV-0266,Server,DayDan,config/env_test.go,155,DAYDAN,TEST_COMPAT,LOW,KEEP,
 FINAL-SRV-0267,Server,DayDan,config/env_test.go,156,DAYDAN,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
 FINAL-SRV-0268,Server,DayDan,config/env_test.go,177,DayDan,TEST_COMPAT,LOW,KEEP,"Test verifying backward-compatible fallback, persistence, or migration behavior"
 FINAL-SRV-0269,Server,Donetick,config/local.yaml,96,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation or example tag for legacy compatibility
-FINAL-SRV-0270,Server,Donetick,config/local.yaml,100,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation or example tag for legacy compatibility
+FINAL-SRV-0270,Server,Donetick,config/local.yaml,100,donetick,DOCUMENTATION_ONLY,LOW,RESOLVED,FINDING-2 resolved: apple_client_id default corrected from legacy com.donetick.app to canonical com.dydan.app
 FINAL-SRV-0271,Server,DayDan,config/media_key.go,22,DayDan,INTENTIONAL_COMPAT,MEDIUM,KEEP,HKDF derivation salt string for legacy media URL signature verification
 FINAL-SRV-0272,Server,Donetick,config/selfhosted.yaml,74,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation or example tag for legacy compatibility
 FINAL-SRV-0273,Server,Donetick,config/selfhosted.yaml,76,donetick,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation or example tag for legacy compatibility
@@ -651,11 +651,11 @@ FINAL-SRV-0328,Server,DayDan,config/taskier.example.yaml,7,daydan,DOCUMENTATION_
 FINAL-SRV-0329,Server,DayDan,config/taskier.example.yaml,8,DayDan,DOCUMENTATION_ONLY,LOW,KEEP,Configuration documentation illustrating supported legacy alias options
 FINAL-SRV-0330,Server,DayDan,docker-compose.yaml,7,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
 FINAL-SRV-0331,Server,DayDan,docker-compose.yaml,10,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
-FINAL-SRV-0332,Server,DayDan,docker-compose.yaml,10,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0332,Server,DayDan,docker-compose.yaml,10,daydan,DOCUMENTATION_ONLY,LOW,RESOLVED,FINDING-1 resolved: frontend build-context default is now canonical ../dydan-app; ../daydan-app remains only as an existence-guarded fallback
 FINAL-SRV-0333,Server,DayDan,docker-compose.yaml,12,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
 FINAL-SRV-0334,Server,DayDan,docker-compose.yaml,13,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
 FINAL-SRV-0335,Server,DayDan,docker-compose.yaml,32,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
-FINAL-SRV-0336,Server,DayDan,docker-compose.yaml,32,daydan,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
+FINAL-SRV-0336,Server,DayDan,docker-compose.yaml,32,daydan,DOCUMENTATION_ONLY,LOW,RESOLVED,FINDING-1 resolved: frontend build-context default is now canonical ../dydan-app; ../daydan-app remains only as an existence-guarded fallback
 FINAL-SRV-0337,Server,DayDan,docker-compose.yaml,34,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
 FINAL-SRV-0338,Server,DayDan,docker-compose.yaml,35,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
 FINAL-SRV-0339,Server,DayDan,docker-compose.yaml,39,DAYDAN,DOCUMENTATION_ONLY,LOW,KEEP,Docker build context instructions and documentation comments
@@ -868,7 +868,7 @@ FINAL-SRV-0545,Server,Donetick,scripts/check-runtime-artifacts.sh,5,donetick,DOC
 FINAL-SRV-0546,Server,DayDan,scripts/prepare-release.sh,2,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
 FINAL-SRV-0547,Server,DayDan,scripts/prepare-release.sh,7,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
 FINAL-SRV-0548,Server,DayDan,scripts/prepare-release.sh,16,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
-FINAL-SRV-0549,Server,DayDan,scripts/prepare-release.sh,36,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
+FINAL-SRV-0549,Server,DayDan,scripts/prepare-release.sh,36,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script frontend default is now canonical ../dydan-app with existence-guarded ../daydan-app fallback; final checkout rename remains an owner decision
 FINAL-SRV-0550,Server,DayDan,scripts/prepare-release.sh,89,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
 FINAL-SRV-0551,Server,DayDan,scripts/prepare-release.sh,93,daydan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
 FINAL-SRV-0552,Server,DayDan,scripts/prepare-release.sh,106,DayDan,EXTERNAL_PENDING,HIGH,OWNER_ACTION,Release script referencing external GitHub repository slugs and tags
@@ -886,7 +886,7 @@ FINAL-SRV-0563,Server,DayDan,scripts/verify-auth-e2e.sh,25,daydan,INTENTIONAL_CO
 FINAL-SRV-0564,Server,DayDan,scripts/verify-auth-e2e.sh,26,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
 FINAL-SRV-0565,Server,DayDan,scripts/verify-auth-e2e.sh,27,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
 FINAL-SRV-0566,Server,DayDan,scripts/verify-auth-e2e.sh,47,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
-FINAL-SRV-0567,Server,DayDan,scripts/verify-auth-e2e.sh,47,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0567,Server,DayDan,scripts/verify-auth-e2e.sh,47,daydan,INTENTIONAL_COMPAT,MEDIUM,RESOLVED,FINDING-1 resolved: frontend build-context fallback updated from ../daydan-app to canonical ../dydan-app
 FINAL-SRV-0568,Server,DayDan,scripts/verify-auth-e2e.sh,55,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
 FINAL-SRV-0569,Server,DayDan,scripts/verify-container.sh,29,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
 FINAL-SRV-0570,Server,DayDan,scripts/verify-container.sh,30,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
@@ -895,6 +895,6 @@ FINAL-SRV-0572,Server,DayDan,scripts/verify-container.sh,38,daydan,INTENTIONAL_C
 FINAL-SRV-0573,Server,DayDan,scripts/verify-container.sh,38,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
 FINAL-SRV-0574,Server,Donetick,scripts/verify-container.sh,38,donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container verification check asserting /donetick symlink presence
 FINAL-SRV-0575,Server,DayDan,scripts/verify-container.sh,124,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
-FINAL-SRV-0576,Server,DayDan,scripts/verify-container.sh,124,daydan,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks
+FINAL-SRV-0576,Server,DayDan,scripts/verify-container.sh,124,daydan,INTENTIONAL_COMPAT,MEDIUM,RESOLVED,FINDING-1 resolved: frontend build-context fallback updated from ../daydan-app to canonical ../dydan-app
 FINAL-SRV-0577,Server,Donetick,scripts/verify-container.sh,175,donetick,INTENTIONAL_COMPAT,MEDIUM,KEEP,Container verification check asserting /donetick symlink presence
 FINAL-SRV-0578,Server,DayDan,scripts/verify.sh,20,DAYDAN,INTENTIONAL_COMPAT,MEDIUM,KEEP,Verification script testing backward compatibility and container symlinks

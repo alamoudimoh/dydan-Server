@@ -7,7 +7,7 @@ services:
       # DYDAN_FRONTEND_CONTEXT is canonical; DAYDAN_FRONTEND_CONTEXT remains
       # a compatibility alias while the AppWeb checkout transition is pending.
       additional_contexts:
-        frontend: ${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}}
+        frontend: ${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../dydan-app}}
       args:
         VERSION: ${DYDAN_VERSION:-${DAYDAN_VERSION:-dev}}
         COMMIT: ${DYDAN_COMMIT:-${DAYDAN_COMMIT:-local}}
@@ -29,7 +29,7 @@ services:
       context: .
       dockerfile: Dockerfile
       additional_contexts:
-        frontend: ${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}}
+        frontend: ${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../dydan-app}}
       args:
         VERSION: ${DYDAN_VERSION:-${DAYDAN_VERSION:-dev}}
         COMMIT: ${DYDAN_COMMIT:-${DAYDAN_COMMIT:-local}}

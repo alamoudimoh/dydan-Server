@@ -239,7 +239,7 @@ This document formalizes the migration decisions for all logical identity groups
 1. **Current Legacy Identity:**  
    `--build-context frontend=../daydan-app` and `additional_contexts: frontend: ${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}`, `DAYDAN_FRONTEND_COMMIT`, `DAYDAN_FRONTEND_REF`.
 2. **Intended Dydan Identity:**  
-   `${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}}`, `DYDAN_FRONTEND_COMMIT`, `DYDAN_FRONTEND_REF`.
+   `${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../dydan-app}}`, `DYDAN_FRONTEND_COMMIT`, `DYDAN_FRONTEND_REF`. The default local frontend checkout is canonical `../dydan-app`; `../daydan-app` remains only as an existence-guarded fallback for unchanged developer checkouts.
 3. **Classification:**  
    **B — Technical Rename**  
    **Cross-Repository Contract with AppWeb (`alamoudimoh/DayDan-AppWeb`)**
@@ -250,9 +250,9 @@ This document formalizes the migration decisions for all logical identity groups
 6. **Dependencies:**  
    `Dockerfile`, `docker-compose.yaml`, `scripts/verify-container.sh`, `.github/workflows/go-build.yml`, `.github/workflows/go-release.yml`.
 7. **Required Remediation Approach:**  
-   Support `DYDAN_FRONTEND_CONTEXT` while falling back to `DAYDAN_FRONTEND_CONTEXT` and default directory `../daydan-app` (until AppWeb local directory naming migration occurs).
+   Support `DYDAN_FRONTEND_CONTEXT` while falling back to `DAYDAN_FRONTEND_CONTEXT` and the canonical default directory `../dydan-app`, with an existence-guarded fallback to `../daydan-app` until the AppWeb local directory naming migration occurs.
 8. **Verification Required After Remediation:**  
-   Docker build smoke test verifying that `docker build --build-context frontend=...` succeeds.
+   Docker build smoke test verifying that `docker build --build-context frontend=...` succeeds. RESOLVED: canonical default honors `../dydan-app` first, falls back to an existing `../daydan-app`, and fails clearly when neither exists.
 
 ---
 

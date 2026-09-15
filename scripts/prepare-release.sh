@@ -33,7 +33,18 @@ SERVER_REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 if [ $# -eq 2 ]; then
   APP_REPO="$2"
 else
-  APP_REPO="$SERVER_REPO/../daydan-app"
+  # Canonical default is ../dydan-app; fall back to ../daydan-app if it exists
+  CANONICAL="$SERVER_REPO/../dydan-app"
+  LEGACY="$SERVER_REPO/../daydan-app"
+  if [ -d "$CANONICAL" ]; then
+    APP_REPO="$CANONICAL"
+  elif [ -d "$LEGACY" ]; then
+    APP_REPO="$LEGACY"
+  else
+    echo "ERROR: Frontend repository not found at canonical path '$CANONICAL' or legacy path '$LEGACY'." >&2
+    echo "       Provide an explicit path as the second argument." >&2
+    exit 1
+  fi
 fi
 APP_REPO=$(cd "$APP_REPO" && pwd)
 

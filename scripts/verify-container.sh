@@ -121,7 +121,7 @@ assert_root_owned_volume_migration() {
 
 assert_compose_config
 docker build --tag "$image" \
-  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}}" .
+  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../dydan-app}}" .
 assert_image_runtime
 assert_legacy_database_migration
 assert_root_owned_volume_migration
