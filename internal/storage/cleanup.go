@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	storageModel "github.com/alamoudimoh/daydan-server/internal/storage/model"
-	storageRepo "github.com/alamoudimoh/daydan-server/internal/storage/repo"
-	"github.com/alamoudimoh/daydan-server/logging"
+	storageModel "github.com/alamoudimoh/dydan-server/internal/storage/model"
+	storageRepo "github.com/alamoudimoh/dydan-server/internal/storage/repo"
+	"github.com/alamoudimoh/dydan-server/logging"
 )
 
 type DraftCleanupService struct {
@@ -22,7 +22,7 @@ func NewDraftCleanupService(storage Storage, repo *storageRepo.StorageRepository
 		storageRepo: repo,
 		ticker:      time.NewTicker(24 * time.Hour),
 		// Buffered so Stop never blocks while a cleanup job is mid-run.
-		done:        make(chan bool, 1),
+		done: make(chan bool, 1),
 	}
 }
 

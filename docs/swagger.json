@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "DayDan swagger documentation.",
-        "title": "DayDan Swagger API",
+        "description": "Dydan swagger documentation.",
+        "title": "Dydan Swagger API",
         "contact": {},
         "license": {
             "name": "GNU Affero General Public License v3.0",
@@ -5552,7 +5552,7 @@
     },
     "securityDefinitions": {
         "APIKeyAuth": {
-            "description": "DayDan issued apikey",
+            "description": "Dydan issued apikey",
             "type": "apiKey",
             "name": "secretkey",
             "in": "header"

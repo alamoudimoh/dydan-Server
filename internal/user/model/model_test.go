@@ -3,6 +3,9 @@ package user
 import "testing"
 
 func TestAuthProviderDayDanPreservesLegacyNumericValue(t *testing.T) {
+	if AuthProviderDydan != 0 {
+		t.Fatalf("AuthProviderDydan = %d, want 0 for database compatibility", AuthProviderDydan)
+	}
 	if AuthProviderDayDan != 0 {
 		t.Fatalf("AuthProviderDayDan = %d, want 0 for database compatibility", AuthProviderDayDan)
 	}

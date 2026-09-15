@@ -2,7 +2,7 @@
 # --platform=$BUILDPLATFORM keeps this stage on the host architecture: the
 # bundle is platform-independent JavaScript, so there is no reason to emulate
 # node under QEMU when building multi-arch images.
-# The `frontend` named build context must point at the daydan-app repository
+# The `frontend` named build context must point at the Dydan AppWeb repository
 # checkout (docker-compose.yaml wires it up automatically; plain docker users
 # can pass --build-context frontend=/path/to/daydan-app).
 FROM --platform=$BUILDPLATFORM node:22-slim AS frontend-builder
@@ -62,12 +62,12 @@ RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/root/.cache/go-build \
     BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w \
-      -X github.com/alamoudimoh/daydan-server/config.Version=${VERSION} \
-      -X github.com/alamoudimoh/daydan-server/config.Commit=${COMMIT} \
-      -X github.com/alamoudimoh/daydan-server/config.BuildDate=${BUILD_DATE}" \
-      -buildvcs=false -o /daydan . && \
+      -X github.com/alamoudimoh/dydan-server/config.Version=${VERSION} \
+      -X github.com/alamoudimoh/dydan-server/config.Commit=${COMMIT} \
+      -X github.com/alamoudimoh/dydan-server/config.BuildDate=${BUILD_DATE}" \
+      -buildvcs=false -o /dydan . && \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" \
-      -buildvcs=false -o /daydanctl ./cmd/daydanctl
+      -buildvcs=false -o /dydanctl ./cmd/dydanctl
 
 # Stage 3: Create a smaller runtime image
 FROM alpine:3.21
@@ -78,22 +78,23 @@ RUN apk --no-cache add ca-certificates libc6-compat tzdata su-exec
 
 # Dedicated unprivileged runtime user. The entrypoint starts as root only to
 # migrate ownership of pre-existing /data contents (volumes created by earlier
-# root-running images), then execs DayDan as this user.
-RUN addgroup -g 1000 daydan && adduser -D -H -u 1000 -G daydan daydan
+# root-running images), then execs Dydan as this user.
+RUN addgroup -g 1000 dydan && adduser -D -H -u 1000 -G dydan dydan
 
 # Copy the self-contained binary. The frontend is embedded at build time.
-COPY --from=builder /daydan /daydan
-RUN ln -sf /daydan /donetick
+COPY --from=builder /dydan /dydan
+RUN ln -sf /dydan /daydan && ln -sf /dydan /donetick
 
 # Operator toolkit (backup / verify / restore / prune).
-COPY --from=builder /daydanctl /usr/local/bin/daydanctl
+COPY --from=builder /dydanctl /usr/local/bin/dydanctl
+RUN ln -sf /usr/local/bin/dydanctl /usr/local/bin/daydanctl
 
 COPY docker-entrypoint.sh /entrypoint.sh
 RUN chmod 0755 /entrypoint.sh
 
-# DayDan keeps its SQLite database, generated JWT secret, and local uploads
+# Dydan keeps its SQLite database, generated JWT secret, and local uploads
 # under one persistent directory. No configuration file is required.
-ENV DAYDAN_DATA_DIR="/data"
+ENV DYDAN_DATA_DIR="/data"
 VOLUME ["/data"]
 
 # Release provenance (populated by go-release.yml; "unknown"/"dev" for plain
@@ -101,12 +102,12 @@ VOLUME ["/data"]
 # daydan-app commit the embedded frontend came from is always discoverable
 # via these immutable OCI labels. VERSION/COMMIT are re-declared here because
 # build args do not cross stage boundaries.
-ARG DAYDAN_FRONTEND_COMMIT=unknown
-ARG DAYDAN_FRONTEND_REF=unknown
+ARG DYDAN_FRONTEND_COMMIT=unknown
+ARG DYDAN_FRONTEND_REF=unknown
 ARG VERSION=dev
 ARG COMMIT=dev
-LABEL com.daydan.frontend.commit=${DAYDAN_FRONTEND_COMMIT} \
-      com.daydan.frontend.ref=${DAYDAN_FRONTEND_REF} \
+LABEL com.dydan.frontend.commit=${DYDAN_FRONTEND_COMMIT} \
+      com.dydan.frontend.ref=${DYDAN_FRONTEND_REF} \
       org.opencontainers.image.revision=${COMMIT} \
       org.opencontainers.image.version=${VERSION} \
       org.opencontainers.image.source=https://github.com/alamoudimoh/daydan-server
@@ -118,8 +119,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost:2021/api/v1/health || exit 1
 
 # Run through the privilege-dropping entrypoint; the Go binary is exec'd as
-# the unprivileged "daydan" user (uid/gid 1000) with PID 1 semantics intact.
+# the unprivileged "dydan" user (uid/gid 1000) with PID 1 semantics intact.
 ENTRYPOINT ["/entrypoint.sh"]
 
 # Command to run the application
-CMD ["/daydan"]
+CMD ["/dydan"]

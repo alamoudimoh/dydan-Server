@@ -10,29 +10,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	"github.com/alamoudimoh/daydan-server/internal/events"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
-	nps "github.com/alamoudimoh/daydan-server/internal/notifier/service"
-	stModel "github.com/alamoudimoh/daydan-server/internal/subtask/model"
-	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
-	stgModel "github.com/alamoudimoh/daydan-server/internal/storage/model"
-	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	chRepo "github.com/alamoudimoh/dydan-server/internal/chore/repo"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	"github.com/alamoudimoh/dydan-server/internal/events"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	nRepo "github.com/alamoudimoh/dydan-server/internal/notifier/repo"
+	nps "github.com/alamoudimoh/dydan-server/internal/notifier/service"
+	stgModel "github.com/alamoudimoh/dydan-server/internal/storage/model"
+	stModel "github.com/alamoudimoh/dydan-server/internal/subtask/model"
+	syncModel "github.com/alamoudimoh/dydan-server/internal/sync/model"
+	tModel "github.com/alamoudimoh/dydan-server/internal/thing/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
 type eapiHarness struct {
-	db   *gorm.DB
-	api  *API
+	db     *gorm.DB
+	api    *API
 	router *gin.Engine
 }
 

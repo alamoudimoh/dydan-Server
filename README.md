@@ -1,18 +1,18 @@
-# DayDan-Server
+# Dydan Server
 
-DayDan-Server is the Go backend for DayDan. It provides the REST API,
+Dydan Server is the Go backend for Dydan. It provides the REST API,
 authentication and authorization, persistence, migrations, realtime events,
 notifications, integrations, media storage, and the production container that
 serves the AppWeb client.
 
-DayDan-AppWeb is the paired client:
+Dydan AppWeb is the paired client:
 [alamoudimoh/DayDan-AppWeb](https://github.com/alamoudimoh/DayDan-AppWeb).
 The server can serve an embedded frontend bundle, or build one from that
 repository during a Docker build.
 
-## What DayDan provides
+## What Dydan provides
 
-DayDan coordinates household and shared work through circles, members,
+Dydan coordinates household and shared work through circles, members,
 assignments, recurring tasks, subtasks, labels, projects, routines, shopping
 lists, maintenance, meters, Things, attachments, timers, history, points,
 rewards, progress, dashboards, calendar views, search, notifications, and
@@ -30,7 +30,7 @@ The server also provides:
   Pushover notifications, SMTP/SMTP2Go email, payment provider webhooks, and
   REST/API and webhook integrations suitable for external automation
   platforms such as Home Assistant;
-- `daydanctl` backup, verification, restore, and retention operations for
+- `dydanctl` backup, verification, restore, and retention operations for
   SQLite deployments.
 
 ## Quick start
@@ -47,7 +47,7 @@ docker compose up -d --build
 ```
 
 The default deployment uses SQLite, stores persistent state in the
-`daydan-data` volume, serves the API and embedded client on port `2021`, and
+`daydan-data` volume for compatibility, serves the API and embedded client on port `2021`, and
 requires no configuration file, database selection, or manually generated JWT
 secret. The frontend build uses same-origin `/api` requests.
 
@@ -79,7 +79,7 @@ To build the full application image locally with the paired client, use the
 production Dockerfile and its named frontend context:
 
 ```bash
-docker build --build-context frontend=../daydan-app -t daydan .
+docker build --build-context frontend=../daydan-app -t dydan .
 ```
 
 `Dockerfile.dev` is a legacy artifact-oriented development image. It expects a
@@ -108,16 +108,17 @@ covered in [docs/security.md](docs/security.md).
 
 ## Configuration
 
-DayDan is zero-config by default. Use `config/daydan.example.yaml` for
+Dydan is zero-config by default. Use `config/dydan.example.yaml` for
 advanced settings such as PostgreSQL, trusted proxies, storage, notifications,
 OIDC, rate limits, and webhook signing. Canonical environment variables use
-the `DAYDAN_` prefix; compatibility aliases remain supported where existing
-deployments depend on them.
+the `DYDAN_` prefix. `DAYDAN_`, `TASKIER_`, and `DONETICK_` aliases remain
+supported in that order for existing deployments.
 
-The default data directory is `/data`. It contains `daydan.db`, `jwt-secret`,
+The default data directory is `/data`. It contains `dydan.db`, `jwt-secret`,
 and local uploads. PostgreSQL deployments require operator-managed database
-backups; `daydanctl` is designed for SQLite snapshots.
+backups; `dydanctl` is designed for SQLite snapshots. Existing `daydan.db`
+and `daydanctl` deployments are supported compatibly.
 
 ## License
 
-DayDan-Server is licensed under the AGPLv3. See [LICENSE.md](LICENSE.md).
+Dydan Server is licensed under the AGPLv3. See [LICENSE.md](LICENSE.md).

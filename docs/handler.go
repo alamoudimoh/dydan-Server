@@ -3,7 +3,7 @@ package docs
 import (
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -31,9 +31,9 @@ func NewHandler(config *config.Config) *Handler {
 	return handler
 }
 
-//	@title			DayDan Swagger API
+//	@title			Dydan Swagger API
 //	@version		1.0
-//	@description	DayDan swagger documentation.
+//	@description	Dydan swagger documentation.
 
 //	@license.name	GNU Affero General Public License v3.0
 //	@license.url	https://github.com/alamoudimoh/daydan-server/blob/main/LICENSE.md

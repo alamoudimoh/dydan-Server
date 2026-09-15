@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

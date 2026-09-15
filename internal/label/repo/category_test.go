@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
+	"github.com/alamoudimoh/dydan-server/config"
+	lModel "github.com/alamoudimoh/dydan-server/internal/label/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

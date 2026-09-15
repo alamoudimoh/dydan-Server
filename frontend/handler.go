@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"github.com/gin-gonic/gin"
 )
 

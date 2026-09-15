@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"math/big"
 
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"golang.org/x/crypto/bcrypt"
 )
 

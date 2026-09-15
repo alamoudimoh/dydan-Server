@@ -1,27 +1,27 @@
 ---
 services:
-  daydan:
+  dydan:
     build:
       context: .
       dockerfile: Dockerfile
-      # The frontend source lives in the sibling daydan-app checkout. Override
-      # the path with DAYDAN_FRONTEND_CONTEXT if your layout differs.
+      # DYDAN_FRONTEND_CONTEXT is canonical; DAYDAN_FRONTEND_CONTEXT remains
+      # a compatibility alias while the AppWeb checkout transition is pending.
       additional_contexts:
-        frontend: ${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}
+        frontend: ${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}}
       args:
-        VERSION: ${DAYDAN_VERSION:-dev}
-        COMMIT: ${DAYDAN_COMMIT:-local}
-    container_name: daydan
+        VERSION: ${DYDAN_VERSION:-${DAYDAN_VERSION:-dev}}
+        COMMIT: ${DYDAN_COMMIT:-${DAYDAN_COMMIT:-local}}
+    container_name: dydan
     restart: unless-stopped
     ports:
       - "2021:2021"
     volumes:
-      - daydan-data:/data
+      - dydan-data:/data
 
   # Optional one-shot backup job. Not started with the default profile:
   #   docker compose run --rm backup            # single backup
   #   docker compose --profile backup up        # then stop when done
-  # Retention keeps DAYDAN_BACKUP_KEEP (default 7) newest backups.
+  # Retention keeps DYDAN_BACKUP_KEEP (default 7) newest backups.
   # See docs/backup-restore.md for scheduled/host-cron examples and restore.
   backup:
     profiles: ["backup"]
@@ -29,18 +29,19 @@ services:
       context: .
       dockerfile: Dockerfile
       additional_contexts:
-        frontend: ${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}
+        frontend: ${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}}
       args:
-        VERSION: ${DAYDAN_VERSION:-dev}
-        COMMIT: ${DAYDAN_COMMIT:-local}
-    container_name: daydan-backup
-    entrypoint: ["/usr/local/bin/daydanctl"]
+        VERSION: ${DYDAN_VERSION:-${DAYDAN_VERSION:-dev}}
+        COMMIT: ${DYDAN_COMMIT:-${DAYDAN_COMMIT:-local}}
+    container_name: dydan-backup
+    entrypoint: ["/usr/local/bin/dydanctl"]
     command: ["backup", "--data-dir", "/data", "--out", "/backups",
-              "--keep", "${DAYDAN_BACKUP_KEEP:-7}"]
+               "--keep", "${DYDAN_BACKUP_KEEP:-${DAYDAN_BACKUP_KEEP:-7}}"]
     volumes:
-      - daydan-data:/data
-      - ${DAYDAN_BACKUP_DIR:-./daydan-backups}:/backups
+      - dydan-data:/data
+      - ${DYDAN_BACKUP_DIR:-${DAYDAN_BACKUP_DIR:-./dydan-backups}}:/backups
 
 volumes:
-  daydan-data:
-    name: ${DAYDAN_DOCKER_VOLUME:-${TASKIER_DOCKER_VOLUME:-daydan-data}}
+  dydan-data:
+    # Keep the physical default so existing installations retain their data.
+    name: ${DYDAN_DOCKER_VOLUME:-${DAYDAN_DOCKER_VOLUME:-${TASKIER_DOCKER_VOLUME:-daydan-data}}}

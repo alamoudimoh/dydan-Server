@@ -5,13 +5,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/migrations"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/migrations"
 )
 
 // TestMigrationScriptsPostgres runs the full schema + script migration chain

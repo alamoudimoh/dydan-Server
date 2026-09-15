@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 type LocalStorage struct {

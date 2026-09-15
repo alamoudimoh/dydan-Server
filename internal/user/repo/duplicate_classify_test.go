@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 
 	"github.com/glebarez/go-sqlite"
 	"github.com/jackc/pgx/v5/pgconn"

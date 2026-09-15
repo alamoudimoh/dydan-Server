@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
 )
 
 var ErrInvalidAccessSecurityState = errors.New("invalid access token security state")

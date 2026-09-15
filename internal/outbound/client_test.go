@@ -48,12 +48,12 @@ func TestValidateURLSyntax(t *testing.T) {
 
 func TestPublicClientRejectsNonPublicDestinations(t *testing.T) {
 	resolver := staticResolver{
-		"loopback.test": {netip.MustParseAddr("127.0.0.1")},
-		"private.test":  {netip.MustParseAddr("10.0.0.8")},
+		"loopback.test":  {netip.MustParseAddr("127.0.0.1")},
+		"private.test":   {netip.MustParseAddr("10.0.0.8")},
 		"linklocal.test": {netip.MustParseAddr("169.254.169.254")},
-		"ipv6.test":     {netip.MustParseAddr("::1")},
-		"mapped.test":   {netip.MustParseAddr("::ffff:127.0.0.1")},
-		"zero.test":     {netip.MustParseAddr("0.0.0.0")},
+		"ipv6.test":      {netip.MustParseAddr("::1")},
+		"mapped.test":    {netip.MustParseAddr("::ffff:127.0.0.1")},
+		"zero.test":      {netip.MustParseAddr("0.0.0.0")},
 	}
 	client := NewClient(ClientOptions{Timeout: time.Second, Resolver: resolver})
 

@@ -9,6 +9,11 @@ import (
 func clearDayDanEnvironment(t *testing.T) {
 	t.Helper()
 	for _, name := range []string{
+		"DYDAN_ENV", "DYDAN_CONFIG_FILE", "DYDAN_DATA_DIR", "DYDAN_JWT_SECRET", "DYDAN_SQLITE_PATH",
+		"DYDAN_TELEGRAM_TOKEN", "DYDAN_PUSHOVER_TOKEN", "DYDAN_DISABLE_SIGNUP",
+		"DYDAN_LOG_LEVEL", "DYDAN_LOG_ENCODING", "DYDAN_LOG_DEVELOPMENT",
+		"DYDAN_SINGLE_CIRCLE_INSTANCE", "DYDAN_DISABLE_PASSWORD_AUTH",
+		"DYDAN_OAUTH2_ADMIN_GROUPS", "DYDAN_OAUTH2_MANAGER_GROUPS",
 		"DAYDAN_ENV", "DAYDAN_CONFIG_FILE", "DAYDAN_DATA_DIR", "DAYDAN_JWT_SECRET", "DAYDAN_SQLITE_PATH",
 		"DAYDAN_TELEGRAM_TOKEN", "DAYDAN_PUSHOVER_TOKEN", "DAYDAN_DISABLE_SIGNUP",
 		"DAYDAN_LOG_LEVEL", "DAYDAN_LOG_ENCODING", "DAYDAN_LOG_DEVELOPMENT",
@@ -22,6 +27,32 @@ func clearDayDanEnvironment(t *testing.T) {
 		"DONETICK_LOG_LEVEL", "DONETICK_LOG_ENCODING", "DONETICK_LOG_DEVELOPMENT",
 	} {
 		t.Setenv(name, "")
+	}
+}
+
+func TestDydanEnvironmentPrecedence(t *testing.T) {
+	clearDayDanEnvironment(t)
+	for _, tc := range []struct {
+		name string
+		vars []string
+	}{
+		{"Dydan over DayDan", []string{"DYDAN_DATA_DIR", "DAYDAN_DATA_DIR", "TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
+		{"DayDan over Taskier", []string{"DAYDAN_DATA_DIR", "TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
+		{"Taskier over Donetick", []string{"TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
+		{"Donetick alone", []string{"DONETICK_DATA_DIR"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			clearDayDanEnvironment(t)
+			for index, name := range tc.vars {
+				t.Setenv(name, filepath.Join(t.TempDir(), string(rune('a'+index))))
+			}
+			if got, want := envDataDir(), os.Getenv(tc.vars[0]); got != want {
+				t.Fatalf("envDataDir()=%q, want %q", got, want)
+			}
+		})
+	}
+	if got := envDataDir(); got != "" {
+		t.Fatalf("unset envDataDir()=%q, want empty", got)
 	}
 }
 

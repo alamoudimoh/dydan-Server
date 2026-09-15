@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 )
 
 // startTestServer runs an httptest server whose handler records hits and can
@@ -379,8 +379,8 @@ func TestBackoffDeterministicAndCapped(t *testing.T) {
 		want    time.Duration
 	}{
 		{0, 0.5, initial},
-		{0, 0.0, initial - time.Duration(0.2 * float64(initial))},
-		{0, 1.0, initial + time.Duration(0.2 * float64(initial))},
+		{0, 0.0, initial - time.Duration(0.2*float64(initial))},
+		{0, 1.0, initial + time.Duration(0.2*float64(initial))},
 		{3, 0.5, 8 * time.Second},
 		{10, 0.5, max},
 	}

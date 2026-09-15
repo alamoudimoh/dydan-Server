@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	errorx "github.com/alamoudimoh/daydan-server/internal/error"
+	"github.com/alamoudimoh/dydan-server/config"
+	errorx "github.com/alamoudimoh/dydan-server/internal/error"
 
-	st "github.com/alamoudimoh/daydan-server/internal/storage/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	st "github.com/alamoudimoh/dydan-server/internal/storage/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"gorm.io/gorm"
 )
 

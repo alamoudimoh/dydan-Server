@@ -1,7 +1,7 @@
 package auth
 
 import (
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
 )
 
 // ResolveRoleFromGroups determines a user's circle role based on their OIDC group

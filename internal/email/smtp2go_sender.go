@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 // SMTP2GoSender sends transactional email via the SMTP2Go HTTP API instead
@@ -104,11 +104,11 @@ func (s *SMTP2GoSender) sendTemplate(ctx context.Context, to, subject, templateI
 func (s *SMTP2GoSender) SendResetPasswordEmail(c context.Context, to, code string) error {
 	fullURL := fmt.Sprintf("%s/password/update#c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
-	return s.sendTemplate(c, to, "DayDan! Password Reset", s.resetTemplateID, templateData)
+	return s.sendTemplate(c, to, "Dydan! Password Reset", s.resetTemplateID, templateData)
 }
 
 func (s *SMTP2GoSender) SendVerificationEmail(to, code string) error {
 	fullURL := fmt.Sprintf("%s/verify?c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
-	return s.sendTemplate(context.Background(), to, "DayDan! Verify your email", s.verifyTemplateID, templateData)
+	return s.sendTemplate(context.Background(), to, "Dydan! Verify your email", s.verifyTemplateID, templateData)
 }

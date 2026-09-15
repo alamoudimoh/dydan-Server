@@ -1,11 +1,12 @@
-# DayDan does not require a configuration file. This file only demonstrates
+# Dydan does not require a configuration file. This file only demonstrates
 # optional advanced overrides; copy only the settings you actually need.
 #
-# Preferred runtime config filenames: daydan.yaml or daydan.yml.
-# Legacy taskier.yaml / taskier.yml remains supported when no DayDan config is present.
+# Preferred runtime config filenames: dydan.yaml or dydan.yml.
+# Legacy daydan.yaml / daydan.yml and taskier.yaml / taskier.yml remain supported.
 #
-# Canonical environment overrides (legacy TASKIER_* / DT_* / DONETICK_* still work):
-#   DAYDAN_DATA_DIR, DAYDAN_CONFIG_FILE, DAYDAN_JWT_SECRET, DAYDAN_SQLITE_PATH
+# Canonical environment overrides:
+#   DYDAN_DATA_DIR, DYDAN_CONFIG_FILE, DYDAN_JWT_SECRET, DYDAN_SQLITE_PATH
+# DAYDAN_*, TASKIER_*, DONETICK_*, and DT_* aliases remain supported.
 
 # data_dir: /data
 # is_user_creation_disabled: true

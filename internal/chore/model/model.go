@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"time"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	lModel "github.com/alamoudimoh/daydan-server/internal/label/model"
-	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
-	pModel "github.com/alamoudimoh/daydan-server/internal/project/model"
-	storageModel "github.com/alamoudimoh/daydan-server/internal/storage/model"
-	stModel "github.com/alamoudimoh/daydan-server/internal/subtask/model"
-	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	lModel "github.com/alamoudimoh/dydan-server/internal/label/model"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
+	pModel "github.com/alamoudimoh/dydan-server/internal/project/model"
+	storageModel "github.com/alamoudimoh/dydan-server/internal/storage/model"
+	stModel "github.com/alamoudimoh/dydan-server/internal/subtask/model"
+	tModel "github.com/alamoudimoh/dydan-server/internal/thing/model"
 )
 
 const MAX_TEMPLATES = 5

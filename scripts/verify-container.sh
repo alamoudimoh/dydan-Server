@@ -5,12 +5,12 @@ repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_dir"
 
 run_id="${GITHUB_RUN_ID:-local}-$$"
-image="daydan-ci:${run_id}"
-container="daydan-zero-config-${run_id}"
-data_dir=$(mktemp -d "${TMPDIR:-/tmp}/daydan-container-${run_id}.XXXXXX")
-compose_output=$(mktemp "${TMPDIR:-/tmp}/daydan-compose-${run_id}.XXXXXX")
-signup_response="${TMPDIR:-/tmp}/daydan-signup-response-${run_id}.json"
-login_response="${TMPDIR:-/tmp}/daydan-login-response-${run_id}.json"
+image="dydan-ci:${run_id}"
+container="dydan-zero-config-${run_id}"
+data_dir=$(mktemp -d "${TMPDIR:-/tmp}/dydan-container-${run_id}.XXXXXX")
+compose_output=$(mktemp "${TMPDIR:-/tmp}/dydan-compose-${run_id}.XXXXXX")
+signup_response="${TMPDIR:-/tmp}/dydan-signup-response-${run_id}.json"
+login_response="${TMPDIR:-/tmp}/dydan-login-response-${run_id}.json"
 
 cleanup() {
   docker rm -f "$container" >/dev/null 2>&1 || true
@@ -23,11 +23,11 @@ trap cleanup EXIT
 
 assert_compose_config() {
   docker compose config >"$compose_output"
-  grep -Eq '^  daydan:$' "$compose_output"
-  grep -Eq 'container_name: daydan' "$compose_output"
-  grep -Eq 'source: daydan-data' "$compose_output"
+  grep -Eq '^  dydan:$' "$compose_output"
+  grep -Eq 'container_name: dydan' "$compose_output"
+  grep -Eq 'source: dydan-data' "$compose_output"
   grep -Fq 'name: daydan-data' "$compose_output"
-  grep -Fq 'name: ${DAYDAN_DOCKER_VOLUME:-${TASKIER_DOCKER_VOLUME:-daydan-data}}' docker-compose.yaml
+  grep -Fq 'name: ${DYDAN_DOCKER_VOLUME:-${DAYDAN_DOCKER_VOLUME:-${TASKIER_DOCKER_VOLUME:-daydan-data}}}' docker-compose.yaml
   local override_output
   override_output=$(TASKIER_DOCKER_VOLUME=taskier-data docker compose config)
   grep -Eq 'name: taskier-data' <<<"$override_output"
@@ -35,12 +35,12 @@ assert_compose_config() {
 
 assert_image_runtime() {
   docker run --rm --entrypoint sh "$image" -c \
-    'test -x /daydan && test -L /donetick && test "$(readlink /donetick)" = "/daydan"'
+    'test -x /dydan && test -L /daydan && test "$(readlink /daydan)" = "/dydan" && test -L /donetick'
 }
 
 assert_legacy_database_migration() {
   local legacy_data_dir legacy_container
-  legacy_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/daydan-legacy-db-${run_id}.XXXXXX")
+  legacy_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/dydan-legacy-db-${run_id}.XXXXXX")
   legacy_container="${container}-legacy"
   printf 'legacy-sqlite-data' >"$legacy_data_dir/taskier.db"
 
@@ -50,28 +50,28 @@ assert_legacy_database_migration() {
     "$image" >/dev/null
 
   for _ in $(seq 1 60); do
-    if [[ -s "$legacy_data_dir/daydan.db" ]]; then
+    if [[ -s "$legacy_data_dir/dydan.db" ]]; then
       break
     fi
     sleep 1
   done
 
   test -s "$legacy_data_dir/taskier.db"
-  test -s "$legacy_data_dir/daydan.db"
-  cmp -s "$legacy_data_dir/taskier.db" "$legacy_data_dir/daydan.db"
+  test -s "$legacy_data_dir/dydan.db"
+  cmp -s "$legacy_data_dir/taskier.db" "$legacy_data_dir/dydan.db"
 
   docker rm -f "$legacy_container" >/dev/null
   rm -rf -- "$legacy_data_dir"
 }
 
 # The runtime process must never run as root: the entrypoint prepares /data as
-# root, drops privileges via su-exec, and execs DayDan (PID 1) as "daydan".
+# root, drops privileges via su-exec, and execs Dydan (PID 1) as "dydan".
 assert_non_root_runtime() {
   local uid gid
   uid=$(docker exec "$container" sh -c 'stat -c %u /proc/1')
   gid=$(docker exec "$container" stat -c %g /proc/1)
   if [[ "$uid" == "0" || "$gid" == "0" ]]; then
-    echo "DayDan runs as root (uid=$uid gid=$gid); expected unprivileged daydan user" >&2
+    echo "Dydan runs as root (uid=$uid gid=$gid); expected unprivileged dydan user" >&2
     exit 1
   fi
 }
@@ -80,7 +80,7 @@ assert_non_root_runtime() {
 # the unprivileged user automatically on boot.
 assert_root_owned_volume_migration() {
   local root_data_dir root_container
-  root_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/daydan-root-vol-${run_id}.XXXXXX")
+  root_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/dydan-root-vol-${run_id}.XXXXXX")
   root_container="${container}-rootvol"
   # Simulate a legacy root-owned volume: db + secret + uploads owned by root.
   printf 'root-owned-jwt-secret-0123456789abcdef' >"$root_data_dir/jwt-secret"
@@ -121,7 +121,7 @@ assert_root_owned_volume_migration() {
 
 assert_compose_config
 docker build --tag "$image" \
-  --build-context "frontend=${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}" .
+  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}}" .
 assert_image_runtime
 assert_legacy_database_migration
 assert_root_owned_volume_migration
@@ -171,10 +171,10 @@ wait_for_health "$port"
 assert_clean_migrations
 assert_non_root_runtime
 docker exec "$container" test ! -e /config/selfhosted.yaml
-docker exec "$container" test -x /daydan
+docker exec "$container" test -x /dydan
 docker exec "$container" test -L /donetick
 
-test -s "$data_dir/daydan.db"
+test -s "$data_dir/dydan.db"
 test -s "$data_dir/jwt-secret"
 test "$(docker exec "$container" stat -c '%a' /data/jwt-secret)" = "600"
 secret_before=$(docker exec "$container" sha256sum /data/jwt-secret | cut -d' ' -f1)
@@ -182,7 +182,7 @@ secret_before=$(docker exec "$container" sha256sum /data/jwt-secret | cut -d' ' 
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:${port}/")" = "200"
 test "$(curl --silent --output "$signup_response" --write-out '%{http_code}' \
   --header 'Content-Type: application/json' \
-  --data '{"username":"ci-family-user","password":"DayDanCIPass123!","email":"ci-family@example.test","displayName":"CI Family User"}' \
+  --data '{"username":"ci-family-user","password":"DydanCIPass123!","email":"ci-family@example.test","displayName":"CI Family User"}' \
   "http://127.0.0.1:${port}/api/v1/auth/")" = "201"
 
 docker rm -f "$container" >/dev/null
@@ -193,8 +193,8 @@ assert_clean_migrations
 
 secret_after=$(docker exec "$container" sha256sum /data/jwt-secret | cut -d' ' -f1)
 test "$secret_before" = "$secret_after"
-test -s "$data_dir/daydan.db"
+test -s "$data_dir/dydan.db"
 test "$(curl --silent --output "$login_response" --write-out '%{http_code}' \
   --header 'Content-Type: application/json' \
-  --data '{"username":"ci-family-user","password":"DayDanCIPass123!"}' \
+  --data '{"username":"ci-family-user","password":"DydanCIPass123!"}' \
   "http://127.0.0.1:${port}/api/v1/auth/login")" = "200"

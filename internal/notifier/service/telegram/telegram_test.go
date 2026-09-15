@@ -3,7 +3,7 @@ package telegram
 import (
 	"testing"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 func TestNewTelegramNotifierSkipsEmptyToken(t *testing.T) {

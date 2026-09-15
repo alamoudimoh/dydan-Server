@@ -8,17 +8,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	"github.com/alamoudimoh/daydan-server/internal/auth"
-	"github.com/alamoudimoh/daydan-server/internal/chore"
-	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	pRepo "github.com/alamoudimoh/daydan-server/internal/points/repo"
-	"github.com/alamoudimoh/daydan-server/internal/storage"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	"github.com/alamoudimoh/dydan-server/internal/auth"
+	"github.com/alamoudimoh/dydan-server/internal/chore"
+	chRepo "github.com/alamoudimoh/dydan-server/internal/chore/repo"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	pRepo "github.com/alamoudimoh/dydan-server/internal/points/repo"
+	"github.com/alamoudimoh/dydan-server/internal/storage"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,7 +28,7 @@ type Handler struct {
 	choreRepo            *chRepo.ChoreRepository
 	pointRepo            *pRepo.PointsRepository
 	signer               storage.URLSigner
-	isDayDanCloud     bool
+	isDayDanCloud        bool
 	maxCircleMembers     int
 	plusMaxCircleMembers int
 	singleCircleInstance bool
@@ -55,7 +55,7 @@ func NewHandler(cr *cRepo.CircleRepository, ur *uRepo.UserRepository, c *chRepo.
 		choreRepo:            c,
 		pointRepo:            pr,
 		signer:               signer,
-		isDayDanCloud:     config.IsDayDanCloud,
+		isDayDanCloud:        config.IsDayDanCloud,
 		maxCircleMembers:     config.FeatureLimits.MaxCircleMembers,
 		plusMaxCircleMembers: config.FeatureLimits.PlusCircleMaxMembers,
 		singleCircleInstance: config.SingleCircleInstance,

@@ -3,7 +3,7 @@ package circle_test
 import (
 	"testing"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
 )
 
 // Elevated stored roles must not confer authority on inactive memberships or

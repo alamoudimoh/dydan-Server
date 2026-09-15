@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	errorx "github.com/alamoudimoh/daydan-server/internal/error"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	errorx "github.com/alamoudimoh/dydan-server/internal/error"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 )
 

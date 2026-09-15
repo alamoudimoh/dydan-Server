@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	"github.com/alamoudimoh/daydan-server/internal/utils"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	"github.com/alamoudimoh/dydan-server/internal/utils"
 	"github.com/go-playground/validator/v10"
 )
 

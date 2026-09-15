@@ -9,9 +9,9 @@ import (
 	"firebase.google.com/go/v4/messaging"
 	"google.golang.org/api/option"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 )
 
 type FCMNotifier struct {
@@ -93,7 +93,7 @@ func (f *FCMNotifier) SendNotification(ctx context.Context, notification *nModel
 	// Use notification text as fallback if payload is empty
 	if payload.Title == "" && payload.Body == "" {
 		payload.Body = notification.Text
-		payload.Title = "DayDan"
+		payload.Title = "Dydan"
 	}
 
 	// Create FCM message

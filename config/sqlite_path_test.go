@@ -13,66 +13,66 @@ func writeDatabaseFile(t *testing.T, path, contents string) {
 	}
 }
 
-func TestFreshInstallUsesDaydanDatabase(t *testing.T) {
+func TestFreshInstallUsesDydanDatabase(t *testing.T) {
 	dataDir := t.TempDir()
 	path, err := resolveDefaultSQLitePath(dataDir, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if path != filepath.Join(dataDir, daydanDBFilename) {
+	if path != filepath.Join(dataDir, dydanDBFilename) {
 		t.Fatalf("path=%q", path)
 	}
 }
 
-func TestExistingDaydanDatabaseWins(t *testing.T) {
+func TestExistingDydanDatabaseWins(t *testing.T) {
 	dataDir := t.TempDir()
+	dydanPath := filepath.Join(dataDir, dydanDBFilename)
 	daydanPath := filepath.Join(dataDir, daydanDBFilename)
-	taskierPath := filepath.Join(dataDir, taskierDBFilename)
+	writeDatabaseFile(t, dydanPath, "dydan-data")
 	writeDatabaseFile(t, daydanPath, "daydan-data")
-	writeDatabaseFile(t, taskierPath, "taskier-data")
 
 	path, err := resolveDefaultSQLitePath(dataDir, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if path != daydanPath {
+	if path != dydanPath {
 		t.Fatalf("path=%q", path)
 	}
-	if _, err := os.Stat(taskierPath); err != nil {
-		t.Fatal("legacy taskier.db was removed")
+	if _, err := os.Stat(daydanPath); err != nil {
+		t.Fatal("legacy daydan.db was removed")
 	}
 }
 
-func TestExistingTaskierDatabaseMigratesSafely(t *testing.T) {
+func TestExistingDaydanDatabaseMigratesSafely(t *testing.T) {
 	dataDir := t.TempDir()
-	taskierPath := filepath.Join(dataDir, taskierDBFilename)
 	daydanPath := filepath.Join(dataDir, daydanDBFilename)
-	payload := "sqlite-taskier-payload"
-	writeDatabaseFile(t, taskierPath, payload)
+	dydanPath := filepath.Join(dataDir, dydanDBFilename)
+	payload := "sqlite-daydan-payload"
+	writeDatabaseFile(t, daydanPath, payload)
 
 	path, err := resolveDefaultSQLitePath(dataDir, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if path != daydanPath {
+	if path != dydanPath {
 		t.Fatalf("path=%q", path)
 	}
-	got, err := os.ReadFile(daydanPath)
+	got, err := os.ReadFile(dydanPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(got) != payload {
 		t.Fatalf("migrated contents=%q", string(got))
 	}
-	if _, err := os.Stat(taskierPath); err != nil {
-		t.Fatal("legacy taskier.db was removed")
+	if _, err := os.Stat(daydanPath); err != nil {
+		t.Fatal("legacy daydan.db was removed")
 	}
 }
 
 func TestExistingDonetickDatabaseMigratesSafely(t *testing.T) {
 	dataDir := t.TempDir()
 	legacyPath := filepath.Join(dataDir, donetickDBFilename)
-	daydanPath := filepath.Join(dataDir, daydanDBFilename)
+	daydanPath := filepath.Join(dataDir, dydanDBFilename)
 	payload := "sqlite-donetick-payload"
 	writeDatabaseFile(t, legacyPath, payload)
 
@@ -94,7 +94,7 @@ func TestExistingDonetickDatabaseMigratesSafely(t *testing.T) {
 
 func TestDaydanAndLegacyBothExistDaydanWinsWithoutMigration(t *testing.T) {
 	dataDir := t.TempDir()
-	daydanPath := filepath.Join(dataDir, daydanDBFilename)
+	daydanPath := filepath.Join(dataDir, dydanDBFilename)
 	taskierPath := filepath.Join(dataDir, taskierDBFilename)
 	writeDatabaseFile(t, daydanPath, "canonical")
 	writeDatabaseFile(t, taskierPath, "legacy")
@@ -115,7 +115,7 @@ func TestDaydanAndLegacyBothExistDaydanWinsWithoutMigration(t *testing.T) {
 func TestSQLiteMigrationIsIdempotent(t *testing.T) {
 	dataDir := t.TempDir()
 	taskierPath := filepath.Join(dataDir, taskierDBFilename)
-	daydanPath := filepath.Join(dataDir, daydanDBFilename)
+	dydanPath := filepath.Join(dataDir, dydanDBFilename)
 	writeDatabaseFile(t, taskierPath, "legacy-data")
 
 	first, err := resolveDefaultSQLitePath(dataDir, false)
@@ -126,37 +126,34 @@ func TestSQLiteMigrationIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first != daydanPath || second != daydanPath {
+	if first != dydanPath || second != dydanPath {
 		t.Fatalf("first=%q second=%q", first, second)
 	}
-	firstContents, err := os.ReadFile(daydanPath)
+	firstContents, err := os.ReadFile(dydanPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondContents, err := os.ReadFile(daydanPath)
+	secondContents, err := os.ReadFile(dydanPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(firstContents) != string(secondContents) {
-		t.Fatal("daydan.db contents changed on second resolve")
+		t.Fatal("dydan.db contents changed on second resolve")
 	}
 }
 
 func TestFailedMigrationRetainsLegacyDatabase(t *testing.T) {
 	dataDir := t.TempDir()
 	taskierPath := filepath.Join(dataDir, taskierDBFilename)
-	daydanPath := filepath.Join(dataDir, daydanDBFilename)
+	dydanPath := filepath.Join(dataDir, dydanDBFilename)
 	writeDatabaseFile(t, taskierPath, "legacy-data")
-	if err := os.Mkdir(daydanPath, 0o700); err != nil {
+	if err := os.Mkdir(dydanPath, 0o700); err != nil {
 		t.Fatal(err)
 	}
 
-	path, err := resolveDefaultSQLitePath(dataDir, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if path != taskierPath {
-		t.Fatalf("path=%q", path)
+	_, err := resolveDefaultSQLitePath(dataDir, false)
+	if err == nil {
+		t.Fatal("migration failure must be returned instead of selecting a legacy database")
 	}
 }
 
@@ -238,7 +235,7 @@ func TestLegacyDatabaseContentsSurviveMigrationThroughLoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Database.Path != filepath.Join(dataDir, daydanDBFilename) {
+	if cfg.Database.Path != filepath.Join(dataDir, dydanDBFilename) {
 		t.Fatalf("path=%q", cfg.Database.Path)
 	}
 	got, err := os.ReadFile(cfg.Database.Path)
@@ -261,13 +258,13 @@ func TestSQLiteWALCompanionFilesAreCopiedDuringMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	daydanPath := filepath.Join(dataDir, daydanDBFilename)
-	if path != daydanPath {
+	dydanPath := filepath.Join(dataDir, dydanDBFilename)
+	if path != dydanPath {
 		t.Fatalf("path=%q", path)
 	}
 	for _, suffix := range []string{"", "-wal", "-shm"} {
-		if !databaseFileExists(daydanPath + suffix) {
-			t.Fatalf("missing migrated companion %s", daydanPath+suffix)
+		if !databaseFileExists(dydanPath + suffix) {
+			t.Fatalf("missing migrated companion %s", dydanPath+suffix)
 		}
 	}
 }

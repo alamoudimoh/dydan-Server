@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/internal/auth"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	cRepo "github.com/alamoudimoh/daydan-server/internal/circle/repo"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	nService "github.com/alamoudimoh/daydan-server/internal/notifier/service"
+	"github.com/alamoudimoh/dydan-server/internal/auth"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	nService "github.com/alamoudimoh/dydan-server/internal/notifier/service"
 	"github.com/gin-gonic/gin"
 )
 

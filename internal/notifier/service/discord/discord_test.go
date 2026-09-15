@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
 )
 
 // TestSendMessageRejectsInsecureAndPrivateDestinations proves the

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
 )
 
 func pointer[T any](value T) *T { return &value }

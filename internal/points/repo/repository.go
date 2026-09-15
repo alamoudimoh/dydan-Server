@@ -3,7 +3,7 @@ package points
 import (
 	"context"
 
-	pModel "github.com/alamoudimoh/daydan-server/internal/points"
+	pModel "github.com/alamoudimoh/dydan-server/internal/points"
 	"gorm.io/gorm"
 )
 

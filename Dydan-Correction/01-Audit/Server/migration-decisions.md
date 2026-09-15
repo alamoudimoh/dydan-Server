@@ -1,5 +1,22 @@
 # Migration Decisions — Server (DayDan → Dydan)
 
+## Implementation Result
+
+The repository-side migration is complete. `DYDAN_*` takes precedence over
+`DAYDAN_*`, `TASKIER_*`, `DONETICK_*`, and `DT_*` aliases. `dydan.db` is the
+canonical SQLite path and safely copies a legacy database only when the target
+does not exist; a failed copy is returned as a startup error and both files are
+left untouched. Webhooks dual-emit Dydan and DayDan signature headers with the
+same values. New media URLs use Dydan HKDF labels while verification accepts
+valid DayDan-derived signatures during the existing legacy window.
+
+Android delivery intentionally remains on `daydan_notifications` until AppWeb
+and mobile clients register `dydan_notifications`; the Dydan channel constant
+is available server-side for that coordinated rollout. GitHub slug references
+and OAuth provider registrations remain external owner actions because the
+target repository slugs and provider-console changes cannot be safely inferred
+from this source repository.
+
 **Repository:** `alamoudimoh/DayDan-Server`  
 **Audited Branch:** `audit/dydan-identity-server`  
 **Baseline Audited:** `origin/develop` (`bfb59685bd878d8d0f3c986ec76f1ceb91badf7c`)  

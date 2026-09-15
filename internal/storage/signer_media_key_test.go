@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	jwtstd "github.com/golang-jwt/jwt/v4"
 )
 
@@ -52,6 +52,36 @@ func TestMediaSigningKeyIsDomainSeparatedFromJWTKey(t *testing.T) {
 	other, _ := config.DeriveMediaKeyHex([]byte(jwtSecret + "x"))
 	if other == a {
 		t.Fatal("different JWT secrets must derive different media keys")
+	}
+}
+
+func TestDydanDerivedMediaKeyAcceptsValidLegacyDaydanURLs(t *testing.T) {
+	const jwtSecret = "dydan-media-transition-secret-0123456789"
+	cfg := mediaTestConfig(jwtSecret, "", true)
+	if err := config.ValidateMediaKeyForTest(cfg); err != nil {
+		t.Fatal(err)
+	}
+	canonical := NewURLSignerLocal(cfg)
+	canonicalURL, err := canonical.Sign("users/7/photo.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonicalPath, canonicalQuery := parseSignedURL(t, canonicalURL)
+	if !canonical.IsValid(canonicalPath.Path, canonicalQuery) {
+		t.Fatal("canonical Dydan URL did not verify")
+	}
+
+	legacy := &URLSignerLocal{key: []byte(cfg.Storage.LegacyMediaSecret), ttl: time.Hour}
+	legacyURL, err := legacy.Sign("users/7/photo.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyPath, legacyQuery := parseSignedURL(t, legacyURL)
+	if !canonical.IsValid(legacyPath.Path, legacyQuery) {
+		t.Fatal("valid legacy DayDan URL did not verify")
+	}
+	if canonical.IsValid("users/7/tampered.png", canonicalQuery) || canonical.IsValid("users/7/tampered.png", legacyQuery) {
+		t.Fatal("tampered canonical or legacy URL verified")
 	}
 }
 

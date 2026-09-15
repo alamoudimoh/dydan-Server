@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
-	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
+	syncModel "github.com/alamoudimoh/dydan-server/internal/sync/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

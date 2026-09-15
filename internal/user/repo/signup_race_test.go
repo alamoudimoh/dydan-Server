@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 )
 
 // TestConcurrentDuplicateSignupUsername drives the real signup path with N

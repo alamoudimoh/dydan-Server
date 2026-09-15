@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	pModel "github.com/alamoudimoh/daydan-server/internal/points"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	pModel "github.com/alamoudimoh/dydan-server/internal/points"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

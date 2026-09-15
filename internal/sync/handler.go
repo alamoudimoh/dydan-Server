@@ -3,9 +3,9 @@ package sync
 import (
 	"strconv"
 
-	auth "github.com/alamoudimoh/daydan-server/internal/auth"
-	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
-	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
+	auth "github.com/alamoudimoh/dydan-server/internal/auth"
+	chRepo "github.com/alamoudimoh/dydan-server/internal/chore/repo"
+	syncModel "github.com/alamoudimoh/dydan-server/internal/sync/model"
 	"github.com/gin-gonic/gin"
 )
 

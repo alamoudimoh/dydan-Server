@@ -3,8 +3,8 @@ package migrations
 import (
 	"context"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	pModel "github.com/alamoudimoh/daydan-server/internal/points"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	pModel "github.com/alamoudimoh/dydan-server/internal/points"
 	"gorm.io/gorm"
 )
 

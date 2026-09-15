@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 )
 

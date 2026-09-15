@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 )
 

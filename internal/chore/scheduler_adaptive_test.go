@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
 	"github.com/stretchr/testify/assert"
 )
 

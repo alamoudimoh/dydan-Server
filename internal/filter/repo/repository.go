@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	config "github.com/alamoudimoh/daydan-server/config"
-	fModel "github.com/alamoudimoh/daydan-server/internal/filter/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	config "github.com/alamoudimoh/dydan-server/config"
+	fModel "github.com/alamoudimoh/dydan-server/internal/filter/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 )
 

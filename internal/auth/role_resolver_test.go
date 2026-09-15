@@ -3,7 +3,7 @@ package auth
 import (
 	"testing"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
 )
 
 func TestResolveRoleFromGroups(t *testing.T) {

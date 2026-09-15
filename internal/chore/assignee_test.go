@@ -3,8 +3,8 @@ package chore
 import (
 	"testing"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	circle "github.com/alamoudimoh/daydan-server/internal/circle/model"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	circle "github.com/alamoudimoh/dydan-server/internal/circle/model"
 )
 
 // circleOf builds the circle-member list checkNextAssignee falls back to when a chore

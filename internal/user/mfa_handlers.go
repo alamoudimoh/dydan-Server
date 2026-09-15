@@ -3,9 +3,9 @@ package user
 import (
 	"net/http"
 
-	auth "github.com/alamoudimoh/daydan-server/internal/auth"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	auth "github.com/alamoudimoh/dydan-server/internal/auth"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 	"golang.org/x/oauth2"
 )
 

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"time"
 
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	pModel "github.com/alamoudimoh/daydan-server/internal/points"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	pModel "github.com/alamoudimoh/dydan-server/internal/points"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

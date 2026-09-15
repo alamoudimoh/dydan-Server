@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 

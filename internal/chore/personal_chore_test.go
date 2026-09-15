@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	chRepo "github.com/alamoudimoh/daydan-server/internal/chore/repo"
+	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	chRepo "github.com/alamoudimoh/dydan-server/internal/chore/repo"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/config"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	jwtstd "github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"

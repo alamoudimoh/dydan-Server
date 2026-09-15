@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	cModel "github.com/alamoudimoh/daydan-server/internal/circle/model"
-	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
-	syncModel "github.com/alamoudimoh/daydan-server/internal/sync/model"
+	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
+	syncModel "github.com/alamoudimoh/dydan-server/internal/sync/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

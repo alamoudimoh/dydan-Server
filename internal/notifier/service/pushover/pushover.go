@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/alamoudimoh/daydan-server/config"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/config"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gregdel/pushover"
 )
 
@@ -29,7 +29,7 @@ func (p *Pushover) SendNotification(c context.Context, notification *nModel.Noti
 	}
 	log := logging.FromContext(c)
 	recipient := pushover.NewRecipient(notification.TargetID)
-	message := pushover.NewMessageWithTitle(notification.Text, "DayDan")
+	message := pushover.NewMessageWithTitle(notification.Text, "Dydan")
 
 	_, err := p.pushover.SendMessage(message, recipient)
 	if err != nil {

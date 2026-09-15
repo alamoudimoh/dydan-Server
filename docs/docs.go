@@ -5559,7 +5559,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "APIKeyAuth": {
-            "description": "DayDan issued apikey",
+            "description": "Dydan issued apikey",
             "type": "apiKey",
             "name": "secretkey",
             "in": "header"
@@ -5579,8 +5579,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "DayDan Swagger API",
-	Description:      "DayDan swagger documentation.",
+	Title:            "Dydan Swagger API",
+	Description:      "Dydan swagger documentation.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -3,10 +3,10 @@ package auth
 import (
 	"net/http"
 
-	"github.com/alamoudimoh/daydan-server/internal/mfa"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
-	uRepo "github.com/alamoudimoh/daydan-server/internal/user/repo"
-	"github.com/alamoudimoh/daydan-server/logging"
+	"github.com/alamoudimoh/dydan-server/internal/mfa"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 

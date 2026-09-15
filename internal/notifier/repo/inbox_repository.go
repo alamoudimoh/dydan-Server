@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"time"

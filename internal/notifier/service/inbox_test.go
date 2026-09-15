@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	chModel "github.com/alamoudimoh/daydan-server/internal/chore/model"
-	mModel "github.com/alamoudimoh/daydan-server/internal/meter/model"
-	nModel "github.com/alamoudimoh/daydan-server/internal/notifier/model"
-	nRepo "github.com/alamoudimoh/daydan-server/internal/notifier/repo"
-	tModel "github.com/alamoudimoh/daydan-server/internal/thing/model"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
+	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
+	nRepo "github.com/alamoudimoh/dydan-server/internal/notifier/repo"
+	tModel "github.com/alamoudimoh/dydan-server/internal/thing/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )

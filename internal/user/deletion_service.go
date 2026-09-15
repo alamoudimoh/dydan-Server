@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/alamoudimoh/daydan-server/internal/storage"
-	uModel "github.com/alamoudimoh/daydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/internal/storage"
+	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"gorm.io/gorm"
 )
 

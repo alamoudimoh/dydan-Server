@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 // newTestIdP spins up a local fake OIDC provider with deterministic

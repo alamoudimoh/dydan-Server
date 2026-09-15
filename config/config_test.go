@@ -103,7 +103,7 @@ func TestZeroConfigDefaultsAndPersistentSecret(t *testing.T) {
 	if first.Name != "daydan" || first.Database.Type != "sqlite" || !first.Database.Migration {
 		t.Fatalf("database defaults not populated: %#v", first.Database)
 	}
-	if first.Database.Path != filepath.Join(dataDir, "daydan.db") {
+	if first.Database.Path != filepath.Join(dataDir, "dydan.db") {
 		t.Fatalf("database path=%q", first.Database.Path)
 	}
 	if first.Server.Port != 2021 || !first.Server.ServeFrontend {
@@ -253,7 +253,7 @@ func TestLegacyDonetickDatabaseMigratesToDaydan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	daydanPath := filepath.Join(dataDir, "daydan.db")
+	daydanPath := filepath.Join(dataDir, "dydan.db")
 	if cfg.Database.Path != daydanPath {
 		t.Fatalf("database path=%q want %q", cfg.Database.Path, daydanPath)
 	}

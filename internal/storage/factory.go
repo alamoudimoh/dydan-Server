@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"github.com/alamoudimoh/daydan-server/config"
+	"github.com/alamoudimoh/dydan-server/config"
 )
 
 // NewStorage returns a Storage implementation based on config.Storage.StorageType.
