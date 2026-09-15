@@ -84,7 +84,8 @@ type StorageConfig struct {
 	// private bucket (BucketName).
 	PublicBucketName string `mapstructure:"public_bucket_name" yaml:"public_bucket_name"`
 	// PublicBucketHost is the CDN / custom-domain host used to construct bare
-	// (unsigned) URLs for objects in PublicBucketName. Example: "pub.donetick.com".
+	// (unsigned) URLs for objects in PublicBucketName. The legacy hosted domain
+	// is "pub.donetick.com".
 	// If empty, GetPublicURL falls back to a presigned URL from the private bucket.
 	PublicBucketHost string `mapstructure:"public_bucket_host" yaml:"public_bucket_host"`
 	// PathStyle forces path-style S3 addressing (endpoint/bucket/key)
@@ -337,7 +338,7 @@ type WebhookConfig struct {
 	BackoffInitial time.Duration `mapstructure:"backoff_initial" yaml:"backoff_initial" default:"1s"`
 	BackoffMax     time.Duration `mapstructure:"backoff_max" yaml:"backoff_max" default:"30s"`
 	// SigningSecret is the HMAC-SHA256 key used to sign every outbound
-	// DayDan-generated webhook payload. It is deliberately separate from
+	// Dydan-generated webhook payload. It is deliberately separate from
 	// jwt.secret and storage.media_secret; when unset it is auto-created as
 	// a random secret file (or HKDF-derived from jwt.secret when no data dir
 	// is writable — see resolveWebhookSigningKey). Receivers verify with
@@ -658,7 +659,7 @@ func readOptionalConfigFile(v *viper.Viper) error {
 		return nil
 	}
 
-	// Prefer dydan.{yaml,yml}, then the deployed daydan name, then older names.
+	// Prefer dydan.{yaml,yml}, then the legacy daydan name, then older names.
 	if err := readNamedConfigFile(v, "dydan"); err != nil {
 		var configNotFoundError viper.ConfigFileNotFoundError
 		if !errors.As(err, &configNotFoundError) {
@@ -694,8 +695,8 @@ func LoadConfigE() (*Config, error) {
 	v.AddConfigPath(".")
 	// Config type is inferred from the file extension. Do not call
 	// SetConfigType here: viper treats a non-empty config type as permission to
-	// match a config file with no extension, which collides with the "/daydan"
-	// binary present in the container's working directory and panics parsing it
+	// match a config file with no extension, which collides with the legacy
+	// "/daydan" binary alias in the container and panics parsing it
 	// as YAML.
 
 	if err := readOptionalConfigFile(v); err != nil {

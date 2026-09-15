@@ -13,6 +13,7 @@ import (
 func clearConfigSelection(t *testing.T) {
 	t.Helper()
 	for _, name := range []string{
+		"DYDAN_ENV", "DYDAN_CONFIG_FILE", "DYDAN_DATA_DIR", "DYDAN_JWT_SECRET", "DYDAN_SQLITE_PATH",
 		"DAYDAN_ENV", "DAYDAN_CONFIG_FILE", "DAYDAN_DATA_DIR", "DAYDAN_JWT_SECRET", "DAYDAN_SQLITE_PATH",
 		"DT_ENV", "DT_CONFIG_FILE", "TASKIER_CONFIG_FILE", "DT_JWT_SECRET",
 		"TASKIER_JWT_SECRET", "DT_SQLITE_PATH", "TASKIER_SQLITE_PATH",
@@ -25,7 +26,7 @@ func clearConfigSelection(t *testing.T) {
 
 func TestEmailAppHostEnvironmentMapping(t *testing.T) {
 	clearConfigSelection(t)
-	t.Setenv("TASKIER_DATA_DIR", t.TempDir())
+	t.Setenv("DYDAN_DATA_DIR", t.TempDir())
 	t.Setenv("DT_EMAIL_HOST", "smtp.example.com")
 	t.Setenv("DT_EMAIL_PORT", "587")
 	t.Setenv("DT_EMAIL_EMAIL", "sender@example.com")
@@ -94,7 +95,7 @@ func TestValidateSecurityConfigNormalizesProviderAndValidatesRedirects(t *testin
 func TestZeroConfigDefaultsAndPersistentSecret(t *testing.T) {
 	clearConfigSelection(t)
 	dataDir := filepath.Join(t.TempDir(), "data")
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
 
 	first, err := LoadConfigE()
 	if err != nil {
@@ -138,7 +139,7 @@ func TestZeroConfigDefaultsAndPersistentSecret(t *testing.T) {
 	}
 
 	otherDir := filepath.Join(t.TempDir(), "data")
-	t.Setenv("TASKIER_DATA_DIR", otherDir)
+	t.Setenv("DYDAN_DATA_DIR", otherDir)
 	third, err := LoadConfigE()
 	if err != nil {
 		t.Fatal(err)
@@ -152,8 +153,8 @@ func TestExplicitSecretOverrideDoesNotCreateSecretFile(t *testing.T) {
 	clearConfigSelection(t)
 	dataDir := filepath.Join(t.TempDir(), "data")
 	explicit := "2Bz7nx2zwX0H2j31b3g48zxBCQfhf4pHkYb1EcE01Z8="
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
-	t.Setenv("DT_JWT_SECRET", explicit)
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_JWT_SECRET", explicit)
 
 	cfg, err := LoadConfigE()
 	if err != nil {
@@ -195,8 +196,8 @@ func TestConfigPrecedenceAndLegacyProfileCompatibility(t *testing.T) {
 
 func TestWeakExplicitSecretFailsClearly(t *testing.T) {
 	clearConfigSelection(t)
-	t.Setenv("TASKIER_DATA_DIR", t.TempDir())
-	t.Setenv("DT_JWT_SECRET", "secret")
+	t.Setenv("DYDAN_DATA_DIR", t.TempDir())
+	t.Setenv("DYDAN_JWT_SECRET", "secret")
 	if _, err := LoadConfigE(); err == nil || (!strings.Contains(err.Error(), "at least 32") && !strings.Contains(err.Error(), "too weak")) {
 		t.Fatalf("weak explicit secret error=%v", err)
 	}
@@ -204,7 +205,7 @@ func TestWeakExplicitSecretFailsClearly(t *testing.T) {
 
 func TestGeneratedSecretIsNotLogged(t *testing.T) {
 	clearConfigSelection(t)
-	t.Setenv("TASKIER_DATA_DIR", t.TempDir())
+	t.Setenv("DYDAN_DATA_DIR", t.TempDir())
 	reader, writer, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -235,27 +236,27 @@ func TestUnavailableDataDirectoryFails(t *testing.T) {
 	if err := os.WriteFile(notDirectory, []byte("occupied"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TASKIER_DATA_DIR", notDirectory)
+	t.Setenv("DYDAN_DATA_DIR", notDirectory)
 	if _, err := LoadConfigE(); err == nil || !strings.Contains(err.Error(), "create data directory") {
 		t.Fatalf("unavailable data directory error=%v", err)
 	}
 }
 
-func TestLegacyDonetickDatabaseMigratesToDaydan(t *testing.T) {
+func TestLegacyDonetickDatabaseMigratesToDydan(t *testing.T) {
 	clearConfigSelection(t)
 	dataDir := t.TempDir()
 	legacyPath := filepath.Join(dataDir, "donetick.db")
 	if err := os.WriteFile(legacyPath, []byte("existing database"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
 	cfg, err := LoadConfigE()
 	if err != nil {
 		t.Fatal(err)
 	}
-	daydanPath := filepath.Join(dataDir, "dydan.db")
-	if cfg.Database.Path != daydanPath {
-		t.Fatalf("database path=%q want %q", cfg.Database.Path, daydanPath)
+	dydanPath := filepath.Join(dataDir, "dydan.db")
+	if cfg.Database.Path != dydanPath {
+		t.Fatalf("database path=%q want %q", cfg.Database.Path, dydanPath)
 	}
 	if _, err := os.Stat(legacyPath); err != nil {
 		t.Fatal("legacy donetick.db was removed")
@@ -275,7 +276,7 @@ func testConfigYAML(name string) string {
 	return "name: " + name + "\njwt:\n  secret: " + testConfigJWT + "\n"
 }
 
-func TestDayDanConfigDetected(t *testing.T) {
+func TestLegacyDayDanConfigDetected(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
 	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
@@ -290,7 +291,7 @@ func TestDayDanConfigDetected(t *testing.T) {
 	}
 }
 
-func TestLegacyTaskierConfigDetectedWhenDayDanAbsent(t *testing.T) {
+func TestLegacyTaskierConfigDetectedWhenLegacyDayDanAbsent(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
 	writeTestConfig(t, tempDir, "taskier.yml", testConfigYAML("from-taskier-yml"))
@@ -305,7 +306,7 @@ func TestLegacyTaskierConfigDetectedWhenDayDanAbsent(t *testing.T) {
 	}
 }
 
-func TestDayDanConfigWinsWhenBothExist(t *testing.T) {
+func TestLegacyDayDanConfigWinsOverLegacyTaskier(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
 	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
@@ -321,7 +322,7 @@ func TestDayDanConfigWinsWhenBothExist(t *testing.T) {
 	}
 }
 
-func TestExplicitConfigPathPrecedence(t *testing.T) {
+func TestLegacyExplicitConfigPathPrecedence(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
 	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
@@ -342,7 +343,7 @@ func TestZeroConfigStartupWithoutConfigFiles(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
 	dataDir := filepath.Join(tempDir, "data")
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
 	t.Chdir(tempDir)
 
 	cfg, err := LoadConfigE()
@@ -361,12 +362,12 @@ func TestConfigNameFileWithoutExtensionIsIgnored(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
 	dataDir := filepath.Join(tempDir, "data")
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
 	t.Chdir(tempDir)
 
 	// Regression test for the zero-config container: the runtime image places
-	// the "/daydan" binary in the working directory, and viper must not treat
-	// it as a config file (config name "daydan" with no extension) and fail
+	// the legacy "/daydan" binary alias in the working directory, and viper must
+	// not treat it as a config file (config name "daydan" with no extension) and fail
 	// parsing it as YAML.
 	writeTestConfig(t, tempDir, "daydan", string([]byte{0x00, 0x7f, 'n', 'o', 't', ' ', 'y', 'a', 'm', 'l'}))
 
@@ -409,7 +410,7 @@ func TestLegacyHostedCloudConfigKeysStillLoad(t *testing.T) {
 	}
 }
 
-func TestDayDanHostedCloudConfigAliasesOverrideLegacyKeys(t *testing.T) {
+func TestLegacyDayDanHostedCloudConfigAliasesOverrideOlderKeys(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
 	writeTestConfig(
@@ -445,7 +446,7 @@ func TestDayDanHostedCloudConfigAliasesOverrideLegacyKeys(t *testing.T) {
 func TestWebhookSigningSecretAutoCreatedAndStable(t *testing.T) {
 	clearConfigSelection(t)
 	dataDir := filepath.Join(t.TempDir(), "data")
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
 
 	first, err := LoadConfigE()
 	if err != nil {
@@ -478,18 +479,18 @@ func TestWebhookSigningSecretAutoCreatedAndStable(t *testing.T) {
 func TestWebhookSigningSecretRejectsWeakOrCollidingValues(t *testing.T) {
 	clearConfigSelection(t)
 	dataDir := filepath.Join(t.TempDir(), "data")
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
-	t.Setenv("DAYDAN_WEBHOOK_SIGNING_SECRET", "short")
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_WEBHOOK_SIGNING_SECRET", "short")
 
 	if _, err := LoadConfigE(); err == nil {
 		t.Fatal("16-char-minimum not enforced for webhook.signing_secret")
 	}
 
 	clearConfigSelection(t)
-	t.Setenv("TASKIER_DATA_DIR", dataDir)
+	t.Setenv("DYDAN_DATA_DIR", dataDir)
 	jwt := strings.Repeat("x", 40)
-	t.Setenv("DT_JWT_SECRET", jwt)
-	t.Setenv("DAYDAN_WEBHOOK_SIGNING_SECRET", jwt)
+	t.Setenv("DYDAN_JWT_SECRET", jwt)
+	t.Setenv("DYDAN_WEBHOOK_SIGNING_SECRET", jwt)
 	if _, err := LoadConfigE(); err == nil {
 		t.Fatal("webhook.signing_secret equal to jwt.secret must be rejected")
 	}
@@ -516,16 +517,16 @@ const webhookToleranceOK = 5 * time.Minute
 func TestStripeWebhookSecretFileLoading(t *testing.T) {
 	clearConfigSelection(t)
 	dir := t.TempDir()
-	t.Setenv("TASKIER_DATA_DIR", filepath.Join(dir, "data"))
+	t.Setenv("DYDAN_DATA_DIR", filepath.Join(dir, "data"))
 	secretFile := filepath.Join(dir, "whsec")
 	if err := os.WriteFile(secretFile, []byte("whsec_from_file_1234567890\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	configFile := filepath.Join(dir, "daydan.yaml")
+	configFile := filepath.Join(dir, "dydan.yaml")
 	if err := os.WriteFile(configFile, []byte("stripe:\n  webhook_secret_file: "+secretFile+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("DAYDAN_CONFIG_FILE", configFile)
+	t.Setenv("DYDAN_CONFIG_FILE", configFile)
 	cfg, err := LoadConfigE()
 	if err != nil {
 		t.Fatal(err)

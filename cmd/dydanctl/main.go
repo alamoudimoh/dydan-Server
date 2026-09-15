@@ -86,6 +86,7 @@ func run(args []string) error {
 var appVersion = func() string {
 	v := os.Getenv("DYDAN_VERSION")
 	if v == "" {
+		// Preserve the previous build environment contract.
 		v = os.Getenv("DAYDAN_VERSION")
 	}
 	if v == "" {
@@ -287,8 +288,8 @@ func cmdPrune(args []string) error {
 // ---------- helpers ----------
 
 func resolveDBPath(dataDir string) string {
-	candidates := []string{"dydan.db", "daydan.db", "taskier.db", "donetick.db"}
-	for _, c := range candidates {
+	canonicalAndLegacyDatabaseFilenames := []string{"dydan.db", "daydan.db", "taskier.db", "donetick.db"}
+	for _, c := range canonicalAndLegacyDatabaseFilenames {
 		p := filepath.Join(dataDir, c)
 		if info, err := os.Stat(p); err == nil && !info.IsDir() {
 			return p

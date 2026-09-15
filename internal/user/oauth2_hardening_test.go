@@ -78,7 +78,7 @@ func newOAuthHarness(t *testing.T, userInfo map[string]any, allowLegacy bool) *o
 	cfg.Jwt.SessionTime = time.Hour
 	cfg.Jwt.MaxRefresh = 24 * time.Hour
 	cfg.Jwt.Secret = "test-secret-that-is-long-enough-1234"
-	cfg.Server.PublicHost = "https://daydan.example.com"
+	cfg.Server.PublicHost = "https://dydan.example.com"
 	cfg.OAuth2Config = config.OAuth2Config{
 		ClientID:              "test-client",
 		ClientSecret:          "test-secret",
@@ -119,7 +119,7 @@ func (th *oauthTestHarness) post(t *testing.T, path string, body any) *httptest.
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(string(payload)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Forwarded-Proto", "https")
-	req.Header.Set("X-Forwarded-Host", "daydan.example.com")
+	req.Header.Set("X-Forwarded-Host", "dydan.example.com")
 	req.RemoteAddr = "192.0.2.1:1234"
 	w := httptest.NewRecorder()
 	th.router.ServeHTTP(w, req)
@@ -138,7 +138,7 @@ func (th *oauthTestHarness) seedUser(t *testing.T, email, username string) {
 	}
 }
 
-const sameOriginRedirect = "https://daydan.example.com/auth/oauth2"
+const sameOriginRedirect = "https://dydan.example.com/auth/oauth2"
 
 func TestOAuthStartIssuesStateAndChallenge(t *testing.T) {
 	th := newOAuthHarness(t, map[string]any{}, false)
@@ -194,7 +194,7 @@ func TestOAuthStartRejectsUnconfiguredForwardedOrigin(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oauth2/start", strings.NewReader(string(payload)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Forwarded-Proto", "https")
-	req.Header.Set("X-Forwarded-Host", "daydan.example.com")
+	req.Header.Set("X-Forwarded-Host", "dydan.example.com")
 	req.RemoteAddr = "203.0.113.10:1234"
 	w := httptest.NewRecorder()
 	th.router.ServeHTTP(w, req)

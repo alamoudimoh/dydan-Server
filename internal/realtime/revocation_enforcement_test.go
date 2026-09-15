@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/alamoudimoh/dydan-server/config"
-	daydanAuth "github.com/alamoudimoh/dydan-server/internal/auth"
+	dydanAuth "github.com/alamoudimoh/dydan-server/internal/auth"
 	"github.com/alamoudimoh/dydan-server/internal/authlimit"
 	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
@@ -28,7 +28,7 @@ type realtimeHarness struct {
 	router  *gin.Engine
 	db      *gorm.DB
 	repo    *uRepo.UserRepository
-	service *daydanAuth.TokenService
+	service *dydanAuth.TokenService
 	cfg     *config.Config
 	// mutatingRepo is a second server handle onto the same database. Test-side
 	// revocations commit through it, mirroring production where the replica
@@ -85,11 +85,11 @@ func newRealtimeHarness(t *testing.T, heartbeat time.Duration) *realtimeHarness 
 
 	tickets := NewTicketStore(cfg)
 	realtimeMW := NewAuthMiddleware(repo, nil, nil, cfg, tickets)
-	interactiveMW, err := daydanAuth.NewAuthMiddleware(cfg, repo, nil)
+	interactiveMW, err := dydanAuth.NewAuthMiddleware(cfg, repo, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tokenService := daydanAuth.NewTokenService(repo, interactiveMW, cfg)
+	tokenService := dydanAuth.NewTokenService(repo, interactiveMW, cfg)
 
 	rts := NewRealTimeService(cfg)
 	if err := rts.Start(context.Background()); err != nil {
@@ -110,7 +110,7 @@ func newRealtimeHarness(t *testing.T, heartbeat time.Duration) *realtimeHarness 
 	return &realtimeHarness{router: r, db: db, repo: repo, service: tokenService, cfg: cfg, mutatingRepo: mutatingRepo, realtimeMW: realtimeMW, interactive: interactiveMW, polling: polling, tickets: tickets}
 }
 
-func (h *realtimeHarness) login(t *testing.T, username string) (*uModel.User, *daydanAuth.TokenResponse) {
+func (h *realtimeHarness) login(t *testing.T, username string) (*uModel.User, *dydanAuth.TokenResponse) {
 	t.Helper()
 	var user uModel.User
 	err := h.db.Where("username = ?", username).First(&user).Error

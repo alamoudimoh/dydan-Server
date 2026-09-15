@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"fmt"
 	"net/url"
@@ -18,16 +19,19 @@ import (
 )
 
 // Integration test against a real S3-compatible backend (MinIO). Skipped
-// unless DAYDAN_TEST_S3_ENDPOINT is set, e.g.:
+// unless DYDAN_TEST_S3_ENDPOINT is set, e.g.:
 //
-//	DAYDAN_TEST_S3_ENDPOINT=127.0.0.1:9000 \
-//	DAYDAN_TEST_S3_ACCESS=minioadmin DAYDAN_TEST_S3_SECRET=minioadmin \
+//	DYDAN_TEST_S3_ENDPOINT=127.0.0.1:9000 \
+//	DYDAN_TEST_S3_ACCESS=minioadmin DYDAN_TEST_S3_SECRET=minioadmin \
 //	go test ./internal/storage/ -run TestS3Integration
 func newMinioStorage(t *testing.T) (*S3Storage, *s3.S3) {
 	t.Helper()
-	endpoint := os.Getenv("DAYDAN_TEST_S3_ENDPOINT")
+	endpoint := cmp.Or(
+		os.Getenv("DYDAN_TEST_S3_ENDPOINT"),
+		os.Getenv("DAYDAN_TEST_S3_ENDPOINT"),
+	)
 	if endpoint == "" {
-		t.Skip("DAYDAN_TEST_S3_ENDPOINT not set; skipping S3 integration test")
+		t.Skip("DYDAN_TEST_S3_ENDPOINT not set; skipping S3 integration test")
 	}
 	sess, err := session.NewSession(&aws.Config{
 		Region:           aws.String("us-east-1"),
@@ -58,7 +62,10 @@ func newMinioStorage(t *testing.T) (*S3Storage, *s3.S3) {
 
 func awsCredentialsFromEnv() *credentials.Credentials {
 	return credentials.NewStaticCredentials(
-		os.Getenv("DAYDAN_TEST_S3_ACCESS"), os.Getenv("DAYDAN_TEST_S3_SECRET"), "")
+		cmp.Or(os.Getenv("DYDAN_TEST_S3_ACCESS"), os.Getenv("DAYDAN_TEST_S3_ACCESS")),
+		cmp.Or(os.Getenv("DYDAN_TEST_S3_SECRET"), os.Getenv("DAYDAN_TEST_S3_SECRET")),
+		"",
+	)
 }
 
 // TestS3IntegrationObjectIdentityAndDeletion proves:

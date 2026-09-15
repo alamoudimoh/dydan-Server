@@ -1,4 +1,4 @@
-name: DayDan Server CI
+name: Dydan Server CI
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
       - name: Restore dependencies
         run: go mod download
       - name: Verify server
-        run: DAYDAN_SKIP_CONTAINER_SMOKE=true bash scripts/verify.sh
+        run: DYDAN_SKIP_CONTAINER_SMOKE=true bash scripts/verify.sh
 
   zero-config-container:
     name: Zero-config container persistence
@@ -43,7 +43,7 @@ jobs:
           path: frontend-code
       - name: Verify Compose and fresh/restart container behavior
         env:
-          DAYDAN_FRONTEND_CONTEXT: frontend-code
+          DYDAN_FRONTEND_CONTEXT: frontend-code
         run: bash scripts/verify-container.sh
 
   postgres-security:
@@ -56,13 +56,13 @@ jobs:
         # nothing persists beyond this run.
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: daydan
-          POSTGRES_PASSWORD: daydan
-          POSTGRES_DB: daydan_test
+          POSTGRES_USER: dydan
+          POSTGRES_PASSWORD: dydan
+          POSTGRES_DB: dydan_test
         ports:
           - 54329:5432
         options: >-
-          --health-cmd "pg_isready -U daydan -d daydan_test"
+          --health-cmd "pg_isready -U dydan -d dydan_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -76,7 +76,7 @@ jobs:
         run: go mod download
       - name: Run PostgreSQL security regression suite
         env:
-          DAYDAN_TEST_POSTGRES_DSN: host=localhost port=54329 user=daydan password=daydan dbname=daydan_test sslmode=disable
+          DYDAN_TEST_POSTGRES_DSN: host=localhost port=54329 user=dydan password=dydan dbname=dydan_test sslmode=disable
         # Focused job on top of (not duplicating) the core suite: only tests
         # that exercise PostgreSQL-specific semantics. Race detector included.
         run: |

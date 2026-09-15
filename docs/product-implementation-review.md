@@ -1,4 +1,4 @@
-# DayDan product implementation review
+# Dydan product implementation review
 
 **Last verified:** 2026-09-13
 **Repositories:**
@@ -10,7 +10,7 @@ that materially shape its documentation.
 
 ## Product and architecture
 
-DayDan is a self-hostable household coordination product. AppWeb supplies the
+Dydan is a self-hostable household coordination product. AppWeb supplies the
 browser/PWA and Capacitor mobile experience; Server supplies the API,
 authentication, persistence, migrations, realtime events, notifications,
 integrations, media storage, and deployment image.
@@ -69,20 +69,20 @@ general browser capability.
 ## Deployment and operations
 
 The recommended deployment is Docker Compose with the paired repositories.
-SQLite and `/data/daydan.db` are the zero-config path; PostgreSQL is optional.
+SQLite and `/data/dydan.db` are the zero-config path; PostgreSQL is optional.
 The image exposes port `2021`, serves the API and embedded client from one
 origin, persists uploads and secrets under `/data`, runs as an unprivileged
-runtime user, includes a healthcheck, and includes `daydanctl` for SQLite
+runtime user, includes a healthcheck, and includes `dydanctl` for SQLite
 backup/restore verification and retention.
 
 Representative evidence: `Dockerfile`, `docker-compose.yaml`,
 `docker-entrypoint.sh`, `internal/database/`, `migrations/`,
-`cmd/daydanctl/main.go`, `docs/backup-restore.md`, and
+`cmd/dydanctl/main.go`, `docs/backup-restore.md`, and
 `docs/reverse-proxy.md`.
 
 ## Evolution themes
 
-Recent merged history shows three material streams of DayDan work:
+Recent merged history shows three material streams of Dydan work:
 
 1. Figma-derived UX modernization across the shared shell, home/Today,
    tasks/calendar, household organization, execution surfaces, auth, and
@@ -118,7 +118,7 @@ reproducible releases.
 - Local AI and some capture capabilities depend on native platform support.
 - The notification center is a retained production route whose complete UX
   specification is still narrower than the rest of the modernized surfaces.
-- `daydanctl` does not replace PostgreSQL-native backup and restore tooling.
+- `dydanctl` does not replace PostgreSQL-native backup and restore tooling.
 
 ## Compatibility identifiers
 

@@ -93,7 +93,7 @@ realtime:
   allowed_origins:
     - "*"
 
-donetick_cloud:
+dydan_cloud:
   google_client_id: ""
   google_android_client_id: ""
   google_ios_client_id: ""

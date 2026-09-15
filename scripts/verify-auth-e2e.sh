@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Phase 3 authentication E2E against a disposable container.
 #
-# Builds the DayDan image from the current working tree, starts a throwaway
+# Builds the Dydan image from the current working tree, starts a throwaway
 # container on an ephemeral data directory, and exercises the maintained
 # authentication paths end-to-end:
 #
@@ -22,9 +22,9 @@ repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_dir"
 
 run_id="e2e-$$"
-image="daydan-auth-e2e:${run_id}"
-container="daydan-auth-e2e-${run_id}"
-data_dir=$(mktemp -d "${TMPDIR:-/tmp}/daydan-auth-e2e-${run_id}.XXXXXX")
+image="dydan-auth-e2e:${run_id}"
+container="dydan-auth-e2e-${run_id}"
+data_dir=$(mktemp -d "${TMPDIR:-/tmp}/dydan-auth-e2e-${run_id}.XXXXXX")
 
 pass=0
 fail=0
@@ -44,7 +44,7 @@ assert_eq() { # desc actual expected
 }
 
 docker build --quiet --tag "$image" \
-  --build-context "frontend=${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}" .
+  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../daydan-app}}" .
 
 docker run -d \
   --name "$container" \
@@ -52,7 +52,7 @@ docker run -d \
   --volume "$data_dir:/data" \
   --env DT_JWT_ACCESS_TOKEN_TIME=15m \
   --env DT_JWT_SESSION_TIME=24h \
-  --env DAYDAN_DISABLE_SIGNUP=false \
+  --env DYDAN_DISABLE_SIGNUP=false \
   "$image" >/dev/null
 
 port=""

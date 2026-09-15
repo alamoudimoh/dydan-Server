@@ -1,6 +1,6 @@
 # Bug Report
 
-Thank you for taking the time to report a bug in DayDan! Please fill out the information below to help us diagnose and fix the issue as quickly as possible.
+Thank you for taking the time to report a bug in Dydan! Please fill out the information below to help us diagnose and fix the issue as quickly as possible.
 
 ---
 
@@ -31,7 +31,7 @@ Thank you for taking the time to report a bug in DayDan! Please fill out the inf
 ---
 
 ## Environment
-- **DayDan Version:** (e.g., v1.2.3)
+- **Dydan Version:** (e.g., v1.2.3)
 - **Deployment Method:** (Self-hosted, Docker, Cloud, etc.)
 - **Operating System:** (e.g., Windows, macOS, Linux)
 - **Browser & Version:** (if applicable, e.g., Chrome 110.0, Firefox 99.0)
@@ -50,4 +50,3 @@ Thank you for taking the time to report a bug in DayDan! Please fill out the inf
 - [ ] I have included logs or screenshots where applicable.
 
 Thank you for reporting this issue!
-

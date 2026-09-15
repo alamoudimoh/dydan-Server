@@ -37,8 +37,8 @@ func TestSyncOIDCRoleRefusesToElevateChildAccounts(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	cfg.OAuth2Config.AdminGroups = []string{"daydan-admins"}
-	cfg.OAuth2Config.ManagerGroups = []string{"daydan-managers"}
+	cfg.OAuth2Config.AdminGroups = []string{"dydan-admins"}
+	cfg.OAuth2Config.ManagerGroups = []string{"dydan-managers"}
 	h := &Handler{
 		userRepo:     uRepo.NewUserRepository(db, cfg),
 		circleRepo:   cRepo.NewCircleRepository(db),
@@ -51,8 +51,8 @@ func TestSyncOIDCRoleRefusesToElevateChildAccounts(t *testing.T) {
 		groups []string
 		name   string
 	}{
-		{[]string{"daydan-admins"}, string(cModel.UserRoleAdmin)},
-		{[]string{"daydan-managers"}, string(cModel.UserRoleManager)},
+		{[]string{"dydan-admins"}, string(cModel.UserRoleAdmin)},
+		{[]string{"dydan-managers"}, string(cModel.UserRoleManager)},
 	} {
 		h.syncOIDCRole(ctx, 2, 1, role.groups)
 		var membership cModel.UserCircle
@@ -72,7 +72,7 @@ func TestSyncOIDCRoleRefusesToElevateChildAccounts(t *testing.T) {
 	if err := db.Create(&cModel.UserCircle{UserID: 3, CircleID: 1, Role: cModel.UserRoleMember, IsActive: true}).Error; err != nil {
 		t.Fatal(err)
 	}
-	h.syncOIDCRole(ctx, 3, 1, []string{"daydan-admins"})
+	h.syncOIDCRole(ctx, 3, 1, []string{"dydan-admins"})
 	var membership cModel.UserCircle
 	if err := db.Where("user_id = ? AND circle_id = ?", 3, 1).First(&membership).Error; err != nil {
 		t.Fatal(err)

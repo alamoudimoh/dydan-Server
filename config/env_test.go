@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func clearDayDanEnvironment(t *testing.T) {
+func clearConfigEnvironment(t *testing.T) {
 	t.Helper()
 	for _, name := range []string{
 		"DYDAN_ENV", "DYDAN_CONFIG_FILE", "DYDAN_DATA_DIR", "DYDAN_JWT_SECRET", "DYDAN_SQLITE_PATH",
@@ -31,18 +31,18 @@ func clearDayDanEnvironment(t *testing.T) {
 }
 
 func TestDydanEnvironmentPrecedence(t *testing.T) {
-	clearDayDanEnvironment(t)
+	clearConfigEnvironment(t)
 	for _, tc := range []struct {
 		name string
 		vars []string
 	}{
-		{"Dydan over DayDan", []string{"DYDAN_DATA_DIR", "DAYDAN_DATA_DIR", "TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
-		{"DayDan over Taskier", []string{"DAYDAN_DATA_DIR", "TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
-		{"Taskier over Donetick", []string{"TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
-		{"Donetick alone", []string{"DONETICK_DATA_DIR"}},
+		{"Dydan over legacy DayDan", []string{"DYDAN_DATA_DIR", "DAYDAN_DATA_DIR", "TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
+		{"legacy DayDan over Taskier", []string{"DAYDAN_DATA_DIR", "TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
+		{"legacy Taskier over Donetick", []string{"TASKIER_DATA_DIR", "DONETICK_DATA_DIR"}},
+		{"legacy Donetick alone", []string{"DONETICK_DATA_DIR"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			clearDayDanEnvironment(t)
+			clearConfigEnvironment(t)
 			for index, name := range tc.vars {
 				t.Setenv(name, filepath.Join(t.TempDir(), string(rune('a'+index))))
 			}
@@ -56,8 +56,8 @@ func TestDydanEnvironmentPrecedence(t *testing.T) {
 	}
 }
 
-func TestDayDanEnvironmentPrecedenceOverLegacy(t *testing.T) {
-	clearDayDanEnvironment(t)
+func TestLegacyDayDanEnvironmentPrecedenceOverOlderAliases(t *testing.T) {
+	clearConfigEnvironment(t)
 	dataDir := filepath.Join(t.TempDir(), "daydan-data")
 	t.Setenv("DAYDAN_DATA_DIR", dataDir)
 	t.Setenv("TASKIER_DATA_DIR", filepath.Join(t.TempDir(), "taskier-data"))
@@ -77,7 +77,7 @@ func TestDayDanEnvironmentPrecedenceOverLegacy(t *testing.T) {
 }
 
 func TestLegacyTaskierEnvironmentStillWorks(t *testing.T) {
-	clearDayDanEnvironment(t)
+	clearConfigEnvironment(t)
 	dataDir := filepath.Join(t.TempDir(), "legacy-data")
 	t.Setenv("TASKIER_DATA_DIR", dataDir)
 	t.Setenv("DT_JWT_SECRET", "2Bz7nx2zwX0H2j31b3g48zxBCQfhf4pHkYb1EcE01Z8=")
@@ -94,19 +94,19 @@ func TestLegacyTaskierEnvironmentStillWorks(t *testing.T) {
 	}
 }
 
-func TestDayDanConfigFilePrecedenceOverLegacy(t *testing.T) {
-	clearDayDanEnvironment(t)
+func TestLegacyDayDanConfigFilePrecedenceOverOlderAlias(t *testing.T) {
+	clearConfigEnvironment(t)
 	tempDir := t.TempDir()
-	daydanPath := filepath.Join(tempDir, "daydan.yaml")
-	taskierPath := filepath.Join(tempDir, "taskier.yaml")
-	if err := os.WriteFile(daydanPath, []byte(testConfigYAML("from-daydan-env")), 0o600); err != nil {
+	legacyDaydanPath := filepath.Join(tempDir, "daydan.yaml")
+	legacyTaskierPath := filepath.Join(tempDir, "taskier.yaml")
+	if err := os.WriteFile(legacyDaydanPath, []byte(testConfigYAML("from-daydan-env")), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(taskierPath, []byte(testConfigYAML("from-taskier-env")), 0o600); err != nil {
+	if err := os.WriteFile(legacyTaskierPath, []byte(testConfigYAML("from-taskier-env")), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("DAYDAN_CONFIG_FILE", daydanPath)
-	t.Setenv("TASKIER_CONFIG_FILE", taskierPath)
+	t.Setenv("DAYDAN_CONFIG_FILE", legacyDaydanPath)
+	t.Setenv("TASKIER_CONFIG_FILE", legacyTaskierPath)
 
 	cfg, err := LoadConfigE()
 	if err != nil {
@@ -117,8 +117,8 @@ func TestDayDanConfigFilePrecedenceOverLegacy(t *testing.T) {
 	}
 }
 
-func TestDonetickEnvironmentFallbackForTelegramToken(t *testing.T) {
-	clearDayDanEnvironment(t)
+func TestLegacyDonetickEnvironmentFallbackForTelegramToken(t *testing.T) {
+	clearConfigEnvironment(t)
 	tempDir := t.TempDir()
 	t.Chdir(tempDir)
 	t.Setenv("DONETICK_TELEGRAM_TOKEN", "legacy-telegram-token")
@@ -132,8 +132,8 @@ func TestDonetickEnvironmentFallbackForTelegramToken(t *testing.T) {
 	}
 }
 
-func TestDayDanTelegramTokenPrecedenceOverDonetick(t *testing.T) {
-	clearDayDanEnvironment(t)
+func TestLegacyDayDanTelegramTokenPrecedenceOverLegacyDonetick(t *testing.T) {
+	clearConfigEnvironment(t)
 	tempDir := t.TempDir()
 	t.Chdir(tempDir)
 	t.Setenv("DAYDAN_TELEGRAM_TOKEN", "daydan-telegram-token")
@@ -148,8 +148,8 @@ func TestDayDanTelegramTokenPrecedenceOverDonetick(t *testing.T) {
 	}
 }
 
-func TestDayDanAuthConfigurationEnvironmentVariables(t *testing.T) {
-	clearDayDanEnvironment(t)
+func TestLegacyDayDanAuthConfigurationEnvironmentVariables(t *testing.T) {
+	clearConfigEnvironment(t)
 	t.Setenv("DAYDAN_SINGLE_CIRCLE_INSTANCE", "true")
 	t.Setenv("DAYDAN_DISABLE_PASSWORD_AUTH", "true")
 	t.Setenv("DAYDAN_OAUTH2_ADMIN_GROUPS", "admins, owners")
@@ -174,7 +174,7 @@ func TestDayDanAuthConfigurationEnvironmentVariables(t *testing.T) {
 }
 
 func TestLegacyAuthConfigurationEnvironmentVariablesStillWork(t *testing.T) {
-	clearDayDanEnvironment(t)
+	clearConfigEnvironment(t)
 	t.Setenv("DT_SINGLE_CIRCLE_INSTANCE", "true")
 	t.Setenv("DT_DISABLE_PASSWORD_AUTH", "true")
 	t.Setenv("DT_OAUTH2_ADMIN_GROUPS", "admins")

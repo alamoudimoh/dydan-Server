@@ -48,7 +48,7 @@ func NewHandler(config *config.Config) *Handler {
 //	@securityDefinitions.apikey	APIKeyAuth
 //	@in							header
 //	@name						secretkey
-//	@description				DayDan issued apikey
+//	@description				Dydan issued apikey
 
 func Routes(router *gin.Engine, h *Handler) {
 	if h.ServeSwagger {

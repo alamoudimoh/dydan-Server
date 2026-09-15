@@ -49,7 +49,7 @@ jobs:
             NEW_COMMITS=$(git rev-list "${LAST_RELEASE}..HEAD" --count)
             echo "New backend commits since ${LAST_RELEASE}: ${NEW_COMMITS}"
 
-            # Check the authoritative DayDan frontend repo (daydan-app) for new
+            # Check the authoritative Dydan frontend repository for new
             # commits since last release was published. Use the GitHub release
             # publish date (not the commit date, which is fixed and causes the
             # workflow to fire every day even with no new commits).
@@ -98,12 +98,12 @@ jobs:
           echo "should_release=true" >> "$GITHUB_OUTPUT"
 
           # Beta is moving-edge, but it must still be traceable: resolve the
-          # daydan-app develop HEAD exactly once here and pass the immutable
+          # Dydan AppWeb develop HEAD exactly once here and pass the immutable
           # SHA to go-release.yml so the branch cannot move between
           # provenance resolution and the build.
           FRONTEND_SHA=$(git ls-remote "https://github.com/${{ github.repository_owner }}/daydan-app.git" refs/heads/develop | awk '{print $1}')
           if [ -z "$FRONTEND_SHA" ]; then
-            echo "::error::Could not resolve daydan-app@develop HEAD."
+            echo "::error::Could not resolve the Dydan AppWeb develop HEAD."
             exit 1
           fi
           echo "Pinning frontend commit: $FRONTEND_SHA"

@@ -210,7 +210,7 @@ func (i *IdentityProvider) GetUserInfo(ctx context.Context, accessToken string) 
 }
 
 // isFetchableImageReference accepts only absolute HTTP(S) URLs without
-// embedded credentials. DayDan deliberately does NOT probe picture URLs
+// embedded credentials. Dydan deliberately does NOT probe picture URLs
 // server-side: the claim value is attacker- or IdP-controlled input, and a
 // reachability GET with default redirects was an SSRF primitive against
 // internal infrastructure. Clients render the image from their own network.

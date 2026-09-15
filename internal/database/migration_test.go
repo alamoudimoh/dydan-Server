@@ -16,7 +16,7 @@ import (
 )
 
 func TestMigrationScriptsSQLite(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "test_donetick.db")
+	dbPath := filepath.Join(t.TempDir(), "test_dydan.db")
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)

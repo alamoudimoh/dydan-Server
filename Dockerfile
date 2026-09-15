@@ -4,7 +4,7 @@
 # node under QEMU when building multi-arch images.
 # The `frontend` named build context must point at the Dydan AppWeb repository
 # checkout (docker-compose.yaml wires it up automatically; plain docker users
-# can pass --build-context frontend=/path/to/daydan-app).
+# can pass --build-context frontend=/path/to/dydan-app).
 FROM --platform=$BUILDPLATFORM node:22-slim AS frontend-builder
 
 WORKDIR /web
@@ -83,10 +83,12 @@ RUN addgroup -g 1000 dydan && adduser -D -H -u 1000 -G dydan dydan
 
 # Copy the self-contained binary. The frontend is embedded at build time.
 COPY --from=builder /dydan /dydan
+# Legacy binary paths remain available for existing container integrations.
 RUN ln -sf /dydan /daydan && ln -sf /dydan /donetick
 
 # Operator toolkit (backup / verify / restore / prune).
 COPY --from=builder /dydanctl /usr/local/bin/dydanctl
+# Retain the previous operator-tool path for existing automation.
 RUN ln -sf /usr/local/bin/dydanctl /usr/local/bin/daydanctl
 
 COPY docker-entrypoint.sh /entrypoint.sh

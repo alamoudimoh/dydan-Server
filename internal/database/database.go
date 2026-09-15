@@ -112,7 +112,7 @@ func NewDatabase(cfg *config.Config) (*gorm.DB, error) {
 // Pool limits: without an explicit ceiling, database/sql opens unbounded
 // connections under load — on PostgreSQL that can exhaust the server's
 // max_connections and take the whole deployment down. The defaults are sized
-// for DayDan's family-scale deployments; operators can override every value
+// for Dydan's family-scale deployments; operators can override every value
 // via config (database.max_open_conns etc.). Zero/negative values in config
 // fall back to the defaults rather than silently disabling the cap.
 const (

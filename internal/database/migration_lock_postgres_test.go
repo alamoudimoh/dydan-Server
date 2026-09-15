@@ -1,6 +1,7 @@
 package database
 
 import (
+	"cmp"
 	"context"
 	"os"
 	"sync/atomic"
@@ -13,9 +14,12 @@ import (
 
 func testPostgresDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := os.Getenv("DAYDAN_TEST_POSTGRES_DSN")
+	dsn := cmp.Or(
+		os.Getenv("DYDAN_TEST_POSTGRES_DSN"),
+		os.Getenv("DAYDAN_TEST_POSTGRES_DSN"),
+	)
 	if dsn == "" {
-		t.Skip("DAYDAN_TEST_POSTGRES_DSN not set; skipping live PostgreSQL coverage")
+		t.Skip("DYDAN_TEST_POSTGRES_DSN not set; skipping live PostgreSQL coverage")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {

@@ -55,7 +55,7 @@ type ChoreData struct {
 	Note        string         `json:"note"`
 }
 
-// EventsProducer delivers DayDan-generated webhooks to external consumer
+// EventsProducer delivers Dydan-generated webhooks to external consumer
 // URLs.
 //
 // Architecture (Phase 8):
@@ -169,7 +169,7 @@ func NewEventsProducer(cfg *config.Config) *EventsProducer {
 		// Config resolution normally guarantees a secret; an empty value in
 		// unit tests must still produce deterministic (unsigned-safe)
 		// behavior without panicking.
-		signingSecret = "daydan-webhook-unsigned-dev-fallback"
+		signingSecret = "dydan-webhook-unsigned-dev-fallback"
 	}
 	queueSize := cfg.WebhookConfig.QueueSize
 	if queueSize <= 0 {

@@ -63,7 +63,7 @@ func TestRecoveryResponseDoesNotRevealAccountOrProvider(t *testing.T) {
 	sender := &recoverySender{sent: make(chan string, 1)}
 	router, db := recoveryHarness(t, sender)
 	users := []uModel.User{
-		{Username: "password-user", Email: "password@example.com", Provider: uModel.AuthProviderDayDan},
+		{Username: "password-user", Email: "password@example.com", Provider: uModel.AuthProviderDydan},
 		{Username: "oidc-user", Email: "oidc@example.com", Provider: uModel.AuthProviderOAuth2},
 	}
 	if err := db.Create(&users).Error; err != nil {

@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	dydanDBFilename    = "dydan.db"
-	daydanDBFilename   = "daydan.db"
-	taskierDBFilename  = "taskier.db"
-	donetickDBFilename = "donetick.db"
+	dydanDBFilename          = "dydan.db"
+	legacyDaydanDBFilename   = "daydan.db"
+	legacyTaskierDBFilename  = "taskier.db"
+	legacyDonetickDBFilename = "donetick.db"
 )
 
 func resolveDefaultSQLitePath(dataDir string, useLegacyWorkingDirectory bool) (string, error) {
@@ -23,12 +23,12 @@ func resolveDefaultSQLitePath(dataDir string, useLegacyWorkingDirectory bool) (s
 	}
 
 	legacyCandidates := []string{
-		filepath.Join(dataDir, daydanDBFilename),
-		filepath.Join(dataDir, taskierDBFilename),
-		filepath.Join(dataDir, donetickDBFilename),
+		filepath.Join(dataDir, legacyDaydanDBFilename),
+		filepath.Join(dataDir, legacyTaskierDBFilename),
+		filepath.Join(dataDir, legacyDonetickDBFilename),
 	}
 	if useLegacyWorkingDirectory {
-		legacyCandidates = append(legacyCandidates, donetickDBFilename)
+		legacyCandidates = append(legacyCandidates, legacyDonetickDBFilename)
 	}
 
 	for _, legacyPath := range legacyCandidates {

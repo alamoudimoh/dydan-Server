@@ -12,7 +12,7 @@ import (
 )
 
 // SMTP2GoSender sends transactional email via the SMTP2Go HTTP API instead
-// of SMTP. Used when email.provider: smtp2go is set (e.g. donetick.com prod),
+// of SMTP. Used when email.provider: smtp2go is set (including the legacy hosted domain),
 // where template IDs are pre-created in the SMTP2Go dashboard.
 type SMTP2GoSender struct {
 	apiKey           string

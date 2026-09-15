@@ -18,9 +18,9 @@
 #   type: postgres
 #   host: postgres
 #   port: 5432
-#   user: taskier
+#   user: dydan
 #   password: use-a-secret-manager
-#   name: taskier
+#   name: dydan
 #   # Connection-pool bounds (defaults: 25 open / 5 idle, 1h lifetime,
 #   # 10m idle timeout). Size max_open_conns below your PostgreSQL
 #   # max_connections when running multiple replicas.

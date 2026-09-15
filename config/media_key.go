@@ -19,7 +19,7 @@ func DeriveMediaKeyHex(jwtSecret []byte) (string, error) {
 	return hex.EncodeToString(derived), nil
 }
 
-// DeriveLegacyMediaKeyHex returns the DayDan-derived key used only to verify
+// DeriveLegacyMediaKeyHex returns the legacy DayDan-derived key used only to verify
 // still-valid URLs minted before the Dydan identity migration.
 func DeriveLegacyMediaKeyHex(jwtSecret []byte) (string, error) {
 	derived, err := deriveLegacyMediaSigningKey(jwtSecret)

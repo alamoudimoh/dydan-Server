@@ -6,8 +6,8 @@ import "testing"
 // synchronous mode so concurrent HTTP handlers and background schedulers do
 // not fail with "database is locked" and crashes cannot tear the DB.
 func TestSQLiteDSNAppendsDurabilityPragmas(t *testing.T) {
-	got := sqliteDSN("data/daydan.db")
-	want := "data/daydan.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)"
+	got := sqliteDSN("data/dydan.db")
+	want := "data/dydan.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)"
 	if got != want {
 		t.Fatalf("sqliteDSN() = %q, want %q", got, want)
 	}

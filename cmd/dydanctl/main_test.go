@@ -13,7 +13,7 @@ import (
 func seedDataDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	gdb, err := gorm.Open(sqlite.Open(filepath.Join(dir, "daydan.db")), &gorm.Config{})
+	gdb, err := gorm.Open(sqlite.Open(filepath.Join(dir, "dydan.db")), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestBackupVerifyRestoreRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.Integrity != "ok" || m.DatabaseFile != "daydan.db" {
+	if m.Integrity != "ok" || m.DatabaseFile != "dydan.db" {
 		t.Fatalf("bad manifest: %+v", m)
 	}
 	var hasSecret, hasUpload bool
@@ -81,7 +81,7 @@ func TestBackupVerifyRestoreRoundtrip(t *testing.T) {
 	if err := run([]string{"restore", "--backup", backupDir, "--data-dir", restoreDir}); err != nil {
 		t.Fatalf("restore failed: %v", err)
 	}
-	integrity, err := integrityCheck(filepath.Join(restoreDir, "daydan.db"))
+	integrity, err := integrityCheck(filepath.Join(restoreDir, "dydan.db"))
 	if err != nil || integrity != "ok" {
 		t.Fatalf("restored db integrity: %q (%v)", integrity, err)
 	}
@@ -111,7 +111,7 @@ func TestVerifyRejectsTamperedBackup(t *testing.T) {
 	dir := backupDir[0]
 
 	// Tamper with the database snapshot.
-	dbPath := filepath.Join(dir, "daydan.db")
+	dbPath := filepath.Join(dir, "dydan.db")
 	if err := os.WriteFile(dbPath, []byte("not a database"), 0o600); err != nil {
 		t.Fatal(err)
 	}

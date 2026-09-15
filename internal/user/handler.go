@@ -856,7 +856,7 @@ func (h *Handler) thirdPartyAuthCallback(c *gin.Context) {
 
 		// Identity hardening: the IdP's email assertion is only trusted for
 		// account linking when explicitly verified. An unverified external
-		// address must never grant access to an existing DayDan account.
+		// address must never grant access to an existing Dydan account.
 		if claims.EmailVerified != nil && !*claims.EmailVerified {
 			logger.Warnw("account.handler.thirdPartyAuthCallback (oauth2) rejected unverified email claim")
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -1073,7 +1073,7 @@ func (h *Handler) resetPassword(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		user, err := h.userRepo.FindByEmail(ctx, normalizedEmail)
-		if err != nil || user.Provider != uModel.AuthProviderDayDan {
+		if err != nil || user.Provider != uModel.AuthProviderDydan {
 			return
 		}
 		token, err := auth.GenerateEmailResetToken(ctx)
@@ -1764,7 +1764,7 @@ func (h *Handler) createChildUser(c *gin.Context) {
 		CircleID:     currentUser.CircleID,
 		ParentUserID: &currentUser.ID,
 		UserType:     uModel.UserTypeChild,
-		Provider:     uModel.AuthProviderDayDan,
+		Provider:     uModel.AuthProviderDydan,
 		CreatedAt:    time.Now().UTC(),
 		UpdatedAt:    time.Now().UTC(),
 	}

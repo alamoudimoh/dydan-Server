@@ -40,14 +40,14 @@ Requirements: Docker with Compose v2.17 or newer.
 Clone the paired repositories side by side:
 
 ```bash
-git clone https://github.com/alamoudimoh/DayDan-AppWeb.git daydan-app
-git clone https://github.com/alamoudimoh/DayDan-Server.git daydan-server
-cd daydan-server
-docker compose up -d --build
+git clone https://github.com/alamoudimoh/DayDan-AppWeb.git dydan-app
+git clone https://github.com/alamoudimoh/DayDan-Server.git dydan-server
+cd dydan-server
+DYDAN_FRONTEND_CONTEXT=../dydan-app docker compose up -d --build
 ```
 
 The default deployment uses SQLite, stores persistent state in the
-`daydan-data` volume for compatibility, serves the API and embedded client on port `2021`, and
+legacy `daydan-data` volume for persisted-data compatibility, serves the API and embedded client on port `2021`, and
 requires no configuration file, database selection, or manually generated JWT
 secret. The frontend build uses same-origin `/api` requests.
 
@@ -79,7 +79,7 @@ To build the full application image locally with the paired client, use the
 production Dockerfile and its named frontend context:
 
 ```bash
-docker build --build-context frontend=../daydan-app -t dydan .
+docker build --build-context frontend=../dydan-app -t dydan .
 ```
 
 `Dockerfile.dev` is a legacy artifact-oriented development image. It expects a
@@ -89,8 +89,8 @@ full-application workflow. If you specifically need that image, build the
 artifact first and then use the Dockerfile:
 
 ```bash
-go build -o donetick .
-docker build -f Dockerfile.dev -t daydan-dev .
+go build -o donetick . # legacy Dockerfile.dev input name
+docker build -f Dockerfile.dev -t dydan-dev .
 ```
 
 The production image is built by
