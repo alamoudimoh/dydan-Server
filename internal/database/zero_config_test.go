@@ -13,9 +13,6 @@ func TestDefaultSQLiteMigrationAndRestartPreserveData(t *testing.T) {
 	dataDir := t.TempDir()
 	for _, name := range []string{
 		"DYDAN_ENV", "DYDAN_CONFIG_FILE", "DYDAN_DATA_DIR", "DYDAN_JWT_SECRET", "DYDAN_SQLITE_PATH",
-		"DAYDAN_ENV", "DAYDAN_CONFIG_FILE", "DAYDAN_DATA_DIR", "DAYDAN_JWT_SECRET", "DAYDAN_SQLITE_PATH",
-		"DT_ENV", "DT_CONFIG_FILE", "TASKIER_CONFIG_FILE", "DT_JWT_SECRET",
-		"TASKIER_JWT_SECRET", "DT_SQLITE_PATH", "TASKIER_SQLITE_PATH",
 	} {
 		t.Setenv(name, "")
 	}

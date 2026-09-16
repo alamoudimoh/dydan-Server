@@ -70,25 +70,20 @@ func TestSignatureJSONFormattingSensitivity(t *testing.T) {
 }
 
 func TestDeliveredRequestCarriesVerifiableSignature(t *testing.T) {
-	var sigHeader, tsHeader, legacySigHeader, legacyTSHeader string
+	var sigHeader, tsHeader string
 	var body []byte
 	serverURL, closeSrv := startTestServer(t, func(buf []byte, h map[string]string) {
 		body = buf
 		sigHeader = h["X-Dydan-Signature"]
 		tsHeader = h["X-Dydan-Timestamp"]
-		legacySigHeader = h["X-Daydan-Signature"]
-		legacyTSHeader = h["X-Daydan-Timestamp"]
 	})
 	defer closeSrv()
 
 	p := newTestProducer(t)
 	p.processEvent(Event{Type: EventTypeThingChanged, URL: serverURL, Data: map[string]any{"x": 1}})
 
-	if sigHeader == "" || tsHeader == "" || legacySigHeader == "" || legacyTSHeader == "" {
+	if sigHeader == "" || tsHeader == "" {
 		t.Fatal("delivery missing signature/timestamp headers")
-	}
-	if sigHeader != legacySigHeader || tsHeader != legacyTSHeader {
-		t.Fatal("canonical and legacy webhook headers must carry identical values")
 	}
 	tsSecs := parseInt64(t, tsHeader)
 	delivered := time.Unix(tsSecs, 0)

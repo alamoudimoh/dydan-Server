@@ -27,7 +27,4 @@ func TestUpdateUserPasswordBlockedOnHostedDydanService(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "hosted Dydan service") {
 		t.Fatalf("expected hosted Dydan service message, got %s", w.Body.String())
 	}
-	if strings.Contains(w.Body.String(), "donetick.com") {
-		t.Fatalf("expected no donetick.com in user-facing error, got %s", w.Body.String())
-	}
 }

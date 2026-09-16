@@ -16,14 +16,10 @@ import (
 // mediaTestConfig builds a config as LoadConfigE would produce it after
 // resolveMediaSigningKey: Storage.MediaSecret populated, legacy acceptance
 // configurable.
-func mediaTestConfig(jwtSecret, mediaSecret string, allowLegacy bool) *config.Config {
+func mediaTestConfig(jwtSecret, mediaSecret string, _ bool) *config.Config {
 	return &config.Config{
-		Jwt: config.JwtConfig{Secret: jwtSecret},
-		Storage: config.StorageConfig{
-			MediaSecret:                mediaSecret,
-			SignedURLTTL:               config.MaxSignedURLTTL,
-			AllowLegacyMediaSignatures: allowLegacy,
-		},
+		Jwt:     config.JwtConfig{Secret: jwtSecret},
+		Storage: config.StorageConfig{MediaSecret: mediaSecret, SignedURLTTL: config.MaxSignedURLTTL},
 	}
 }
 
@@ -55,7 +51,7 @@ func TestMediaSigningKeyIsDomainSeparatedFromJWTKey(t *testing.T) {
 	}
 }
 
-func TestDydanDerivedMediaKeyAcceptsValidLegacyDaydanURLs(t *testing.T) {
+func TestDydanDerivedMediaKeySignsURLs(t *testing.T) {
 	const jwtSecret = "dydan-media-transition-secret-0123456789"
 	cfg := mediaTestConfig(jwtSecret, "", true)
 	if err := config.ValidateMediaKeyForTest(cfg); err != nil {
@@ -71,47 +67,8 @@ func TestDydanDerivedMediaKeyAcceptsValidLegacyDaydanURLs(t *testing.T) {
 		t.Fatal("canonical Dydan URL did not verify")
 	}
 
-	legacy := &URLSignerLocal{key: []byte(cfg.Storage.LegacyMediaSecret), ttl: time.Hour}
-	legacyURL, err := legacy.Sign("users/7/photo.png")
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacyPath, legacyQuery := parseSignedURL(t, legacyURL)
-	if !canonical.IsValid(legacyPath.Path, legacyQuery) {
-		t.Fatal("valid legacy DayDan URL did not verify")
-	}
-	if canonical.IsValid("users/7/tampered.png", canonicalQuery) || canonical.IsValid("users/7/tampered.png", legacyQuery) {
-		t.Fatal("tampered canonical or legacy URL verified")
-	}
-}
-
-// TestJWTSignedMediaURLsRequireLegacyWindow proves the pre-phase-6 scheme
-// (HMAC with the raw JWT secret) is rejected once the flag is off.
-func TestJWTSignedMediaURLsRequireLegacyWindow(t *testing.T) {
-	const jwtSecret = "legacy-jwt-secret"
-	const mediaSecret = "independent-media-secret-0123456789abcdef"
-
-	// Craft a URL signed exactly like phase <= 5 did: raw JWT-secret HMAC.
-	legacySigner := &URLSignerLocal{key: []byte(jwtSecret), ttl: time.Hour}
-	signed, err := legacySigner.Sign("users/9/photo.png")
-	if err != nil {
-		t.Fatal(err)
-	}
-	parsed, query := parseSignedURL(t, signed)
-
-	rejecting := NewURLSignerLocal(mediaTestConfig(jwtSecret, mediaSecret, false))
-	if rejecting.IsValid(parsed.Path, query) {
-		t.Fatal("JWT-key-signed media URL must be rejected when legacy window is disabled")
-	}
-	accepting := NewURLSignerLocal(mediaTestConfig(jwtSecret, mediaSecret, true))
-	if !accepting.IsValid(parsed.Path, query) {
-		t.Fatal("legacy-window signer must still accept pre-upgrade URLs")
-	}
-	// The bounded window must not accept legacy signatures on paths that were
-	// never signed: acceptance is per-URL, not a general bypass.
-	parsed2, query2 := parseSignedURL(t, signed)
-	if accepting.IsValid(strings.Replace(parsed2.Path, "photo", "other", 1), query2) {
-		t.Fatal("legacy window must not validate tampered paths")
+	if canonical.IsValid("users/7/tampered.png", canonicalQuery) {
+		t.Fatal("tampered URL verified")
 	}
 }
 

@@ -14,7 +14,6 @@ login_response="${TMPDIR:-/tmp}/dydan-login-response-${run_id}.json"
 
 cleanup() {
   docker rm -f "$container" >/dev/null 2>&1 || true
-  docker rm -f "${container}-legacy" >/dev/null 2>&1 || true
   docker image rm "$image" >/dev/null 2>&1 || true
   rm -rf -- "$data_dir"
   rm -f -- "$compose_output" "$signup_response" "$login_response"
@@ -26,42 +25,13 @@ assert_compose_config() {
   grep -Eq '^  dydan:$' "$compose_output"
   grep -Eq 'container_name: dydan' "$compose_output"
   grep -Eq 'source: dydan-data' "$compose_output"
-  grep -Fq 'name: daydan-data' "$compose_output"
-  grep -Fq 'name: ${DYDAN_DOCKER_VOLUME:-${DAYDAN_DOCKER_VOLUME:-${TASKIER_DOCKER_VOLUME:-daydan-data}}}' docker-compose.yaml
-  local override_output
-  override_output=$(TASKIER_DOCKER_VOLUME=taskier-data docker compose config)
-  grep -Eq 'name: taskier-data' <<<"$override_output"
+  grep -Fq 'name: dydan-data' "$compose_output"
+  grep -Fq 'name: ${DYDAN_DOCKER_VOLUME:-dydan-data}' docker-compose.yaml
 }
 
 assert_image_runtime() {
   docker run --rm --entrypoint sh "$image" -c \
-    'test -x /dydan && test -L /daydan && test "$(readlink /daydan)" = "/dydan" && test -L /donetick'
-}
-
-assert_legacy_database_migration() {
-  local legacy_data_dir legacy_container
-  legacy_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/dydan-legacy-db-${run_id}.XXXXXX")
-  legacy_container="${container}-legacy"
-  printf 'legacy-sqlite-data' >"$legacy_data_dir/taskier.db"
-
-  docker run -d \
-    --name "$legacy_container" \
-    --volume "$legacy_data_dir:/data" \
-    "$image" >/dev/null
-
-  for _ in $(seq 1 60); do
-    if [[ -s "$legacy_data_dir/dydan.db" ]]; then
-      break
-    fi
-    sleep 1
-  done
-
-  test -s "$legacy_data_dir/taskier.db"
-  test -s "$legacy_data_dir/dydan.db"
-  cmp -s "$legacy_data_dir/taskier.db" "$legacy_data_dir/dydan.db"
-
-  docker rm -f "$legacy_container" >/dev/null
-  rm -rf -- "$legacy_data_dir"
+    'test -x /dydan'
 }
 
 # The runtime process must never run as root: the entrypoint prepares /data as
@@ -121,9 +91,8 @@ assert_root_owned_volume_migration() {
 
 assert_compose_config
 docker build --tag "$image" \
-  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../dydan-app}}" .
+  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-../dydan-app}" .
 assert_image_runtime
-assert_legacy_database_migration
 assert_root_owned_volume_migration
 
 start_container() {
@@ -172,7 +141,6 @@ assert_clean_migrations
 assert_non_root_runtime
 docker exec "$container" test ! -e /config/selfhosted.yaml
 docker exec "$container" test -x /dydan
-docker exec "$container" test -L /donetick
 
 test -s "$data_dir/dydan.db"
 test -s "$data_dir/jwt-secret"

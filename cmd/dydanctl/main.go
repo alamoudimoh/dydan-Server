@@ -34,10 +34,9 @@ import (
 )
 
 const (
-	jwtSecretFilename  = "jwt-secret"
-	manifestFilename   = "manifest.json"
-	backupPrefix       = "dydan-backup-"
-	legacyBackupPrefix = "daydan-backup-"
+	jwtSecretFilename = "jwt-secret"
+	manifestFilename  = "manifest.json"
+	backupPrefix      = "dydan-backup-"
 )
 
 type fileEntry struct {
@@ -85,10 +84,6 @@ func run(args []string) error {
 // appVersion reports the build version; overridable via -ldflags.
 var appVersion = func() string {
 	v := os.Getenv("DYDAN_VERSION")
-	if v == "" {
-		// Preserve the previous build environment contract.
-		v = os.Getenv("DAYDAN_VERSION")
-	}
 	if v == "" {
 		v = "dev"
 	}
@@ -288,8 +283,7 @@ func cmdPrune(args []string) error {
 // ---------- helpers ----------
 
 func resolveDBPath(dataDir string) string {
-	canonicalAndLegacyDatabaseFilenames := []string{"dydan.db", "daydan.db", "taskier.db", "donetick.db"}
-	for _, c := range canonicalAndLegacyDatabaseFilenames {
+	for _, c := range []string{"dydan.db"} {
 		p := filepath.Join(dataDir, c)
 		if info, err := os.Stat(p); err == nil && !info.IsDir() {
 			return p
@@ -516,7 +510,7 @@ func listBackups(root string) ([]string, error) {
 	}
 	var dirs []string
 	for _, e := range entries {
-		if e.IsDir() && (strings.HasPrefix(e.Name(), backupPrefix) || strings.HasPrefix(e.Name(), legacyBackupPrefix)) {
+		if e.IsDir() && strings.HasPrefix(e.Name(), backupPrefix) {
 			dirs = append(dirs, filepath.Join(root, e.Name()))
 		}
 	}

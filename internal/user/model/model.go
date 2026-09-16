@@ -90,9 +90,6 @@ const (
 	AuthProviderApple
 )
 
-// AuthProviderDayDan preserves the persisted provider value used by existing users.
-const AuthProviderDayDan = AuthProviderDydan
-
 type UserType int
 
 const (

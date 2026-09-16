@@ -1,7 +1,6 @@
 package database
 
 import (
-	"cmp"
 	"context"
 	"os"
 	"testing"
@@ -20,10 +19,7 @@ import (
 // migration applies cleanly there too. Skipped unless DYDAN_TEST_POSTGRES_DSN
 // is set.
 func TestMigrationScriptsPostgres(t *testing.T) {
-	dsn := cmp.Or(
-		os.Getenv("DYDAN_TEST_POSTGRES_DSN"),
-		os.Getenv("DAYDAN_TEST_POSTGRES_DSN"),
-	)
+	dsn := os.Getenv("DYDAN_TEST_POSTGRES_DSN")
 	if dsn == "" {
 		t.Skip("DYDAN_TEST_POSTGRES_DSN not set; skipping live PostgreSQL migration coverage")
 	}

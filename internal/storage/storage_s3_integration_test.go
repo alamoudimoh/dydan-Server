@@ -2,7 +2,6 @@ package storage
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"fmt"
 	"net/url"
@@ -26,10 +25,7 @@ import (
 //	go test ./internal/storage/ -run TestS3Integration
 func newMinioStorage(t *testing.T) (*S3Storage, *s3.S3) {
 	t.Helper()
-	endpoint := cmp.Or(
-		os.Getenv("DYDAN_TEST_S3_ENDPOINT"),
-		os.Getenv("DAYDAN_TEST_S3_ENDPOINT"),
-	)
+	endpoint := os.Getenv("DYDAN_TEST_S3_ENDPOINT")
 	if endpoint == "" {
 		t.Skip("DYDAN_TEST_S3_ENDPOINT not set; skipping S3 integration test")
 	}
@@ -62,8 +58,8 @@ func newMinioStorage(t *testing.T) (*S3Storage, *s3.S3) {
 
 func awsCredentialsFromEnv() *credentials.Credentials {
 	return credentials.NewStaticCredentials(
-		cmp.Or(os.Getenv("DYDAN_TEST_S3_ACCESS"), os.Getenv("DAYDAN_TEST_S3_ACCESS")),
-		cmp.Or(os.Getenv("DYDAN_TEST_S3_SECRET"), os.Getenv("DAYDAN_TEST_S3_SECRET")),
+		os.Getenv("DYDAN_TEST_S3_ACCESS"),
+		os.Getenv("DYDAN_TEST_S3_SECRET"),
 		"",
 	)
 }

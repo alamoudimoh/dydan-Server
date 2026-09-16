@@ -295,8 +295,6 @@ func (p *EventsProducer) deliverWithRetriesSlot(ctx context.Context, event Event
 		req.Header.Set(HEAD_CONTENT_TYPE, CONTENT_TYPE_JSON)
 		req.Header.Set(signatureHeaderName, sigHeader)
 		req.Header.Set(timestampHeaderName, tsHeader)
-		req.Header.Set(legacySignatureHeaderName, sigHeader)
-		req.Header.Set(legacyTimestampHeaderName, tsHeader)
 
 		resp, err := p.client.Do(req)
 		if err != nil {

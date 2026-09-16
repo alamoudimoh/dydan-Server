@@ -119,8 +119,7 @@ jobs:
         run: |
           VERSION=${{ steps.resolve.outputs.tag }}
           DOCKER_USER=${{ secrets.DOCKER_USERNAME }}
-          # Docker Hub retains the externally registered legacy repository slug.
-          DOCKER_IMAGE=${DOCKER_USER}/daydan
+          DOCKER_IMAGE=${DOCKER_USER}/dydan
 
           # Check if this is a pre-release (contains -, like v1.0.0-beta.1)
           if [[ "$VERSION" =~ - ]]; then

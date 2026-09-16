@@ -2,7 +2,7 @@
 set -euo pipefail
 
 tracked=$(git ls-files)
-forbidden=$(printf '%s\n' "$tracked" | grep -E '(^|/)(taskier|donetick|daydan)\.db(-(wal|shm))?$|(^|/).*\.sqlite[0-9]*(-(wal|shm))?$|(^|/)jwt-secret$|(^|/)(data|uploads|node_modules)/|\.log$|(^|/)daydan-(zero-config|container)-' || true)
+forbidden=$(printf '%s\n' "$tracked" | grep -E '(^|/).*\.sqlite[0-9]*(-(wal|shm))?$|(^|/)jwt-secret$|(^|/)(data|uploads|node_modules)/|\.log$' || true)
 
 if [[ -n "$forbidden" ]]; then
   echo "Tracked runtime or generated files are not allowed:" >&2

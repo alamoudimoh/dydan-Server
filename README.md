@@ -47,7 +47,7 @@ DYDAN_FRONTEND_CONTEXT=../dydan-app docker compose up -d --build
 ```
 
 The default deployment uses SQLite, stores persistent state in the
-legacy `daydan-data` volume for persisted-data compatibility, serves the API and embedded client on port `2021`, and
+`dydan-data` volume, serves the API and embedded client on port `2021`, and
 requires no configuration file, database selection, or manually generated JWT
 secret. The frontend build uses same-origin `/api` requests.
 
@@ -82,14 +82,14 @@ production Dockerfile and its named frontend context:
 docker build --build-context frontend=../dydan-app -t dydan .
 ```
 
-`Dockerfile.dev` is a legacy artifact-oriented development image. It expects a
-prebuilt `donetick` backend binary and the development config files in the
-server build context; it does not build the frontend and is not the normal
+`Dockerfile.dev` is an artifact-oriented development image. It expects a
+prebuilt `dydan` backend binary and the development config files in the server
+build context; it does not build the frontend and is not the normal
 full-application workflow. If you specifically need that image, build the
 artifact first and then use the Dockerfile:
 
 ```bash
-go build -o donetick . # legacy Dockerfile.dev input name
+go build -o dydan .
 docker build -f Dockerfile.dev -t dydan-dev .
 ```
 
@@ -111,13 +111,11 @@ covered in [docs/security.md](docs/security.md).
 Dydan is zero-config by default. Use `config/dydan.example.yaml` for
 advanced settings such as PostgreSQL, trusted proxies, storage, notifications,
 OIDC, rate limits, and webhook signing. Canonical environment variables use
-the `DYDAN_` prefix. `DAYDAN_`, `TASKIER_`, and `DONETICK_` aliases remain
-supported in that order for existing deployments.
+the `DYDAN_` prefix.
 
 The default data directory is `/data`. It contains `dydan.db`, `jwt-secret`,
 and local uploads. PostgreSQL deployments require operator-managed database
-backups; `dydanctl` is designed for SQLite snapshots. Existing `daydan.db`
-and `daydanctl` deployments are supported compatibly.
+backups; `dydanctl` is designed for SQLite snapshots.
 
 ## License
 
