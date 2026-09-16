@@ -12,7 +12,7 @@ const docTemplate = `{
         "contact": {},
         "license": {
             "name": "GNU Affero General Public License v3.0",
-            "url": "https://github.com/alamoudimoh/daydan-server/blob/main/LICENSE.md"
+            "url": "https://github.com/alamoudimoh/DyDan-Server/blob/main/LICENSE.md"
         },
         "version": "{{.Version}}"
     },

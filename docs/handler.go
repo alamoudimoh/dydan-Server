@@ -36,7 +36,7 @@ func NewHandler(config *config.Config) *Handler {
 //	@description	Dydan swagger documentation.
 
 //	@license.name	GNU Affero General Public License v3.0
-//	@license.url	https://github.com/alamoudimoh/daydan-server/blob/main/LICENSE.md
+//	@license.url	https://github.com/alamoudimoh/DyDan-Server/blob/main/LICENSE.md
 
 //	@BasePath	/api/v1
 

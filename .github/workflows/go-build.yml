@@ -39,7 +39,7 @@ jobs:
       - name: Checkout frontend build context
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/daydan-app
+          repository: ${{ github.repository_owner }}/DyDan-AppWeb
           path: frontend-code
       - name: Verify Compose and fresh/restart container behavior
         env:
