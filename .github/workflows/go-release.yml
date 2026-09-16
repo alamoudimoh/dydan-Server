@@ -68,13 +68,13 @@ jobs:
           INPUT_REF: ${{ inputs.frontend_ref }}
           TAG: ${{ steps.resolve.outputs.tag }}
           IS_TAG_PUSH: ${{ github.event_name == 'push' }}
-          REPO_URL: https://github.com/${{ github.repository_owner }}/daydan-app.git
+          REPO_URL: https://github.com/${{ github.repository_owner }}/DyDan-AppWeb.git
         run: bash scripts/resolve-frontend-ref.sh
 
       - name: Checkout Frontend
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/daydan-app
+          repository: ${{ github.repository_owner }}/DyDan-AppWeb
           # Pin to the exact commit resolved above; never a moving ref.
           ref: ${{ steps.frontend-ref.outputs.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -173,7 +173,7 @@ jobs:
             echo "| Server repository | \`${{ github.repository }}\` |"
             echo "| Server version | \`${{ steps.resolve.outputs.tag }}\` |"
             echo "| Server commit | \`${{ steps.commit.outputs.sha }}\` |"
-            echo "| Frontend repository | \`${{ github.repository_owner }}/daydan-app\` |"
+            echo "| Frontend repository | \`${{ github.repository_owner }}/DyDan-AppWeb\` |"
             echo "| Frontend ref | \`${{ steps.frontend-ref.outputs.ref }}\` |"
             echo "| Frontend commit | \`${{ steps.frontend-ref.outputs.sha }}\` |"
             echo "| Image tags | \`${{ steps.meta.outputs.tags }}\` |"

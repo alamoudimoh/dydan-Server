@@ -6,7 +6,7 @@ notifications, integrations, media storage, and the production container that
 serves the AppWeb client.
 
 Dydan AppWeb is the paired client:
-[alamoudimoh/DayDan-AppWeb](https://github.com/alamoudimoh/DayDan-AppWeb).
+[alamoudimoh/DyDan-AppWeb](https://github.com/alamoudimoh/DyDan-AppWeb).
 The server can serve an embedded frontend bundle, or build one from that
 repository during a Docker build.
 
@@ -40,8 +40,8 @@ Requirements: Docker with Compose v2.17 or newer.
 Clone the paired repositories side by side:
 
 ```bash
-git clone https://github.com/alamoudimoh/DayDan-AppWeb.git dydan-app
-git clone https://github.com/alamoudimoh/DayDan-Server.git dydan-server
+git clone https://github.com/alamoudimoh/DyDan-AppWeb.git dydan-app
+git clone https://github.com/alamoudimoh/DyDan-Server.git dydan-server
 cd dydan-server
 DYDAN_FRONTEND_CONTEXT=../dydan-app docker compose up -d --build
 ```
