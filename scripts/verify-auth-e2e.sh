@@ -44,7 +44,7 @@ assert_eq() { # desc actual expected
 }
 
 docker build --quiet --tag "$image" \
-  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-${DAYDAN_FRONTEND_CONTEXT:-../dydan-app}}" .
+  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-../dydan-app}" .
 
 docker run -d \
   --name "$container" \

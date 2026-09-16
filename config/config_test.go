@@ -14,11 +14,8 @@ func clearConfigSelection(t *testing.T) {
 	t.Helper()
 	for _, name := range []string{
 		"DYDAN_ENV", "DYDAN_CONFIG_FILE", "DYDAN_DATA_DIR", "DYDAN_JWT_SECRET", "DYDAN_SQLITE_PATH",
-		"DAYDAN_ENV", "DAYDAN_CONFIG_FILE", "DAYDAN_DATA_DIR", "DAYDAN_JWT_SECRET", "DAYDAN_SQLITE_PATH",
-		"DT_ENV", "DT_CONFIG_FILE", "TASKIER_CONFIG_FILE", "DT_JWT_SECRET",
-		"TASKIER_JWT_SECRET", "DT_SQLITE_PATH", "TASKIER_SQLITE_PATH",
-		"DT_SERVER_PORT", "DT_REALTIME_ENABLED", "DT_IS_USER_CREATION_DISABLED",
-		"DT_EMAIL_HOST", "DT_EMAIL_PORT", "DT_EMAIL_EMAIL", "DT_EMAIL_APP_HOST",
+		"DYDAN_SERVER_PORT", "DYDAN_REALTIME_ENABLED", "DYDAN_IS_USER_CREATION_DISABLED",
+		"DYDAN_EMAIL_HOST", "DYDAN_EMAIL_PORT", "DYDAN_EMAIL_EMAIL", "DYDAN_EMAIL_APP_HOST",
 	} {
 		t.Setenv(name, "")
 	}
@@ -27,10 +24,10 @@ func clearConfigSelection(t *testing.T) {
 func TestEmailAppHostEnvironmentMapping(t *testing.T) {
 	clearConfigSelection(t)
 	t.Setenv("DYDAN_DATA_DIR", t.TempDir())
-	t.Setenv("DT_EMAIL_HOST", "smtp.example.com")
-	t.Setenv("DT_EMAIL_PORT", "587")
-	t.Setenv("DT_EMAIL_EMAIL", "sender@example.com")
-	t.Setenv("DT_EMAIL_APP_HOST", "https://app.example.com")
+	t.Setenv("DYDAN_EMAIL_HOST", "smtp.example.com")
+	t.Setenv("DYDAN_EMAIL_PORT", "587")
+	t.Setenv("DYDAN_EMAIL_EMAIL", "sender@example.com")
+	t.Setenv("DYDAN_EMAIL_APP_HOST", "https://app.example.com")
 
 	cfg, err := LoadConfigE()
 	if err != nil {
@@ -168,7 +165,7 @@ func TestExplicitSecretOverrideDoesNotCreateSecretFile(t *testing.T) {
 	}
 }
 
-func TestConfigPrecedenceAndLegacyProfileCompatibility(t *testing.T) {
+func TestConfigPrecedence(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "selfhosted.yaml")
@@ -176,8 +173,8 @@ func TestConfigPrecedenceAndLegacyProfileCompatibility(t *testing.T) {
 	if err := os.WriteFile(configPath, contents, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("DT_CONFIG_FILE", configPath)
-	t.Setenv("DT_SERVER_PORT", "4040")
+	t.Setenv("DYDAN_CONFIG_FILE", configPath)
+	t.Setenv("DYDAN_SERVER_PORT", "4040")
 
 	cfg, err := LoadConfigE()
 	if err != nil {
@@ -190,7 +187,7 @@ func TestConfigPrecedenceAndLegacyProfileCompatibility(t *testing.T) {
 		t.Fatal("explicit YAML false was replaced by a true default")
 	}
 	if cfg.Jwt.Secret != "yaml-secret-that-is-at-least-thirty-two-characters" {
-		t.Fatal("legacy YAML JWT secret was not loaded")
+		t.Fatal("YAML JWT secret was not loaded")
 	}
 }
 
@@ -242,103 +239,6 @@ func TestUnavailableDataDirectoryFails(t *testing.T) {
 	}
 }
 
-func TestLegacyDonetickDatabaseMigratesToDydan(t *testing.T) {
-	clearConfigSelection(t)
-	dataDir := t.TempDir()
-	legacyPath := filepath.Join(dataDir, "donetick.db")
-	if err := os.WriteFile(legacyPath, []byte("existing database"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("DYDAN_DATA_DIR", dataDir)
-	cfg, err := LoadConfigE()
-	if err != nil {
-		t.Fatal(err)
-	}
-	dydanPath := filepath.Join(dataDir, "dydan.db")
-	if cfg.Database.Path != dydanPath {
-		t.Fatalf("database path=%q want %q", cfg.Database.Path, dydanPath)
-	}
-	if _, err := os.Stat(legacyPath); err != nil {
-		t.Fatal("legacy donetick.db was removed")
-	}
-}
-
-func writeTestConfig(t *testing.T, dir, filename, contents string) {
-	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, filename), []byte(contents), 0o600); err != nil {
-		t.Fatal(err)
-	}
-}
-
-const testConfigJWT = "yaml-secret-that-is-at-least-thirty-two-characters"
-
-func testConfigYAML(name string) string {
-	return "name: " + name + "\njwt:\n  secret: " + testConfigJWT + "\n"
-}
-
-func TestLegacyDayDanConfigDetected(t *testing.T) {
-	clearConfigSelection(t)
-	tempDir := t.TempDir()
-	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
-	t.Chdir(tempDir)
-
-	cfg, err := LoadConfigE()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Name != "from-daydan-yaml" {
-		t.Fatalf("name=%q", cfg.Name)
-	}
-}
-
-func TestLegacyTaskierConfigDetectedWhenLegacyDayDanAbsent(t *testing.T) {
-	clearConfigSelection(t)
-	tempDir := t.TempDir()
-	writeTestConfig(t, tempDir, "taskier.yml", testConfigYAML("from-taskier-yml"))
-	t.Chdir(tempDir)
-
-	cfg, err := LoadConfigE()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Name != "from-taskier-yml" {
-		t.Fatalf("name=%q", cfg.Name)
-	}
-}
-
-func TestLegacyDayDanConfigWinsOverLegacyTaskier(t *testing.T) {
-	clearConfigSelection(t)
-	tempDir := t.TempDir()
-	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
-	writeTestConfig(t, tempDir, "taskier.yaml", testConfigYAML("from-taskier-yaml"))
-	t.Chdir(tempDir)
-
-	cfg, err := LoadConfigE()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Name != "from-daydan-yaml" {
-		t.Fatalf("name=%q", cfg.Name)
-	}
-}
-
-func TestLegacyExplicitConfigPathPrecedence(t *testing.T) {
-	clearConfigSelection(t)
-	tempDir := t.TempDir()
-	writeTestConfig(t, tempDir, "daydan.yaml", testConfigYAML("from-daydan-yaml"))
-	explicitPath := filepath.Join(tempDir, "explicit.yaml")
-	writeTestConfig(t, tempDir, "explicit.yaml", testConfigYAML("from-explicit-yaml"))
-	t.Setenv("TASKIER_CONFIG_FILE", explicitPath)
-
-	cfg, err := LoadConfigE()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Name != "from-explicit-yaml" {
-		t.Fatalf("name=%q", cfg.Name)
-	}
-}
-
 func TestZeroConfigStartupWithoutConfigFiles(t *testing.T) {
 	clearConfigSelection(t)
 	tempDir := t.TempDir()
@@ -355,91 +255,6 @@ func TestZeroConfigStartupWithoutConfigFiles(t *testing.T) {
 	}
 	if cfg.Server.Port != 2021 {
 		t.Fatalf("port=%d", cfg.Server.Port)
-	}
-}
-
-func TestConfigNameFileWithoutExtensionIsIgnored(t *testing.T) {
-	clearConfigSelection(t)
-	tempDir := t.TempDir()
-	dataDir := filepath.Join(tempDir, "data")
-	t.Setenv("DYDAN_DATA_DIR", dataDir)
-	t.Chdir(tempDir)
-
-	// Regression test for the zero-config container: the runtime image places
-	// the legacy "/daydan" binary alias in the working directory, and viper must
-	// not treat it as a config file (config name "daydan" with no extension) and fail
-	// parsing it as YAML.
-	writeTestConfig(t, tempDir, "daydan", string([]byte{0x00, 0x7f, 'n', 'o', 't', ' ', 'y', 'a', 'm', 'l'}))
-
-	cfg, err := LoadConfigE()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Name != "dydan" {
-		t.Fatalf("name=%q", cfg.Name)
-	}
-}
-
-func TestLegacyHostedCloudConfigKeysStillLoad(t *testing.T) {
-	clearConfigSelection(t)
-	tempDir := t.TempDir()
-	writeTestConfig(
-		t,
-		tempDir,
-		"daydan.yaml",
-		"is_done_tick_dot_com: true\n"+
-			"donetick_cloud:\n"+
-			"  google_client_id: legacy-google\n"+
-			"  apple_client_id: legacy-apple\n"+
-			"jwt:\n  secret: yaml-secret-that-is-at-least-thirty-two-characters\n",
-	)
-	t.Chdir(tempDir)
-
-	cfg, err := LoadConfigE()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.IsDydanCloud {
-		t.Fatal("legacy is_done_tick_dot_com was not loaded")
-	}
-	if cfg.DydanCloudConfig.GoogleClientID != "legacy-google" {
-		t.Fatalf("google_client_id=%q", cfg.DydanCloudConfig.GoogleClientID)
-	}
-	if cfg.DydanCloudConfig.AppleClientID != "legacy-apple" {
-		t.Fatalf("apple_client_id=%q", cfg.DydanCloudConfig.AppleClientID)
-	}
-}
-
-func TestLegacyDayDanHostedCloudConfigAliasesOverrideOlderKeys(t *testing.T) {
-	clearConfigSelection(t)
-	tempDir := t.TempDir()
-	writeTestConfig(
-		t,
-		tempDir,
-		"daydan.yaml",
-		"is_done_tick_dot_com: false\n"+
-			"is_daydan_cloud: true\n"+
-			"donetick_cloud:\n"+
-			"  google_client_id: legacy-google\n"+
-			"daydan_cloud:\n"+
-			"  google_client_id: alias-google\n"+
-			"  apple_client_id: alias-apple\n"+
-			"jwt:\n  secret: yaml-secret-that-is-at-least-thirty-two-characters\n",
-	)
-	t.Chdir(tempDir)
-
-	cfg, err := LoadConfigE()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.IsDydanCloud {
-		t.Fatal("is_daydan_cloud alias was not applied")
-	}
-	if cfg.DydanCloudConfig.GoogleClientID != "alias-google" {
-		t.Fatalf("google_client_id=%q", cfg.DydanCloudConfig.GoogleClientID)
-	}
-	if cfg.DydanCloudConfig.AppleClientID != "alias-apple" {
-		t.Fatalf("apple_client_id=%q", cfg.DydanCloudConfig.AppleClientID)
 	}
 }
 

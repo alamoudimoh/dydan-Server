@@ -45,6 +45,6 @@ destination isolation, retries, backoff, and HMAC signing.
 
 The Docker build compiles the frontend and backend, embeds the frontend into
 the production image, and exposes a single origin for the SPA and `/api`.
-Compose persists `/data` in the legacy `daydan-data` volume so upgrades retain existing data. The image includes a healthcheck
+Compose persists `/data` in the `dydan-data` volume. The image includes a healthcheck
 and runs without root privileges. Reverse-proxy deployments must configure
 the trusted-proxy allowlist explicitly.

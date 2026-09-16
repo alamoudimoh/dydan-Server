@@ -23,17 +23,10 @@ const maxLocalSignatureHorizon = config.MaxSignedURLTTL
 // URLSignerLocal signs locally-served media URLs with HMAC-SHA256.
 //
 // The signing key is the storage-specific media secret
-// (config.Storage.MediaSecret), never the raw JWT secret. Before phase 6 the
-// JWT secret was used directly; URLs signed that way keep working only while
-// cfg.AllowLegacyMediaSignatures is true, and only for their natural (<= 7d)
-// lifetime — legacy acceptance is a bounded upgrade window, not a second
-// permanent credential family.
+// (config.Storage.MediaSecret), never the raw JWT secret.
 type URLSignerLocal struct {
 	key []byte
-	// legacyKey holds the pre-phase-6 key (raw JWT secret) when legacy
-	// acceptance is enabled and it differs from the current key. nil otherwise.
-	legacyKey []byte
-	ttl       time.Duration
+	ttl time.Duration
 }
 
 func NewURLSignerLocal(cfg *config.Config) *URLSignerLocal {
@@ -45,12 +38,6 @@ func NewURLSignerLocal(cfg *config.Config) *URLSignerLocal {
 		// Defensive: validation enforces this at startup, but the signer is
 		// also constructed directly in tests.
 		s.ttl = config.MaxSignedURLTTL
-	}
-	if cfg.Storage.AllowLegacyMediaSignatures && len(cfg.Jwt.Secret) > 0 && !hmac.Equal([]byte(cfg.Jwt.Secret), s.key) {
-		s.legacyKey = []byte(cfg.Jwt.Secret)
-	}
-	if cfg.Storage.AllowLegacyMediaSignatures && cfg.Storage.LegacyMediaSecret != "" && !hmac.Equal([]byte(cfg.Storage.LegacyMediaSecret), s.key) {
-		s.legacyKey = []byte(cfg.Storage.LegacyMediaSecret)
 	}
 	return s
 }
@@ -106,10 +93,7 @@ func (s *URLSignerLocal) IsValid(rawPath string, query url.Values) bool {
 	if s.isValidWith(s.key, rawPath, expires, providedSig) {
 		return true
 	}
-	if s.legacyKey != nil && s.isValidWith(s.legacyKey, rawPath, expires, providedSig) {
-		return true
-	}
-	return false
+	return s.isValidWith(s.key, rawPath, expires, providedSig)
 }
 
 func (s *URLSignerLocal) SignIfLocal(path string) string {

@@ -14,9 +14,6 @@ X-Dydan-Timestamp: <unix-seconds>
 Content-Type: application/json
 ```
 
-`X-Daydan-Signature` and `X-Daydan-Timestamp` are emitted with identical
-values for existing receivers. New integrations must use the Dydan headers.
-
 ## Canonical signing input
 
 The HMAC covers exactly two things joined by a single dot:
@@ -34,8 +31,7 @@ by design.
 ## Verification procedure (receivers)
 
 1. Read the raw request body into memory.
-2. Parse `t` from `X-Dydan-Signature` (or `X-Dydan-Timestamp`). Existing
-   receivers may continue using the legacy `X-Daydan-*` headers.
+2. Parse `t` from `X-Dydan-Signature` (or `X-Dydan-Timestamp`).
 3. Reject the delivery if `|now - t| > tolerance` (we recommend 5 minutes).
 4. Compute `HMAC-SHA256(shared_secret, t + "." + raw_body)`.
 5. Compare against `v1` using a **constant-time** comparison
@@ -65,8 +61,7 @@ func verify(secret string, tolerance time.Duration, body []byte,
 * The key is an independent credential family. It is **not** the JWT secret,
   the media-signing secret, or any provider secret.
 * Configuration precedence:
-   1. `webhook.signing_secret` in config (or `DYDAN_WEBHOOK_SIGNING_SECRET`;
-      `DAYDAN_WEBHOOK_SIGNING_SECRET` and older prefixes remain aliases);
+   1. `webhook.signing_secret` in config (or `DYDAN_WEBHOOK_SIGNING_SECRET`);
   2. `webhook.signing_secret_file`, auto-created with 32 random bytes
      (0600) on first boot at `<data_dir>/webhook-signing-secret`;
 * Rotation: set a new secret (or replace the secret file) and restart.

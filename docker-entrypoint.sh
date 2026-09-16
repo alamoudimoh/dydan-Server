@@ -13,7 +13,7 @@
 #      Go binary replaces this shell via exec and receives SIGTERM directly)
 set -eu
 
-DATA_DIR="${DYDAN_DATA_DIR:-${DAYDAN_DATA_DIR:-/data}}"
+DATA_DIR="${DYDAN_DATA_DIR:-/data}"
 RUN_USER="dydan"
 
 TARGET_UID="$(id -u "$RUN_USER")"
@@ -46,9 +46,8 @@ ensure_owner() {
 mkdir -p "$DATA_DIR"
 ensure_owner "$DATA_DIR"
 
-# Known data-dir artifacts: SQLite database plus WAL/SHM sidecars (including
-# legacy taskier/donetick database names handled by zero-config migration),
-# the persisted JWT secret (and its temp files), and local uploads.
+# Known data-dir artifacts: SQLite database plus WAL/SHM sidecars, the
+# persisted JWT secret (and its temp files), and local uploads.
 for entry in "$DATA_DIR"/*.db "$DATA_DIR"/*.db-wal "$DATA_DIR"/*.db-shm \
   "$DATA_DIR/jwt-secret" "$DATA_DIR"/.jwt-secret-*; do
   [ -e "$entry" ] || continue

@@ -1,15 +1,11 @@
 # Runtime state and local artifacts must never leak into the image or bloat
-# the build context. Existing deployments retain the legacy daydan-data volume.
+# the build context.
 data/
 *.db
 *.db-wal
 *.db-shm
 jwt-secret
 uploads/
-# Legacy local artifact names from earlier tooling.
-daydan-server
-daydan-zero-config-*
-daydan-container-*
 *.log
 .git
 node_modules

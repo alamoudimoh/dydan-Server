@@ -1,7 +1,6 @@
 package user
 
 import (
-	"cmp"
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
@@ -29,10 +28,7 @@ import (
 // classification and the hashed API-token storage path.
 func postgresTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := cmp.Or(
-		os.Getenv("DYDAN_TEST_POSTGRES_DSN"),
-		os.Getenv("DAYDAN_TEST_POSTGRES_DSN"),
-	)
+	dsn := os.Getenv("DYDAN_TEST_POSTGRES_DSN")
 	if dsn == "" {
 		t.Skip("DYDAN_TEST_POSTGRES_DSN not set; skipping live PostgreSQL coverage")
 	}

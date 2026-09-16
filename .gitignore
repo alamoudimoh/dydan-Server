@@ -1,7 +1,3 @@
-# Legacy database names remain ignored during migration.
-donetick.db
-/taskier.db
-/daydan.db
 /data/
 /jwt-secret
 /uploads/
@@ -12,8 +8,6 @@ config/data/
 *.sqlite-wal
 *.sqlite-shm
 *.log
-/daydan-zero-config-*
-/daydan-container-*
 node_modules/
 .vscode/launch.json
 *.exe

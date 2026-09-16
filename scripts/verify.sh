@@ -17,6 +17,6 @@ go test -race \
   ./internal/circle \
   ./internal/circle/repo
 
-if [[ "${DYDAN_SKIP_CONTAINER_SMOKE:-${DAYDAN_SKIP_CONTAINER_SMOKE:-${TASKIER_SKIP_CONTAINER_SMOKE:-false}}}" != "true" ]]; then
+if [[ "${DYDAN_SKIP_CONTAINER_SMOKE:-false}" != "true" ]]; then
   bash scripts/verify-container.sh
 fi

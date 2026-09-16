@@ -298,8 +298,6 @@ func (h *Handler) syncOIDCRole(c *gin.Context, userID, circleID int, groups []st
 // attacker-controlled.
 var nativeOAuthRedirectURIs = []string{
 	"dydan://auth/oauth2",
-	// Retained for installed Donetick clients during the deep-link migration.
-	"donetick://auth/oauth2",
 }
 
 // allowedOAuthRedirectURIs returns the strict allowlist of permitted OAuth2

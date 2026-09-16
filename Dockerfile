@@ -83,13 +83,9 @@ RUN addgroup -g 1000 dydan && adduser -D -H -u 1000 -G dydan dydan
 
 # Copy the self-contained binary. The frontend is embedded at build time.
 COPY --from=builder /dydan /dydan
-# Legacy binary paths remain available for existing container integrations.
-RUN ln -sf /dydan /daydan && ln -sf /dydan /donetick
 
 # Operator toolkit (backup / verify / restore / prune).
 COPY --from=builder /dydanctl /usr/local/bin/dydanctl
-# Retain the previous operator-tool path for existing automation.
-RUN ln -sf /usr/local/bin/dydanctl /usr/local/bin/daydanctl
 
 COPY docker-entrypoint.sh /entrypoint.sh
 RUN chmod 0755 /entrypoint.sh
@@ -112,7 +108,7 @@ LABEL com.dydan.frontend.commit=${DYDAN_FRONTEND_COMMIT} \
       com.dydan.frontend.ref=${DYDAN_FRONTEND_REF} \
       org.opencontainers.image.revision=${COMMIT} \
       org.opencontainers.image.version=${VERSION} \
-      org.opencontainers.image.source=https://github.com/alamoudimoh/daydan-server
+      org.opencontainers.image.source=https://github.com/alamoudimoh/dydan-server
 
 # Expose the application port
 EXPOSE 2021

@@ -64,13 +64,13 @@ func TestPublicReadMalformedValuesCannotEnable(t *testing.T) {
 	clearConfigSelection(t)
 	t.Setenv("DYDAN_DATA_DIR", t.TempDir())
 	for _, raw := range []string{"garbage", "yes-please"} {
-		t.Setenv("DT_STORAGE_PUBLIC_READ", raw)
+		t.Setenv("DYDAN_STORAGE_PUBLIC_READ", raw)
 		if _, err := LoadConfigE(); err == nil {
 			t.Fatalf("input %q must fail startup instead of being coerced", raw)
 		}
 	}
 	for _, raw := range []string{"", "0", "false"} {
-		t.Setenv("DT_STORAGE_PUBLIC_READ", raw)
+		t.Setenv("DYDAN_STORAGE_PUBLIC_READ", raw)
 		cfg, err := LoadConfigE()
 		if err != nil {
 			t.Fatalf("input %q: %v", raw, err)
@@ -79,7 +79,7 @@ func TestPublicReadMalformedValuesCannotEnable(t *testing.T) {
 			t.Fatalf("input %q enabled public_read", raw)
 		}
 	}
-	t.Setenv("DT_STORAGE_PUBLIC_READ", "true")
+	t.Setenv("DYDAN_STORAGE_PUBLIC_READ", "true")
 	if _, err := LoadConfigE(); err == nil {
 		// No bucket configured in this env: validation rejects it, which is
 		// itself proof that enabling requires explicit, complete config.
@@ -121,7 +121,7 @@ func TestMediaSigningKeyResolution(t *testing.T) {
 	}
 
 	// Explicit secret wins over derivation and survives JWT rotation.
-	t.Setenv("DT_STORAGE_MEDIA_SECRET", strings.Repeat("m", 32))
+	t.Setenv("DYDAN_STORAGE_MEDIA_SECRET", strings.Repeat("m", 32))
 	explicit, err := LoadConfigE()
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +131,7 @@ func TestMediaSigningKeyResolution(t *testing.T) {
 	}
 
 	// Too-short explicit secrets are rejected at startup.
-	t.Setenv("DT_STORAGE_MEDIA_SECRET", "short")
+	t.Setenv("DYDAN_STORAGE_MEDIA_SECRET", "short")
 	if _, err := LoadConfigE(); err == nil {
 		t.Fatal("short media secret must fail startup")
 	}
@@ -145,8 +145,8 @@ func TestMediaSigningKeyResolution(t *testing.T) {
 	if err := os.WriteFile(keyFile, []byte(strings.Repeat("f", 40)+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	os.Unsetenv("DT_STORAGE_MEDIA_SECRET")
-	t.Setenv("DT_STORAGE_MEDIA_SECRET_FILE", keyFile)
+	os.Unsetenv("DYDAN_STORAGE_MEDIA_SECRET")
+	t.Setenv("DYDAN_STORAGE_MEDIA_SECRET_FILE", keyFile)
 	fromFile, err := LoadConfigE()
 	if err != nil {
 		t.Fatal(err)

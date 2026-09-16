@@ -2,11 +2,9 @@
 # optional advanced overrides; copy only the settings you actually need.
 #
 # Preferred runtime config filenames: dydan.yaml or dydan.yml.
-# Legacy daydan.yaml / daydan.yml and taskier.yaml / taskier.yml remain supported.
 #
 # Canonical environment overrides:
 #   DYDAN_DATA_DIR, DYDAN_CONFIG_FILE, DYDAN_JWT_SECRET, DYDAN_SQLITE_PATH
-# DAYDAN_*, TASKIER_*, DONETICK_*, and DT_* aliases remain supported.
 
 # data_dir: /data
 # is_user_creation_disabled: true
@@ -40,9 +38,6 @@
 #   # sessions:
 #   # media_secret: <32+ random chars>
 #   # media_secret_file: /data/media-secret
-#   # Upgrade window only: accept media URLs signed with the pre-phase-6 raw
-#   # JWT-key scheme. Safe to disable immediately after upgrading.
-#   allow_legacy_media_signatures: true
 #   # S3 options:
 #   bucket_name:
 #   region:
