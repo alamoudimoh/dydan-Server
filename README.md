@@ -46,6 +46,28 @@ cd dydan-server
 DYDAN_FRONTEND_CONTEXT=../dydan-app docker compose up -d --build
 ```
 
+### Published images
+
+The canonical Dydan image locator is:
+
+```text
+ghcr.io/alamoudimoh/dydan
+```
+
+Releases are published to GitHub Container Registry (GHCR). Each release is
+referenced by its release tag (for example `202609-02`) and by `latest`; both
+point to the same image digest. The normal deployment path uses `latest`:
+
+```bash
+docker pull ghcr.io/alamoudimoh/dydan:latest
+docker run -d -v /data:/data -p 2021:2021 ghcr.io/alamoudimoh/dydan:latest
+```
+
+The legacy locator `ghcr.io/alamoudimoh/daydan` was retired during the move
+to a canonical Dydan package identity. It is kept only as a legacy
+compatibility artifact and must not be used in new configurations or
+deployments.
+
 The default deployment uses SQLite, stores persistent state in the
 `dydan-data` volume, serves the API and embedded client on port `2021`, and
 requires no configuration file, database selection, or manually generated JWT
