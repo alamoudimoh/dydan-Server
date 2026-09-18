@@ -1,0 +1,27 @@
+---
+# Local source-build override. Production/default deployments use the
+# canonical published image (docker-compose.yaml -> ${DYDAN_IMAGE:-ghcr.io/alamoudimoh/dydan:latest});
+# this override is only for developers building from source:
+#
+#   DYDAN_FRONTEND_CONTEXT=../dydan-app \
+#     docker compose -f docker-compose.yaml -f docker-compose.build.yaml up -d --build
+services:
+  dydan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        frontend: ${DYDAN_FRONTEND_CONTEXT:-../dydan-app}
+      args:
+        VERSION: ${DYDAN_VERSION:-dev}
+        COMMIT: ${DYDAN_COMMIT:-local}
+
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        frontend: ${DYDAN_FRONTEND_CONTEXT:-../dydan-app}
+      args:
+        VERSION: ${DYDAN_VERSION:-dev}
+        COMMIT: ${DYDAN_COMMIT:-local}

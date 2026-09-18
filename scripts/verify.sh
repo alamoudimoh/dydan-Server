@@ -6,6 +6,7 @@ cd "$repo_dir"
 
 bash scripts/check-runtime-artifacts.sh
 bash scripts/check-time-utc.sh
+bash scripts/check-packaging-config.sh
 go test ./...
 go build ./...
 go test -race \

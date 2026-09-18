@@ -1,7 +1,8 @@
 name: Go Release
 
 permissions:
-  contents: write
+  contents: read
+  packages: write
 
 on:
   push:
@@ -104,11 +105,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Resolve commit SHA
         id: commit
@@ -118,18 +120,17 @@ jobs:
         id: meta
         run: |
           VERSION=${{ steps.resolve.outputs.tag }}
-          DOCKER_USER=${{ secrets.DOCKER_USERNAME }}
-          DOCKER_IMAGE=${DOCKER_USER}/dydan
+          DYDAN_IMAGE=ghcr.io/${{ github.repository_owner }}/dydan
 
           # Check if this is a pre-release (contains -, like v1.0.0-beta.1)
           if [[ "$VERSION" =~ - ]]; then
             # Extract pre-release channel (alpha, beta, rc, etc.)
             CHANNEL=$(echo "$VERSION" | sed -E 's/v[0-9]+\.[0-9]+\.[0-9]+-([a-z]+).*/\1/')
             echo "Pre-release detected: $VERSION (channel: $CHANNEL)"
-            echo "tags=${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:${CHANNEL}" >> $GITHUB_OUTPUT
+            echo "tags=${DYDAN_IMAGE}:${VERSION},${DYDAN_IMAGE}:${CHANNEL}" >> $GITHUB_OUTPUT
           else
             echo "Stable release detected: $VERSION"
-            echo "tags=${DOCKER_IMAGE}:latest,${DOCKER_IMAGE}:${VERSION}" >> $GITHUB_OUTPUT
+            echo "tags=${DYDAN_IMAGE}:latest,${DYDAN_IMAGE}:${VERSION}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push Docker image
@@ -146,18 +147,6 @@ jobs:
             COMMIT=${{ steps.commit.outputs.sha }}
             DYDAN_FRONTEND_COMMIT=${{ steps.frontend-ref.outputs.sha }}
             DYDAN_FRONTEND_REF=${{ steps.frontend-ref.outputs.ref }}
-
-      # Publish the GitHub release only after every distributable image is
-      # available. This prevents a release page that advertises a version
-      # whose Docker image failed to build or push.
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: v2.8.1
-          args: release --clean --skip=validate
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Provenance is written to the run summary and baked into the image as
       # OCI labels (see Dockerfile), so the server/frontend pairing of a

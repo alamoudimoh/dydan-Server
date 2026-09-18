@@ -37,13 +37,34 @@ The server also provides:
 
 Requirements: Docker with Compose v2.17 or newer.
 
-Clone the paired repositories side by side:
+The default `docker-compose.yaml` runs the canonical **published** Dydan image
+from GHCR with zero local build:
+
+```bash
+cd dydan-server
+docker compose pull
+docker compose up -d
+```
+
+`docker compose up -d` resolves to `ghcr.io/alamoudimoh/dydan:latest` by
+default. Operators can pin a specific published image when necessary:
+
+```bash
+DYDAN_IMAGE=ghcr.io/alamoudimoh/dydan:202609-05 docker compose up -d
+```
+
+### Local source build
+
+Developers building the stack from source (server plus a paired AppWeb
+checkout) use the `docker-compose.build.yaml` override instead of the default
+compose file:
 
 ```bash
 git clone https://github.com/alamoudimoh/DyDan-AppWeb.git dydan-app
 git clone https://github.com/alamoudimoh/DyDan-Server.git dydan-server
 cd dydan-server
-DYDAN_FRONTEND_CONTEXT=../dydan-app docker compose up -d --build
+DYDAN_FRONTEND_CONTEXT=../dydan-app \
+  docker compose -f docker-compose.yaml -f docker-compose.build.yaml up -d --build
 ```
 
 ### Published images
@@ -76,11 +97,15 @@ secret. The frontend build uses same-origin `/api` requests.
 Useful operations:
 
 ```bash
+docker compose pull
 docker compose logs -f
 docker compose restart
 docker compose down
-docker compose up -d --build
+docker compose up -d
 ```
+
+For a source build instead of the published image, add the
+`docker-compose.build.yaml` override (see "Local source build").
 
 Keep the data volume when upgrading. For reverse proxies, trusted forwarding
 headers, access-token policy, and TLS deployment, see
@@ -103,6 +128,18 @@ production Dockerfile and its named frontend context:
 ```bash
 docker build --build-context frontend=../dydan-app -t dydan .
 ```
+
+Or, to mirror the default deployment (service name, volumes, port mapping)
+with a locally built image, use the `docker-compose.build.yaml` override:
+
+```bash
+DYDAN_FRONTEND_CONTEXT=../dydan-app \
+  docker compose -f docker-compose.yaml -f docker-compose.build.yaml up -d --build
+```
+
+The source-build override is documented for developers only; it must not be
+confused with the production push-to-`latest` deployment path documented
+above.
 
 `Dockerfile.dev` is an artifact-oriented development image. It expects a
 prebuilt `dydan` backend binary and the development config files in the server
