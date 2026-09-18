@@ -116,6 +116,9 @@ func TestZeroConfigDefaultsAndPersistentSecret(t *testing.T) {
 	if first.Storage.StorageType != "local" || first.Storage.BasePath != filepath.Join(dataDir, "uploads") {
 		t.Fatalf("storage defaults not populated: %#v", first.Storage)
 	}
+	if first.Storage.MaxUserStorage != int64(10*1024*1024*1024) {
+		t.Fatalf("max user storage default = %d", first.Storage.MaxUserStorage)
+	}
 	if len(first.Jwt.Secret) < 32 || strings.Contains(strings.ToLower(first.Jwt.Secret), "change_this") {
 		t.Fatal("generated JWT secret is missing or weak")
 	}
