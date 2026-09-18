@@ -17,6 +17,7 @@ COPY --from=frontend .npmrc ./
 COPY --from=frontend index.html ./
 COPY --from=frontend vite.config.mjs ./
 COPY --from=frontend vite.allowed-hosts.mjs ./
+COPY --from=frontend vite.dev-proxy.mjs ./
 COPY --from=frontend src ./src
 COPY --from=frontend public ./public
 COPY --from=frontend patches ./patches

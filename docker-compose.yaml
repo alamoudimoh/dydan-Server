@@ -1,14 +1,7 @@
 ---
 services:
   dydan:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      additional_contexts:
-        frontend: ${DYDAN_FRONTEND_CONTEXT:-../dydan-app}
-      args:
-        VERSION: ${DYDAN_VERSION:-dev}
-        COMMIT: ${DYDAN_COMMIT:-local}
+    image: ${DYDAN_IMAGE:-ghcr.io/alamoudimoh/dydan:latest}
     container_name: dydan
     restart: unless-stopped
     ports:
@@ -23,14 +16,7 @@ services:
   # See docs/backup-restore.md for scheduled/host-cron examples and restore.
   backup:
     profiles: ["backup"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-      additional_contexts:
-        frontend: ${DYDAN_FRONTEND_CONTEXT:-../dydan-app}
-      args:
-        VERSION: ${DYDAN_VERSION:-dev}
-        COMMIT: ${DYDAN_COMMIT:-local}
+    image: ${DYDAN_IMAGE:-ghcr.io/alamoudimoh/dydan:latest}
     container_name: dydan-backup
     entrypoint: ["/usr/local/bin/dydanctl"]
     command: ["backup", "--data-dir", "/data", "--out", "/backups",
