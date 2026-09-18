@@ -244,26 +244,31 @@ func (h *Handler) report(c *gin.Context) {
 	if !ok {
 		return
 	}
-	hist := h.db.WithContext(c).Table("chore_histories h").Joins("JOIN chores ch ON ch.id=h.chore_id").Where("ch.circle_id=? AND h.status=? AND h.performed_at>=? AND h.performed_at<?", cid, chModel.ChoreHistoryStatusCompleted, b.Start, b.End).
-		Where("(ch.is_private=? OR ch.created_by=? OR h.assigned_to=? OR h.completed_by=?)", false, uid, uid, uid)
-	if !manager(role) {
-		hist = hist.Where("h.completed_by=?", uid)
+	hist := func() *gorm.DB {
+		q := h.db.WithContext(c).Table("chore_histories h").Joins("JOIN chores ch ON ch.id=h.chore_id").Where("ch.circle_id=? AND h.status=? AND h.performed_at>=? AND h.performed_at<?", cid, chModel.ChoreHistoryStatusCompleted, b.Start, b.End).Where("(ch.is_private=? OR ch.created_by=? OR h.assigned_to=? OR h.completed_by=?)", false, uid, uid, uid)
+		if !manager(role) {
+			q = q.Where("h.completed_by=?", uid)
+		}
+		return q
 	}
 	var completed int64
-	hist.Count(&completed)
+	hist().Count(&completed)
 	categories := make([]countName, 0)
-	hist.Select("ch.category_id AS id, COALESCE(l.name,'Uncategorized') AS name, COUNT(*) AS count").Joins("LEFT JOIN labels l ON l.id=ch.category_id").Group("ch.category_id,l.name").Order("count DESC").Scan(&categories)
+	hist().Select("ch.category_id AS id, COALESCE(l.name,'Uncategorized') AS name, COUNT(*) AS count").Joins("LEFT JOIN labels l ON l.id=ch.category_id").Group("ch.category_id,l.name").Order("count DESC").Scan(&categories)
 	members := make([]countName, 0)
 	if manager(role) {
-		hist.Select("h.completed_by AS id, COALESCE(NULLIF(u.display_name,''),u.username) AS name, COUNT(*) AS count").Joins("LEFT JOIN users u ON u.id=h.completed_by").Group("h.completed_by,u.display_name,u.username").Order("u.display_name,u.username").Scan(&members)
+		hist().Select("h.completed_by AS id, COALESCE(NULLIF(u.display_name,''),u.username) AS name, COUNT(*) AS count").Joins("LEFT JOIN users u ON u.id=h.completed_by").Group("h.completed_by,u.display_name,u.username").Order("u.display_name,u.username").Scan(&members)
 	}
 	var earned, redeemed, available int64
-	points := h.db.WithContext(c).Model(&pModel.PointsHistory{}).Where("circle_id=? AND created_at>=? AND created_at<?", cid, b.Start, b.End)
-	if !manager(role) {
-		points = points.Where("user_id=?", uid)
+	points := func() *gorm.DB {
+		q := h.db.WithContext(c).Model(&pModel.PointsHistory{}).Where("circle_id=? AND created_at>=? AND created_at<?", cid, b.Start, b.End)
+		if !manager(role) {
+			q = q.Where("user_id=?", uid)
+		}
+		return q
 	}
-	points.Where("action=?", pModel.PointsHistoryActionAdd).Select("COALESCE(SUM(points),0)").Scan(&earned)
-	points.Where("action=?", pModel.PointsHistoryActionRedeem).Select("COALESCE(SUM(ABS(points)),0)").Scan(&redeemed)
+	points().Where("action=?", pModel.PointsHistoryActionAdd).Select("COALESCE(SUM(points),0)").Scan(&earned)
+	points().Where("action=?", pModel.PointsHistoryActionRedeem).Select("COALESCE(SUM(ABS(points)),0)").Scan(&redeemed)
 	balances := h.db.WithContext(c).Table("user_circles").Where("circle_id=? AND is_active=?", cid, true)
 	if !manager(role) {
 		balances = balances.Where("user_id=?", uid)
@@ -279,15 +284,18 @@ func (h *Handler) report(c *gin.Context) {
 	}
 	rewardQuery.Group("status").Scan(&rewards)
 	var maintenanceCompleted, maintenanceOverdue, maintenanceApproaching int64
-	hist.Joins("JOIN thing_chores tc ON tc.chore_id=ch.id").Count(&maintenanceCompleted)
+	hist().Joins("JOIN thing_chores tc ON tc.chore_id=ch.id").Count(&maintenanceCompleted)
 	now := h.currentTime()
-	maintenance := h.db.WithContext(c).Table("chores ch").Joins("JOIN thing_chores tc ON tc.chore_id=ch.id").Where("ch.circle_id=? AND ch.is_active=?", cid, true).
-		Where("(ch.is_private=? OR ch.created_by=? OR ch.assigned_to=? OR EXISTS (SELECT 1 FROM chore_assignees ca WHERE ca.chore_id=ch.id AND ca.user_id=?))", false, uid, uid, uid)
-	if !manager(role) {
-		maintenance = maintenance.Where("ch.assigned_to=?", uid)
+	maintenance := func() *gorm.DB {
+		q := h.db.WithContext(c).Table("chores ch").Joins("JOIN thing_chores tc ON tc.chore_id=ch.id").Where("ch.circle_id=? AND ch.is_active=?", cid, true).
+			Where("(ch.is_private=? OR ch.created_by=? OR ch.assigned_to=? OR EXISTS (SELECT 1 FROM chore_assignees ca WHERE ca.chore_id=ch.id AND ca.user_id=?))", false, uid, uid, uid)
+		if !manager(role) {
+			q = q.Where("ch.assigned_to=?", uid)
+		}
+		return q
 	}
-	maintenance.Where("ch.next_due_date<?", now).Count(&maintenanceOverdue)
-	maintenance.Where("ch.next_due_date>=? AND ch.next_due_date<?", now, now.AddDate(0, 0, 30)).Count(&maintenanceApproaching)
+	maintenance().Where("ch.next_due_date<?", now).Count(&maintenanceOverdue)
+	maintenance().Where("ch.next_due_date>=? AND ch.next_due_date<?", now, now.AddDate(0, 0, 30)).Count(&maintenanceApproaching)
 	overdueQuery := h.db.WithContext(c).Table("chores ch").Where("ch.circle_id=? AND ch.is_active=? AND ch.next_due_date<?", cid, true, now).
 		Where("(ch.is_private=? OR ch.created_by=? OR ch.assigned_to=? OR EXISTS (SELECT 1 FROM chore_assignees ca WHERE ca.chore_id=ch.id AND ca.user_id=?))", false, uid, uid, uid)
 	if !manager(role) {
