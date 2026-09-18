@@ -14,7 +14,7 @@ import (
 
 type StorageRepository struct {
 	db             *gorm.DB
-	maxUserStorage int
+	maxUserStorage int64
 }
 
 func NewStorageRepository(db *gorm.DB, config *config.Config) *StorageRepository {
@@ -34,7 +34,7 @@ func (r *StorageRepository) AddMediaRecord(ctx context.Context, media *st.Storag
 			Scan(&circleUsed).Error; err != nil {
 			return err
 		}
-		if int(circleUsed)+media.SizeBytes > r.maxUserStorage {
+		if circleUsed+int64(media.SizeBytes) > r.maxUserStorage {
 			return errorx.ErrNotEnoughSpace
 		}
 
@@ -99,7 +99,7 @@ func (r *StorageRepository) GetFilesByUser(ctx context.Context, userID int, enti
 	return files, nil
 }
 
-func (r *StorageRepository) GetStorageStats(ctx context.Context, currentUser *uModel.UserDetails) (int, int, error) {
+func (r *StorageRepository) GetStorageStats(ctx context.Context, currentUser *uModel.UserDetails) (int, int64, error) {
 	var totalUsedBytes int64
 	if err := r.db.WithContext(ctx).Model(&st.StorageUsage{}).
 		Select("COALESCE(SUM(used_bytes), 0)").
