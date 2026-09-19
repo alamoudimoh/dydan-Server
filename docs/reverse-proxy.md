@@ -42,6 +42,78 @@ DYDAN_TRUSTED_PROXIES=10.0.0.5,172.18.0.0/16
 The same list also drives gin's client-IP resolution, so rate limiting sees
 the real client address behind a trusted proxy instead of the proxy's own.
 
+## Finding your proxy IP
+
+Before configuring `DYDAN_TRUSTED_PROXIES`, you need to know the IP address or
+CIDR range of your reverse proxy as seen by the Dydan container.
+
+### Docker Compose / Docker Bridge Network
+
+When using Docker Compose with a reverse proxy in another container:
+
+```bash
+# Find your Docker network's gateway
+docker network inspect 01_apps_dydan_default | grep Gateway
+
+# Or find the proxy container's IP on the shared network
+docker inspect nginx-proxy-manager | jq '.[0].NetworkSettings.Networks["01_apps_dydan_default"].IPAddress'
+
+# Use either the specific IP or the entire subnet
+DYDAN_TRUSTED_PROXIES=172.24.0.2        # Specific proxy container
+DYDAN_TRUSTED_PROXIES=172.24.0.0/16     # Entire Docker bridge network
+```
+
+The proxy must be on the same Docker network for this to work.
+
+### Nginx Proxy Manager (Docker)
+
+Nginx Proxy Manager typically runs on a Docker bridge network. Find its IP:
+
+```bash
+# List networks for the NPM container
+docker inspect nginx-proxy-manager --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+
+# Or use the network gateway
+docker network inspect <network_name> --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
+```
+
+Common Docker bridge networks use:
+- `172.17.0.0/16` (default Docker bridge)
+- `172.18.0.0/16`, `172.19.0.0/16`, etc. (user-defined networks)
+- `172.24.0.0/16` (example from this guide)
+
+### Zero Trust / Cloud Tunnels (Cloudflare Tunnel, Tailscale, Zscaler)
+
+For tunnel services, use the tunnel container's IP or the gateway:
+
+```bash
+# Cloudflare Tunnel (cloudflared)
+docker inspect cloudflared-tunnel --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+
+# Use the specific tunnel IP
+DYDAN_TRUSTED_PROXIES=<tunnel-ip>
+```
+
+If the tunnel runs on the same host (not in a container), use `127.0.0.1`:
+
+```bash
+DYDAN_TRUSTED_PROXIES=127.0.0.1
+```
+
+### Testing your configuration
+
+After setting `DYDAN_TRUSTED_PROXIES`, verify authentication works:
+
+1. Access your application through the HTTPS reverse proxy
+2. Log in and note the successful authentication
+3. Refresh the page in your browser
+4. Verify you remain authenticated (not logged out)
+
+If refresh fails with "session expired":
+- The proxy IP in `DYDAN_TRUSTED_PROXIES` is incorrect
+- The proxy is not sending the correct `X-Forwarded-*` headers
+- See the troubleshooting section below
+
 ## Operator requirements: sanitize forwarding headers
 
 Your proxy must **overwrite** (not append to) the forwarding headers it sets,
@@ -169,3 +241,104 @@ SQLite is suitable for one application node and uses WAL/busy timeout; replicas
 must use one shared PostgreSQL database for cross-node atomic increments. The
 general `server.rate_limit` API limiter is still process-local and is not a
 distributed security control.
+
+## Troubleshooting
+
+### Symptom: "Your session expired" immediately after logging in through HTTPS
+
+**Cause**: The reverse proxy IP is not in `DYDAN_TRUSTED_PROXIES`.
+
+When you access Dydan through `https://example.local`:
+1. Browser sends `Origin: https://example.local`
+2. Nginx proxies to `http://dydan-container:2021`
+3. Dydan sees request from Nginx's IP
+4. If Nginx's IP is not trusted:
+   - Dydan ignores `X-Forwarded-Proto: https`
+   - Dydan ignores `X-Forwarded-Host: example.local`
+   - Dydan uses `Host: dydan-container:2021`
+   - Origin `https://example.local` doesn't match computed origin `http://dydan-container:2021`
+   - CSRF rejects the request
+
+**Solution**:
+
+1. Find Nginx's IP on the Docker network (see "Finding your proxy IP" above)
+2. Add it to your docker-compose:
+
+```yaml
+services:
+  dydan:
+    environment:
+      DYDAN_TRUSTED_PROXIES: "172.24.0.2"  # Nginx's actual IP
+```
+
+3. Restart the Dydan container
+4. Test login and refresh again
+
+### Symptom: Refresh cookie not marked Secure under HTTPS
+
+**Cause**: Same as above - Dydan doesn't know the request is HTTPS.
+
+When a browser reload happens through an HTTPS proxy:
+1. Browser sends refresh request with HttpOnly cookie
+2. Dydan must decide: `Secure` or not?
+3. If proxy is trusted: uses `X-Forwarded-Proto: https` → Secure=true
+4. If proxy is untrusted: uses direct connection (http) → Secure=false
+
+**Solution**: Add the proxy IP to `DYDAN_TRUSTED_PROXIES`.
+
+### Symptom: Works locally but fails in production
+
+Docker networking differs between local and production:
+
+- **Local (docker-compose)**: Containers on the same bridge network, gateway IPs may differ
+- **Production**: May use different network drivers, multiple networks, or host networking
+
+**Debugging steps**:
+
+1. Check which networks your containers use:
+   ```bash
+   docker inspect dydan --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}'
+   docker inspect nginx-proxy --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}'
+   ```
+
+2. Ensure both containers share at least one network:
+   ```bash
+   docker network connect 01_apps_dydan_default nginx-proxy
+   ```
+
+3. Verify the proxy sends the correct headers:
+   ```nginx
+   # In your Nginx config (NPM → Advanced → Custom Configuration)
+   proxy_set_header X-Forwarded-Proto $scheme;
+   proxy_set_header X-Forwarded-Host $host;
+   proxy_set_header X-Forwarded-For $remote_addr;
+   proxy_set_header Host $host;
+   ```
+
+4. Check Dydan logs for rejected CSRF:
+   ```bash
+   docker logs dydan 2>&1 | grep -i "cross-origin"
+   ```
+
+### Security note: Do NOT use trust-all configurations
+
+Never configure Dydan to trust all IPs or networks:
+
+```bash
+# ❌ DANGEROUS - Do not use
+DYDAN_TRUSTED_PROXIES=0.0.0.0/0
+DYDAN_TRUSTED_PROXIES=::/0
+DYDAN_TRUSTED_PROXIES=172.0.0.0/8  # Too broad
+
+# ✅ CORRECT - Specific proxy IP or network
+DYDAN_TRUSTED_PROXIES=172.24.0.2
+DYDAN_TRUSTED_PROXIES=172.24.0.0/28  # Specific small subnet
+DYDAN_TRUSTED_PROXIES=127.0.0.1       # Localhost proxy
+```
+
+Allowing arbitrary IPs to set forwarding headers lets attackers:
+- Bypass CSRF protection
+- Set Secure cookies on HTTP connections
+- Impersonate any client IP for rate-limiting purposes
+
+Always trust only the specific proxy IP or the smallest possible subnet.
