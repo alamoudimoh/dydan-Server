@@ -152,6 +152,24 @@ func (r *CircleRepository) GetCircleByID(c context.Context, circleID int) (*cMod
 	return &circle, nil
 }
 
+// UpdateCircleName changes a Circle's display name without touching any of
+// its membership, invitation, or integration settings.
+func (r *CircleRepository) UpdateCircleName(c context.Context, circleID int, name string) error {
+	return r.db.WithContext(c).
+		Model(&cModel.Circle{}).
+		Where("id = ?", circleID).
+		Update("name", name).Error
+}
+
+// UpdateCircleInviteCode invalidates the previous invitation immediately by
+// replacing it with a newly generated value.
+func (r *CircleRepository) UpdateCircleInviteCode(c context.Context, circleID int, inviteCode string) error {
+	return r.db.WithContext(c).
+		Model(&cModel.Circle{}).
+		Where("id = ?", circleID).
+		Update("invite_code", inviteCode).Error
+}
+
 func (r *CircleRepository) LeaveCircleByUserID(c context.Context, circleID, userID int) error {
 	return r.db.WithContext(c).Where("circle_id = ? AND user_id = ? AND role != 'admin'", circleID, userID).Delete(&cModel.UserCircle{}).Error
 }

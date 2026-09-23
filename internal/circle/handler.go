@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alamoudimoh/dydan-server/config"
@@ -16,6 +17,7 @@ import (
 	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
 	pRepo "github.com/alamoudimoh/dydan-server/internal/points/repo"
 	"github.com/alamoudimoh/dydan-server/internal/storage"
+	"github.com/alamoudimoh/dydan-server/internal/utils"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
 	"github.com/alamoudimoh/dydan-server/logging"
@@ -891,6 +893,76 @@ func (h *Handler) ChangeMemberRole(c *gin.Context) {
 
 }
 
+// UpdateCurrentCircle updates the current Circle's name. Only a Circle
+// manager or admin can change shared team metadata.
+func (h *Handler) UpdateCurrentCircle(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
+		return
+	}
+
+	var req struct {
+		Name string `json:"name" binding:"required,max=120"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "A valid Circle name is required"})
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "A valid Circle name is required"})
+		return
+	}
+
+	members, err := h.circleRepo.GetCircleUsers(c, currentUser.CircleID)
+	if err != nil {
+		logging.FromContext(c).Errorw("Unable to load Circle members", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to update Circle"})
+		return
+	}
+	if !hasCirclePermission(currentUser, members, auth.PermissionManageCircle) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to update this Circle"})
+		return
+	}
+
+	if err := h.circleRepo.UpdateCircleName(c, currentUser.CircleID, req.Name); err != nil {
+		logging.FromContext(c).Errorw("Unable to update Circle name", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to update Circle"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"res": gin.H{"name": req.Name}})
+}
+
+// RegenerateCurrentCircleInviteCode replaces the active join code. This makes
+// any previously shared link unusable immediately.
+func (h *Handler) RegenerateCurrentCircleInviteCode(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
+		return
+	}
+
+	members, err := h.circleRepo.GetCircleUsers(c, currentUser.CircleID)
+	if err != nil {
+		logging.FromContext(c).Errorw("Unable to load Circle members", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to regenerate invite code"})
+		return
+	}
+	if !hasCirclePermission(currentUser, members, auth.PermissionManageCircle) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to regenerate this invite code"})
+		return
+	}
+
+	inviteCode := utils.GenerateInviteCode(c)
+	if err := h.circleRepo.UpdateCircleInviteCode(c, currentUser.CircleID, inviteCode); err != nil {
+		logging.FromContext(c).Errorw("Unable to regenerate Circle invite code", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to regenerate invite code"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"res": gin.H{"invite_code": inviteCode}})
+}
+
 func Routes(router *gin.Engine, h *Handler, multiAuthMiddleware *auth.MultiAuthMiddleware) {
 	log.Println("Registering circle routes")
 
@@ -900,6 +972,8 @@ func Routes(router *gin.Engine, h *Handler, multiAuthMiddleware *auth.MultiAuthM
 		circleRoutes.GET("/members", h.GetCircleMembers)
 		circleRoutes.GET("/members/requests", h.GetPendingCircleMembers)
 		circleRoutes.PUT("/members/role", h.ChangeMemberRole)
+		circleRoutes.PUT("/settings", h.UpdateCurrentCircle)
+		circleRoutes.POST("/invite-code/regenerate", h.RegenerateCurrentCircleInviteCode)
 		circleRoutes.GET("/", h.GetUserCircles)
 		circleRoutes.POST("/:id/members/points/redeem", h.RedeemPoints)
 		circleRoutes.POST("/:id/members/:userId/points/reset", h.ResetPoints)
