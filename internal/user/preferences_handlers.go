@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -87,8 +88,8 @@ type preferenceError struct{}
 
 func (*preferenceError) Error() string { return "invalid settings preferences" }
 
-func (h *Handler) loadPreferences(c *gin.Context, userID int) (Preferences, error) {
-	stored, err := h.userRepo.GetUserPreferences(c, userID)
+func (h *Handler) loadPreferences(ctx context.Context, userID int) (Preferences, error) {
+	stored, err := h.userRepo.GetUserPreferences(ctx, userID)
 	if err != nil {
 		return Preferences{}, err
 	}
@@ -107,7 +108,7 @@ func (h *Handler) loadPreferences(c *gin.Context, userID int) (Preferences, erro
 
 func (h *Handler) getPreferences(c *gin.Context) {
 	currentUser := auth.MustCurrentUser(c)
-	preferences, err := h.loadPreferences(c, currentUser.ID)
+	preferences, err := h.loadPreferences(c.Request.Context(), currentUser.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to load settings preferences"})
 		return
@@ -127,7 +128,7 @@ func (h *Handler) updatePreferences(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save settings preferences"})
 		return
 	}
-	if err := h.userRepo.SaveUserPreferences(c, &uModel.UserPreference{UserID: currentUser.ID, Value: string(encoded)}); err != nil {
+	if err := h.userRepo.SaveUserPreferences(c.Request.Context(), &uModel.UserPreference{UserID: currentUser.ID, Value: string(encoded)}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save settings preferences"})
 		return
 	}
@@ -138,7 +139,7 @@ func (h *Handler) resetPreferences(c *gin.Context) {
 	currentUser := auth.MustCurrentUser(c)
 	preferences := defaultPreferences()
 	encoded, _ := json.Marshal(preferences)
-	if err := h.userRepo.SaveUserPreferences(c, &uModel.UserPreference{UserID: currentUser.ID, Value: string(encoded)}); err != nil {
+	if err := h.userRepo.SaveUserPreferences(c.Request.Context(), &uModel.UserPreference{UserID: currentUser.ID, Value: string(encoded)}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to reset settings preferences"})
 		return
 	}
