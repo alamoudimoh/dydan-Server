@@ -21,6 +21,7 @@ type EmailSender struct {
 type Sender interface {
 	SendResetPasswordEmail(c context.Context, to, code string) error
 	SendVerificationEmail(to, code string) error
+	SendTestEmail(c context.Context, to string) error
 }
 
 var ErrDeliveryDisabled = fmt.Errorf("email delivery is disabled")
@@ -35,18 +36,15 @@ func (DisabledSender) SendVerificationEmail(string, string) error {
 	return ErrDeliveryDisabled
 }
 
-// NewSender picks the email implementation based on email.provider.
-// Defaults to the SMTP sender so self-hosted behavior is unchanged.
-func NewSender(conf *config.Config) Sender {
-	if conf.EmailConfig.Email == "" && conf.EmailConfig.Host == "" && conf.EmailConfig.Key == "" {
-		return DisabledSender{}
-	}
-	switch conf.EmailConfig.Provider {
-	case "smtp2go":
-		return NewSMTP2GoSender(conf)
-	default:
-		return NewEmailSender(conf)
-	}
+func (DisabledSender) SendTestEmail(context.Context, string) error {
+	return ErrDeliveryDisabled
+}
+
+// NewSender resolves email configuration at send time. This makes a saved
+// administrator configuration immediately active without a restart while
+// retaining the original environment/file configuration as its fallback.
+func NewSender(store *RuntimeStore) Sender {
+	return &RuntimeSender{store: store}
 }
 
 func NewEmailSender(conf *config.Config) *EmailSender {
@@ -521,6 +519,18 @@ func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string
 	}
 	return nil
 
+}
+
+// SendTestEmail deliberately uses the existing SMTP transport rather than a
+// parallel test-only mail path, so an administrator validates the exact
+// credentials and transport used for transactional delivery.
+func (es *EmailSender) SendTestEmail(_ context.Context, to string) error {
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", es.fromMail)
+	msg.SetHeader("To", to)
+	msg.SetHeader("Subject", "Dydan email delivery test")
+	msg.SetBody("text/plain", "Dydan successfully sent this email using the configured SMTP delivery provider.")
+	return es.client.DialAndSend(msg)
 }
 
 // func (es *EmailSender) SendFeedbackRequestEmail(to, code string) error {

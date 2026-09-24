@@ -85,3 +85,17 @@ func TestAPIResponsesHaveNoCSP(t *testing.T) {
 		t.Fatal("API response must not carry the frontend document CSP")
 	}
 }
+
+func TestUnknownAPIRouteReturnsJSONNotSPA(t *testing.T) {
+	r := newFrontendRouter(t, true)
+	w := get(t, r, "/api/v1/not-a-real-route")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d", w.Code)
+	}
+	if contentType := w.Header().Get("Content-Type"); !strings.Contains(contentType, "application/json") {
+		t.Fatalf("content type = %q", contentType)
+	}
+	if !strings.Contains(w.Body.String(), `"code":"api_route_not_found"`) {
+		t.Fatalf("unexpected API fallback body: %s", w.Body.String())
+	}
+}

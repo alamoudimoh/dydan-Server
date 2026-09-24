@@ -12,6 +12,7 @@ import (
 	"github.com/alamoudimoh/dydan-server/internal/authlimit"
 	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
 	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	emailModel "github.com/alamoudimoh/dydan-server/internal/email"
 	filterModel "github.com/alamoudimoh/dydan-server/internal/filter/model"
 	lModel "github.com/alamoudimoh/dydan-server/internal/label/model"
 	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
@@ -85,6 +86,7 @@ func Migration(db *gorm.DB) error {
 		routineModel.Application{},
 		authlimit.Bucket{},
 		authlimit.CapacityGuard{},
+		emailModel.RuntimeConfiguration{},
 	); err != nil {
 		return err
 	}

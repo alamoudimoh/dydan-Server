@@ -33,6 +33,8 @@ func (s *recoverySender) SendResetPasswordEmail(_ context.Context, to, _ string)
 
 func (*recoverySender) SendVerificationEmail(string, string) error { return nil }
 
+func (*recoverySender) SendTestEmail(context.Context, string) error { return nil }
+
 func recoveryHarness(t *testing.T, sender *recoverySender) (*gin.Engine, *gorm.DB) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)

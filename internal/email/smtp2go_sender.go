@@ -112,3 +112,12 @@ func (s *SMTP2GoSender) SendVerificationEmail(to, code string) error {
 	templateData := map[string]interface{}{"verifyURL": fullURL}
 	return s.sendTemplate(context.Background(), to, "Dydan! Verify your email", s.verifyTemplateID, templateData)
 }
+
+// SendTestEmail uses the configured verification template through the same
+// SMTP2GO HTTP sender as account verification. The harmless test URL keeps the
+// provider's template variables satisfiable without creating an account token.
+func (s *SMTP2GoSender) SendTestEmail(c context.Context, to string) error {
+	return s.sendTemplate(c, to, "Dydan email delivery test", s.verifyTemplateID, map[string]interface{}{
+		"verifyURL": s.appHost,
+	})
+}

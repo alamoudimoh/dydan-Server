@@ -134,8 +134,12 @@ func main() {
 		fx.Provide(utils.NewRateLimiter),
 		fx.Provide(authlimit.New),
 
-		// add email sender (implementation selected by email.provider config):
+		// Email delivery dynamically selects a persisted administrator-managed
+		// configuration, falling back to environment/file configuration when no
+		// runtime configuration has been saved.
+		fx.Provide(email.NewRuntimeStore),
 		fx.Provide(email.NewSender),
+		fx.Provide(email.NewHandler),
 
 		// MFA services
 		fx.Provide(mfa.NewService),
@@ -241,6 +245,7 @@ func main() {
 			frontend.Routes,
 			docs.Routes,
 			resource.Routes,
+			email.Routes,
 			reward.Routes,
 			notifier.InboxRoutes,
 			// backup.Routes,
