@@ -51,3 +51,11 @@ grep -Eq 'ghcr.io/\${{ github.repository_owner }}/dydan' "$release_yml" ||
 if grep -Eq 'DOCKER_USERNAME|DOCKER_PASSWORD|docker\.io|hub\.docker' "$release_yml"; then
   fail "Docker Hub publishing logic still present in go-release.yml"
 fi
+
+# Calendar tags are the current shared AppWeb/Server release convention. Keep
+# accepting historic semantic tags so existing operators can rebuild them.
+bash scripts/validate-release-tag.sh v202609-13
+bash scripts/validate-release-tag.sh v1.2.46
+if bash scripts/validate-release-tag.sh 202609-13 >/dev/null 2>&1; then
+  fail "release tags must remain v-prefixed"
+fi
