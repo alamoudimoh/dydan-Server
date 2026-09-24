@@ -57,6 +57,7 @@ func Migration(db *gorm.DB) error {
 		tModel.ThingHistory{},
 		uModel.APIToken{},
 		uModel.UserNotificationTarget{},
+		uModel.UserPreference{},
 		lModel.Label{},
 		chModel.ChoreLabels{},
 		projModel.Project{},

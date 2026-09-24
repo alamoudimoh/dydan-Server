@@ -68,6 +68,16 @@ type UserNotificationTarget struct {
 	CreatedAt time.Time                   `json:"-" gorm:"column:created_at"`
 }
 
+// UserPreference stores the non-sensitive account preferences selected in the
+// approved Settings screen. Keeping this separate from User avoids exposing
+// client-only presentation choices in authentication and profile responses.
+type UserPreference struct {
+	UserID    int       `json:"userId" gorm:"column:user_id;primaryKey"`
+	Value     string    `json:"-" gorm:"column:value;type:text;not null"`
+	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at"`
+	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at"`
+}
+
 // UserDeviceToken represents FCM/push notification tokens for user devices
 type UserDeviceToken struct {
 	ID           int       `json:"id" gorm:"primaryKey;autoIncrement"`                                             // Primary key

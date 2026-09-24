@@ -71,11 +71,29 @@ type IUserRepository interface {
 	RevokeAllUserSessions(c context.Context, userID int) error
 	RevokeOtherUserSessions(c context.Context, userID int, keepSessionID string) error
 	CleanupExpiredSessions(c context.Context) error
+	GetUserPreferences(c context.Context, userID int) (*uModel.UserPreference, error)
+	SaveUserPreferences(c context.Context, preference *uModel.UserPreference) error
 }
 
 type UserRepository struct {
-	db            *gorm.DB
+	db           *gorm.DB
 	isDydanCloud bool
+}
+
+func (r *UserRepository) GetUserPreferences(c context.Context, userID int) (*uModel.UserPreference, error) {
+	var preference uModel.UserPreference
+	err := r.db.WithContext(c).Where("user_id = ?", userID).First(&preference).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &preference, nil
+}
+
+func (r *UserRepository) SaveUserPreferences(c context.Context, preference *uModel.UserPreference) error {
+	return r.db.WithContext(c).Save(preference).Error
 }
 
 func NewUserRepository(db *gorm.DB, cfg *config.Config) *UserRepository {
