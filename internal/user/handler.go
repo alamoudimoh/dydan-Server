@@ -1204,8 +1204,13 @@ func (h *Handler) CreateLongLivedToken(c *gin.Context) {
 		return
 	}
 
-	// If user has MFA enabled and provides an MFA code, verify it
-	if currentUser.MFAEnabled && req.MFACode != "" {
+	// API tokens are long-lived credentials. An MFA-enabled account must prove
+	// possession of its second factor before a new one can be minted.
+	if currentUser.MFAEnabled && req.MFACode == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "MFA code is required to create an API token"})
+		return
+	}
+	if currentUser.MFAEnabled {
 		valid, newUsedCodes, err := h.mfaService.IsCodeValid(
 			currentUser.MFASecret,
 			currentUser.MFABackupCodes,
@@ -1259,11 +1264,6 @@ func (h *Handler) CreateLongLivedToken(c *gin.Context) {
 			"createdAt": tokenModel.CreatedAt,
 			"token":     token,
 		},
-	}
-
-	// If user has MFA enabled but didn't provide a code, suggest using MFA for enhanced security
-	if currentUser.MFAEnabled && req.MFACode == "" {
-		response["message"] = "API token created successfully. For enhanced security, consider providing an MFA code when creating API tokens."
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -1979,6 +1979,9 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.GET("/", h.GetAllUsers())
 		userRoutes.GET("/profile", h.GetUserProfile)
 		userRoutes.PUT("", h.UpdateUserDetails)
+		userRoutes.GET("/preferences", h.requirePermission(auth.PermissionManageAccount), h.getPreferences)
+		userRoutes.PUT("/preferences", h.requirePermission(auth.PermissionManageAccount), h.updatePreferences)
+		userRoutes.POST("/preferences/reset", h.requirePermission(auth.PermissionManageAccount), h.resetPreferences)
 		userRoutes.POST("/tokens", h.requirePermission(auth.PermissionManageAccount), securityLimiter.Middleware("token-create", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.CreateLongLivedToken)
 		userRoutes.GET("/tokens", h.requirePermission(auth.PermissionManageAccount), h.GetAllUserToken)
 		userRoutes.DELETE("/tokens/:id", h.requirePermission(auth.PermissionManageAccount), h.DeleteUserToken)
