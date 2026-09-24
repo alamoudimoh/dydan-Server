@@ -59,6 +59,7 @@ func (h *Handler) CreateSubscription(c *gin.Context) {
 		if err != nil {
 			logger.Errorw("payment.handler.CreateSubscription failed to create customer", "err", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create customer"})
+			return
 		}
 		customer = &model.StripeCustomer{
 			UserID:     uint64(currentUser.ID),
