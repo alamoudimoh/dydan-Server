@@ -276,8 +276,12 @@ func (h *Handler) GetChore(c *gin.Context) {
 
 	chore, err := h.choreRepo.GetChore(c, id, currentUser.ID, currentUser.CircleID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Chore not found"})
+			return
+		}
 		logger.Error("Failed to retrieve chore", "error", err, "choreID", id, "userID", currentUser.ID)
-		c.JSON(500, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve chore",
 		})
 		return
@@ -853,8 +857,12 @@ func (h *Handler) EditChore(c *gin.Context) {
 	oldChore, err := h.choreRepo.GetChore(c, choreReq.ID, currentUser.ID, currentUser.CircleID)
 
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Chore not found"})
+			return
+		}
 		logger.Error("Failed to retrieve chore", "error", err)
-		c.JSON(500, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve chore",
 		})
 		return
