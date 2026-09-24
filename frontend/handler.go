@@ -112,6 +112,16 @@ func staticMiddlewareNoRoute(root string) gin.HandlerFunc {
 
 	// always serve index.html for any route does not match:
 	return func(c *gin.Context) {
+		// API requests must never be rewritten to the SPA shell. A JSON 404 keeps
+		// clients from treating an HTML 200 as a successful API response while
+		// preserving deep-link fallback for every non-API SPA route.
+		if c.Request.URL.Path == "/api/v1" || strings.HasPrefix(c.Request.URL.Path, "/api/v1/") {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"error": "API route not found",
+				"code":  "api_route_not_found",
+			})
+			return
+		}
 		// Rewrite all requests to serve index.html
 		c.Request.URL.Path = "/"
 		setBrowserSecurityHeaders(c)

@@ -283,6 +283,12 @@ type EmailConfig struct {
 	Provider                string `mapstructure:"provider" yaml:"provider" default:"smtp"`
 	VerifyTemplateID        string `mapstructure:"verify_template_id" yaml:"verify_template_id"`
 	ResetPasswordTemplateID string `mapstructure:"reset_password_template_id" yaml:"reset_password_template_id"`
+	// RuntimeSecret encrypts administrator-managed delivery credentials before
+	// they are persisted in the application database. It is initialized into a
+	// mode-0600 file under data_dir for zero-config self-hosted deployments.
+	// It is intentionally never returned by the administration API.
+	RuntimeSecret     string `mapstructure:"runtime_secret" yaml:"runtime_secret"`
+	RuntimeSecretFile string `mapstructure:"runtime_secret_file" yaml:"runtime_secret_file"`
 }
 
 type OAuth2Config struct {
@@ -886,7 +892,32 @@ func resolveRuntimeSecrets(cfg *Config) error {
 	if err := resolveMediaSigningKey(cfg); err != nil {
 		return err
 	}
-	return resolveWebhookSigningKey(cfg)
+	if err := resolveWebhookSigningKey(cfg); err != nil {
+		return err
+	}
+	return resolveEmailRuntimeKey(cfg)
+}
+
+// resolveEmailRuntimeKey creates an independent, persistent encryption key
+// for runtime mail credentials. Keeping it separate from JWT and URL-signing
+// keys means normal token/key rotation does not make saved SMTP credentials
+// unreadable.
+func resolveEmailRuntimeKey(cfg *Config) error {
+	if strings.TrimSpace(cfg.EmailConfig.RuntimeSecret) != "" {
+		if err := validateJWTSecret(cfg.EmailConfig.RuntimeSecret); err != nil {
+			return fmt.Errorf("email.runtime_secret: %w", err)
+		}
+		return nil
+	}
+	if strings.TrimSpace(cfg.EmailConfig.RuntimeSecretFile) == "" {
+		cfg.EmailConfig.RuntimeSecretFile = filepath.Join(cfg.DataDir, "email-runtime-config-secret")
+	}
+	secret, err := loadOrCreateSecret(cfg.EmailConfig.RuntimeSecretFile)
+	if err != nil {
+		return fmt.Errorf("initialize runtime email configuration secret: %w", err)
+	}
+	cfg.EmailConfig.RuntimeSecret = secret
+	return nil
 }
 
 // mediaSigningKeyMinLen is the minimum length of an explicitly configured
