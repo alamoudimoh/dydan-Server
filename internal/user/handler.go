@@ -1994,7 +1994,7 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.POST("/mfa/setup", h.requirePermission(auth.PermissionManageAccount), h.setupMFA)
 		userRoutes.POST("/mfa/confirm", securityLimiter.Middleware("mfa-confirm", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.requirePermission(auth.PermissionManageAccount), h.confirmMFA)
 		userRoutes.POST("/mfa/disable", securityLimiter.Middleware("mfa-disable", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.requirePermission(auth.PermissionManageAccount), h.disableMFA)
-		// userRoutes.POST("/mfa/regenerate-backup-codes", h.regenerateBackupCodes)
+		userRoutes.POST("/mfa/regenerate-backup-codes", securityLimiter.Middleware("mfa-regenerate-backup-codes", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.requirePermission(auth.PermissionManageAccount), h.regenerateBackupCodes)
 
 		// Account deletion endpoints
 		userRoutes.POST("/delete/check", h.requirePermission(auth.PermissionManageAccount), h.checkAccountDeletion)
