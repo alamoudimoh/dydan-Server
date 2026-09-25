@@ -133,20 +133,23 @@ type notificationPreferenceDocument struct {
 func (s *InboxService) preferencesFor(ctx context.Context, userID int) (notificationPreferenceDocument, bool, error) {
 	var preference uModel.UserPreference
 	err := s.db.WithContext(ctx).Where("user_id = ?", userID).First(&preference).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) || preference.Value == "" {
-		return notificationPreferenceDocument{}, false, nil
-	}
-	if err != nil {
-		return notificationPreferenceDocument{}, false, err
-	}
-	// Legacy omissions resolve to the canonical Settings defaults; they never
-	// implicitly opt a user into a new category or email channel.
+
+	// Both missing rows and legacy documents start from the canonical Settings
+	// defaults. A user must never be implicitly opted into a newer category or
+	// channel merely because they have not saved Settings yet.
 	document := notificationPreferenceDocument{}
 	d := preferences.DefaultNotificationSettings()
 	document.Notifications.TaskReminders, document.Notifications.RoutineNudges = d.TaskReminders, d.RoutineNudges
 	document.Notifications.FamilyActivity, document.Notifications.Rewards = d.FamilyActivity, d.Rewards
 	document.Notifications.WeeklySummary, document.Notifications.QuietHours = d.WeeklySummary, d.QuietHours
 	document.Notifications.PushChannel, document.Notifications.EmailChannel = d.PushChannel, d.EmailChannel
+
+	if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && preference.Value == "") {
+		return document, true, nil
+	}
+	if err != nil {
+		return notificationPreferenceDocument{}, false, err
+	}
 	if err := json.Unmarshal([]byte(preference.Value), &document); err != nil {
 		return notificationPreferenceDocument{}, false, err
 	}
