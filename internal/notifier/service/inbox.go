@@ -14,6 +14,7 @@ import (
 	mRepo "github.com/alamoudimoh/dydan-server/internal/meter/repo"
 	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
 	nRepo "github.com/alamoudimoh/dydan-server/internal/notifier/repo"
+	"github.com/alamoudimoh/dydan-server/internal/notifier/service/fcm"
 	"github.com/alamoudimoh/dydan-server/internal/preferences"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"gorm.io/gorm"
@@ -23,6 +24,7 @@ type InboxService struct {
 	db          *gorm.DB
 	repo        *nRepo.InboxRepository
 	emailSender email.NotificationSender
+	pushSender  fcm.InboxPushSender
 }
 
 // routineApplicationRecord and routinePackRecord mirror only the persisted
@@ -44,8 +46,8 @@ type routinePackRecord struct {
 
 func (routinePackRecord) TableName() string { return "routine_packs" }
 
-func NewInboxService(db *gorm.DB, repo *nRepo.InboxRepository, sender email.NotificationSender) *InboxService {
-	return &InboxService{db: db, repo: repo, emailSender: sender}
+func NewInboxService(db *gorm.DB, repo *nRepo.InboxRepository, sender email.NotificationSender, push fcm.InboxPushSender) *InboxService {
+	return &InboxService{db: db, repo: repo, emailSender: sender, pushSender: push}
 }
 
 func (s *InboxService) Notify(ctx context.Context, n *nModel.InboxNotification) error {
@@ -68,9 +70,30 @@ func (s *InboxService) Notify(ctx context.Context, n *nModel.InboxNotification) 
 	}
 	if err := s.sendNotificationEmail(ctx, n); err != nil && !errors.Is(err, email.ErrDeliveryDisabled) {
 		// Email is an independent channel. Inbox creation must remain available.
-		return nil
+		// Continue to push: a failed email provider must not suppress it.
 	}
+	// Push failure is isolated from durable inbox/email delivery. `created` is
+	// the occurrence idempotency boundary, so retries cannot duplicate it.
+	_ = s.sendNotificationPush(ctx, n)
 	return nil
+}
+
+func (s *InboxService) sendNotificationPush(ctx context.Context, n *nModel.InboxNotification) error {
+	document, exists, err := s.preferencesFor(ctx, n.UserID)
+	if err != nil || !exists || !document.Notifications.PushChannel || s.pushSender == nil {
+		return err
+	}
+	if ok, err := s.quietHoursAllow(ctx, n.UserID, document.Notifications.QuietHours, n.CreatedAt); err != nil || !ok {
+		return err
+	}
+	var target uModel.UserNotificationTarget
+	if err := s.db.WithContext(ctx).Where("user_id = ? AND type = ?", n.UserID, nModel.NotificationPlatformFCM).First(&target).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	return s.pushSender.SendInboxNotification(ctx, target.TargetID, n.Title, n.Message, map[string]string{"inboxNotificationID": fmt.Sprintf("%d", n.ID), "type": n.Type})
 }
 
 func (s *InboxService) sendNotificationEmail(ctx context.Context, n *nModel.InboxNotification) error {
@@ -116,16 +139,14 @@ func (s *InboxService) preferencesFor(ctx context.Context, userID int) (notifica
 	if err != nil {
 		return notificationPreferenceDocument{}, false, err
 	}
-	// Missing keys come from exports created before notification categories and
-	// must retain the historical enabled behavior after an upgrade.
+	// Legacy omissions resolve to the canonical Settings defaults; they never
+	// implicitly opt a user into a new category or email channel.
 	document := notificationPreferenceDocument{}
-	document.Notifications.TaskReminders = true
-	document.Notifications.RoutineNudges = true
-	document.Notifications.FamilyActivity = true
-	document.Notifications.Rewards = true
-	document.Notifications.WeeklySummary = true
-	document.Notifications.PushChannel = true
-	document.Notifications.EmailChannel = true
+	d := preferences.DefaultNotificationSettings()
+	document.Notifications.TaskReminders, document.Notifications.RoutineNudges = d.TaskReminders, d.RoutineNudges
+	document.Notifications.FamilyActivity, document.Notifications.Rewards = d.FamilyActivity, d.Rewards
+	document.Notifications.WeeklySummary, document.Notifications.QuietHours = d.WeeklySummary, d.QuietHours
+	document.Notifications.PushChannel, document.Notifications.EmailChannel = d.PushChannel, d.EmailChannel
 	if err := json.Unmarshal([]byte(preference.Value), &document); err != nil {
 		return notificationPreferenceDocument{}, false, err
 	}

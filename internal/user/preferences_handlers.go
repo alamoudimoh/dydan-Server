@@ -7,6 +7,7 @@ import (
 	"time"
 
 	auth "github.com/alamoudimoh/dydan-server/internal/auth"
+	"github.com/alamoudimoh/dydan-server/internal/preferences"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
@@ -52,12 +53,13 @@ type PrivacyPreferences struct {
 }
 
 func defaultPreferences() Preferences {
+	d := preferences.DefaultNotificationSettings()
 	return Preferences{
 		Theme: "dydan", Appearance: "light", DefaultView: "focus",
 		Language: "en", DateFormat: "MM/DD/YYYY", TimeFormat: "h:mm A",
 		FirstDayOfWeek: 0, Currency: "USD", ShowItemBadges: true,
 		RememberSidebar: true,
-		Notifications:   NotificationPreferences{TaskReminders: true, RoutineNudges: true, Rewards: true, PushChannel: true},
+		Notifications:   NotificationPreferences{TaskReminders: d.TaskReminders, RoutineNudges: d.RoutineNudges, FamilyActivity: d.FamilyActivity, Rewards: d.Rewards, WeeklySummary: d.WeeklySummary, QuietHours: d.QuietHours, PushChannel: d.PushChannel, EmailChannel: d.EmailChannel},
 		Privacy:         PrivacyPreferences{ActivityVisible: true, Analytics: true, Personalization: true},
 	}
 }
@@ -98,7 +100,7 @@ func (h *Handler) loadPreferences(ctx context.Context, userID int) (Preferences,
 	if stored == nil || stored.Value == "" {
 		return defaultPreferences(), nil
 	}
-	var preferences Preferences
+	preferences := defaultPreferences()
 	if err := json.Unmarshal([]byte(stored.Value), &preferences); err != nil {
 		return Preferences{}, err
 	}

@@ -129,6 +129,7 @@ func main() {
 		fx.Provide(notifier.NewNotifier),
 		fx.Provide(events.NewEventsProducer),
 		fx.Provide(fcm.NewFCMNotifier),
+		fx.Provide(fcm.NewInboxPushSender),
 
 		// Rate limiter
 		fx.Provide(utils.NewRateLimiter),

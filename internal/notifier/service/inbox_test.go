@@ -23,6 +23,16 @@ type notificationEmailFake struct {
 	err   error
 }
 
+type notificationPushFake struct {
+	calls []struct{ token, title, body string }
+	err   error
+}
+
+func (f *notificationPushFake) SendInboxNotification(_ context.Context, token, title, body string, _ map[string]string) error {
+	f.calls = append(f.calls, struct{ token, title, body string }{token, title, body})
+	return f.err
+}
+
 func (f *notificationEmailFake) SendNotificationEmail(_ context.Context, to, subject, body string) error {
 	f.calls = append(f.calls, struct{ to, subject, body string }{to, subject, body})
 	return f.err
@@ -34,17 +44,24 @@ func inboxServiceDB(t *testing.T) (*InboxService, *gorm.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = db.AutoMigrate(&uModel.User{}, &uModel.UserPreference{}, &cModel.UserCircle{}, &routineApplicationRecord{}, &routinePackRecord{}, &chModel.Chore{}, &chModel.ChoreHistory{}, &mModel.Meter{}, &mModel.ChoreSchedule{}, &mModel.UpdateReminder{}, &tModel.ThingChore{}, &nModel.InboxNotification{}); err != nil {
+	if err = db.AutoMigrate(&uModel.User{}, &uModel.UserPreference{}, &uModel.UserNotificationTarget{}, &cModel.UserCircle{}, &routineApplicationRecord{}, &routinePackRecord{}, &chModel.Chore{}, &chModel.ChoreHistory{}, &mModel.Meter{}, &mModel.ChoreSchedule{}, &mModel.UpdateReminder{}, &tModel.ThingChore{}, &nModel.InboxNotification{}); err != nil {
 		t.Fatal(err)
 	}
 	repo := nRepo.NewInboxRepository(db)
-	return NewInboxService(db, repo, &notificationEmailFake{}), db
+	return NewInboxService(db, repo, &notificationEmailFake{}, &notificationPushFake{}), db
 }
 
 func inboxServiceWithEmail(t *testing.T, sender *notificationEmailFake) (*InboxService, *gorm.DB) {
 	t.Helper()
 	s, db := inboxServiceDB(t)
 	s.emailSender = sender
+	return s, db
+}
+
+func inboxServiceWithPush(t *testing.T, sender *notificationPushFake) (*InboxService, *gorm.DB) {
+	t.Helper()
+	s, db := inboxServiceDB(t)
+	s.pushSender = sender
 	return s, db
 }
 
@@ -241,6 +258,82 @@ func TestNotificationEmailHonorsSettingsAndProviderFailureIsolated(t *testing.T)
 	var rows []nModel.InboxNotification
 	if err := db.Where("title = ?", "t").Find(&rows).Error; err != nil || len(rows) != 2 {
 		t.Fatalf("email failure broke inbox: %v %+v", err, rows)
+	}
+}
+
+func TestInboxNotificationPushHonorsChannelsCategoriesQuietHoursAndDedup(t *testing.T) {
+	push := &notificationPushFake{}
+	s, db := inboxServiceWithPush(t, push)
+	user := uModel.User{Username: "push-owner", Email: "push@example.test", Timezone: "UTC"}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&uModel.UserNotificationTarget{UserID: user.ID, Type: nModel.NotificationPlatformFCM, TargetID: "device-token"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	set := func(v string) {
+		if err := db.Where("user_id = ?", user.ID).Assign(uModel.UserPreference{Value: v}).FirstOrCreate(&uModel.UserPreference{UserID: user.ID}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	set(`{"notifications":{"taskReminders":true,"routineNudges":true,"familyActivity":true,"rewards":true,"weeklySummary":true,"quietHours":false,"pushChannel":true,"emailChannel":false}}`)
+	n := &nModel.InboxNotification{CircleID: 1, UserID: user.ID, Type: "routine_due", Title: "Routine", Message: "Due", DedupKey: "push-routine", CreatedAt: now}
+	if err := s.Notify(context.Background(), n); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Notify(context.Background(), n); err != nil {
+		t.Fatal(err)
+	}
+	if len(push.calls) != 1 || push.calls[0].token != "device-token" {
+		t.Fatalf("routine push = %+v", push.calls)
+	}
+	set(`{"notifications":{"taskReminders":true,"routineNudges":true,"familyActivity":true,"rewards":true,"weeklySummary":true,"quietHours":false,"pushChannel":false,"emailChannel":true}}`)
+	if err := s.Notify(context.Background(), &nModel.InboxNotification{CircleID: 1, UserID: user.ID, Type: "weekly_summary", Title: "Weekly", DedupKey: "push-off", CreatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	if len(push.calls) != 1 {
+		t.Fatal("disabled push channel delivered")
+	}
+	set(`{"notifications":{"taskReminders":true,"routineNudges":true,"familyActivity":false,"rewards":true,"weeklySummary":true,"quietHours":false,"pushChannel":true,"emailChannel":true}}`)
+	if err := s.Notify(context.Background(), &nModel.InboxNotification{CircleID: 1, UserID: user.ID, Type: "family_activity_completed", Title: "Family", DedupKey: "family-off", CreatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	if len(push.calls) != 1 {
+		t.Fatal("disabled family category delivered push")
+	}
+	set(`{"notifications":{"taskReminders":true,"routineNudges":true,"familyActivity":true,"rewards":true,"weeklySummary":true,"quietHours":true,"pushChannel":true,"emailChannel":false}}`)
+	if err := s.Notify(context.Background(), &nModel.InboxNotification{CircleID: 1, UserID: user.ID, Type: "weekly_summary", Title: "Quiet", DedupKey: "push-quiet", CreatedAt: now.Add(11 * time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	if len(push.calls) != 1 {
+		t.Fatal("quiet-hours push delivered")
+	}
+}
+
+func TestLegacyNotificationPreferenceDefaultsMatchSettings(t *testing.T) {
+	s, db := inboxServiceDB(t)
+	user := uModel.User{Username: "legacy-prefs", Email: "legacy@example.test", Timezone: "UTC"}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, exists, err := s.preferencesFor(context.Background(), user.ID); err != nil || exists {
+		t.Fatalf("no-row preference = exists:%v err:%v", exists, err)
+	}
+	if err := db.Create(&uModel.UserPreference{UserID: user.ID, Value: `{"notifications":{}}`}).Error; err != nil {
+		t.Fatal(err)
+	}
+	p, exists, err := s.preferencesFor(context.Background(), user.ID)
+	if err != nil || !exists {
+		t.Fatalf("legacy preference: exists:%v err:%v", exists, err)
+	}
+	if !p.Notifications.TaskReminders || !p.Notifications.RoutineNudges || p.Notifications.FamilyActivity || !p.Notifications.Rewards || p.Notifications.WeeklySummary || !p.Notifications.PushChannel || p.Notifications.EmailChannel {
+		t.Fatalf("canonical legacy defaults diverged: %+v", p.Notifications)
+	}
+	db.Model(&uModel.UserPreference{}).Where("user_id = ?", user.ID).Update("value", `{"notifications":{"emailChannel":true,"familyActivity":true,"weeklySummary":true}}`)
+	p, _, err = s.preferencesFor(context.Background(), user.ID)
+	if err != nil || !p.Notifications.EmailChannel || !p.Notifications.FamilyActivity || !p.Notifications.WeeklySummary {
+		t.Fatalf("explicit legacy values lost: %+v err=%v", p.Notifications, err)
 	}
 }
 
