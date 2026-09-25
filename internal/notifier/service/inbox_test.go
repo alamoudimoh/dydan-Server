@@ -313,17 +313,54 @@ func TestInboxNotificationPushHonorsChannelsCategoriesQuietHoursAndDedup(t *test
 
 func TestLegacyNotificationPreferenceDefaultsMatchSettings(t *testing.T) {
 	s, db := inboxServiceDB(t)
+	push := &notificationPushFake{}
+	emailSender := &notificationEmailFake{}
+	s.pushSender = push
+	s.emailSender = emailSender
 	user := uModel.User{Username: "legacy-prefs", Email: "legacy@example.test", Timezone: "UTC"}
 	if err := db.Create(&user).Error; err != nil {
 		t.Fatal(err)
 	}
-	if _, exists, err := s.preferencesFor(context.Background(), user.ID); err != nil || exists {
-		t.Fatalf("no-row preference = exists:%v err:%v", exists, err)
+	if err := db.Create(&uModel.UserNotificationTarget{UserID: user.ID, Type: nModel.NotificationPlatformFCM, TargetID: "default-device"}).Error; err != nil {
+		t.Fatal(err)
 	}
+
+	p, exists, err := s.preferencesFor(context.Background(), user.ID)
+	if err != nil || !exists {
+		t.Fatalf("no-row preference: exists:%v err:%v", exists, err)
+	}
+	if !p.Notifications.TaskReminders || !p.Notifications.RoutineNudges || p.Notifications.FamilyActivity || !p.Notifications.Rewards || p.Notifications.WeeklySummary || !p.Notifications.PushChannel || p.Notifications.EmailChannel {
+		t.Fatalf("canonical no-row defaults diverged: %+v", p.Notifications)
+	}
+
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	if err := s.Notify(context.Background(), &nModel.InboxNotification{CircleID: 1, UserID: user.ID, Type: "task_due", Title: "Default task", DedupKey: "default-task", CreatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Notify(context.Background(), &nModel.InboxNotification{CircleID: 1, UserID: user.ID, Type: "family_activity_completed", Title: "Default family", DedupKey: "default-family", CreatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Notify(context.Background(), &nModel.InboxNotification{CircleID: 1, UserID: user.ID, Type: "weekly_summary", Title: "Default weekly", DedupKey: "default-weekly", CreatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	var rows []nModel.InboxNotification
+	if err := db.Order("id").Find(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Type != "task_due" {
+		t.Fatalf("no-row category defaults produced unexpected inbox rows: %+v", rows)
+	}
+	if len(push.calls) != 1 || push.calls[0].token != "default-device" {
+		t.Fatalf("default push channel was not active: %+v", push.calls)
+	}
+	if len(emailSender.calls) != 0 {
+		t.Fatalf("default email channel unexpectedly delivered: %+v", emailSender.calls)
+	}
+
 	if err := db.Create(&uModel.UserPreference{UserID: user.ID, Value: `{"notifications":{}}`}).Error; err != nil {
 		t.Fatal(err)
 	}
-	p, exists, err := s.preferencesFor(context.Background(), user.ID)
+	p, exists, err = s.preferencesFor(context.Background(), user.ID)
 	if err != nil || !exists {
 		t.Fatalf("legacy preference: exists:%v err:%v", exists, err)
 	}
