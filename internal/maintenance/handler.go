@@ -222,6 +222,48 @@ func (h *Handler) Archive(c *gin.Context) {
 	c.Writer.WriteHeaderNow()
 }
 
+// SetArchiveState preserves an asset and its service history while allowing an
+// authorized maintainer to restore it. The state is always scoped to the active
+// circle and visible-asset policy.
+func (h *Handler) SetArchiveState(c *gin.Context) {
+	userID, circleID, ok := current(c)
+	if !ok || !h.canManage(c, userID, circleID) {
+		return
+	}
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var request struct {
+		Archived bool `json:"archived"`
+	}
+	if c.ShouldBindJSON(&request) != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid archive state"})
+		return
+	}
+	if _, err := h.asset(c, id, circleID, userID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
+		return
+	}
+	var value interface{}
+	if request.Archived {
+		value = time.Now().UTC()
+	}
+	result := visibleAssetScope(h.db.WithContext(c).Model(&tModel.Thing{}), userID).
+		Where("things.id = ? AND things.circle_id = ?", id, circleID).
+		Update("archived_at", value)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update asset archive state"})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
+		return
+	}
+	c.Status(http.StatusNoContent)
+	c.Writer.WriteHeaderNow()
+}
+
 func (h *Handler) Link(c *gin.Context) {
 	userID, circleID, ok := current(c)
 	if !ok || !h.canManage(c, userID, circleID) {
@@ -277,6 +319,59 @@ func (h *Handler) Link(c *gin.Context) {
 		return
 	}
 	c.Status(204)
+	c.Writer.WriteHeaderNow()
+}
+
+func (h *Handler) Unlink(c *gin.Context) {
+	userID, circleID, ok := current(c)
+	if !ok || !h.canManage(c, userID, circleID) {
+		return
+	}
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	if _, err := h.asset(c, id, circleID, userID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
+		return
+	}
+	meterID, choreID := c.Query("meterId"), c.Query("choreId")
+	if (meterID == "" && choreID == "") || (meterID != "" && choreID != "") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Specify one meterId or choreId"})
+		return
+	}
+	if meterID != "" {
+		meter, err := strconv.Atoi(meterID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid meterId"})
+			return
+		}
+		result := h.db.WithContext(c).Model(&mModel.Meter{}).Where("id = ? AND circle_id = ? AND thing_id = ?", meter, circleID, id).Update("thing_id", nil)
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unlink meter"})
+			return
+		}
+		if result.RowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Meter link not found"})
+			return
+		}
+	} else {
+		chore, err := strconv.Atoi(choreID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid choreId"})
+			return
+		}
+		result := h.db.WithContext(c).Where("thing_id = ? AND chore_id = ?", id, chore).Delete(&tModel.ThingChore{})
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unlink maintenance task"})
+			return
+		}
+		if result.RowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Maintenance task link not found"})
+			return
+		}
+	}
+	c.Status(http.StatusNoContent)
 	c.Writer.WriteHeaderNow()
 }
 
@@ -538,6 +633,8 @@ func Routes(router *gin.Engine, h *Handler, middleware *auth.MultiAuthMiddleware
 	r.GET("/maintenance/assets/:id", h.Detail)
 	r.PUT("/maintenance/assets/:id", h.Update)
 	r.DELETE("/maintenance/assets/:id", h.Archive)
+	r.PATCH("/maintenance/assets/:id/archive", h.SetArchiveState)
 	r.POST("/maintenance/assets/:id/links", h.Link)
+	r.DELETE("/maintenance/assets/:id/links", h.Unlink)
 	r.GET("/maintenance", h.Center)
 }

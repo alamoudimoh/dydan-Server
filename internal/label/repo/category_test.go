@@ -86,3 +86,52 @@ func TestCategoriesNeverIncludeLegacyLabelsOrChoreNames(t *testing.T) {
 		t.Fatalf("categories were contaminated by legacy labels: %+v", categories)
 	}
 }
+
+func TestEnsureDefaultCategoriesBackfillsOnlyItsCircle(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleOne, circleTwo := 404, 505
+
+	// A caller's own category is preserved rather than overwritten or moved.
+	custom := &lModel.Label{Name: "Garden", CircleID: &circleOne, CreatedBy: 77}
+	if err := repo.CreateCategory(ctx, custom); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.EnsureDefaultCategories(ctx, circleOne, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.EnsureDefaultCategories(ctx, circleTwo, 2); err != nil {
+		t.Fatal(err)
+	}
+
+	one, err := repo.GetCircleCategories(ctx, circleOne, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	two, err := repo.GetCircleCategories(ctx, circleTwo, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(one) != len(DefaultCategoryNames)+1 || len(two) != len(DefaultCategoryNames) {
+		t.Fatalf("unexpected defaults: circle one=%d, circle two=%d", len(one), len(two))
+	}
+	for _, category := range one {
+		if category.CircleID == nil || *category.CircleID != circleOne {
+			t.Fatalf("circle one received a foreign category: %+v", category)
+		}
+	}
+	for _, category := range two {
+		if category.CircleID == nil || *category.CircleID != circleTwo {
+			t.Fatalf("circle two received a foreign category: %+v", category)
+		}
+	}
+
+	// Repeat is idempotent: no duplicate/replay writes.
+	if err := repo.EnsureDefaultCategories(ctx, circleOne, 1); err != nil {
+		t.Fatal(err)
+	}
+	again, err := repo.GetCircleCategories(ctx, circleOne, false)
+	if err != nil || len(again) != len(one) {
+		t.Fatalf("default category replay changed the circle: %d, %v", len(again), err)
+	}
+}

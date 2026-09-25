@@ -1,7 +1,9 @@
 package payment
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
 	auth "github.com/alamoudimoh/dydan-server/internal/auth"
 	"github.com/alamoudimoh/dydan-server/logging"
@@ -9,6 +11,7 @@ import (
 	"github.com/alamoudimoh/dydan-server/config"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/alamoudimoh/dydan-server/external/payment/model"
 	pDB "github.com/alamoudimoh/dydan-server/external/payment/repo"
@@ -154,6 +157,44 @@ func (h *Handler) CancelSubscription(c *gin.Context) {
 	})
 }
 
+// ListInvoices returns the billing history recorded for the authenticated
+// account. The Stripe customer id is looked up from the caller's own user id,
+// so the query is scoped by construction and cannot surface another account's
+// invoices. An account with no payment customer simply has no history.
+func (h *Handler) ListInvoices(c *gin.Context) {
+	logger := logging.FromContext(c)
+	currentUser := auth.MustCurrentUser(c)
+	if !auth.HasPermission(auth.ResolveEffectiveRole(&currentUser.User, "member", true), auth.PermissionManageAccount) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to view billing history"})
+		return
+	}
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "24"))
+	customer, err := h.stripeDB.GetCustomer(c, currentUser.ID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, gin.H{"res": []model.StripeInvoice{}})
+			return
+		}
+		logger.Errorw("payment.handler.ListInvoices failed to resolve customer", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve billing history"})
+		return
+	}
+	if customer == nil {
+		c.JSON(http.StatusOK, gin.H{"res": []model.StripeInvoice{}})
+		return
+	}
+	invoices, err := h.stripeDB.ListInvoicesForCustomer(c, customer.CustomerID, limit)
+	if err != nil {
+		logger.Errorw("payment.handler.ListInvoices failed to list invoices", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve billing history"})
+		return
+	}
+	if invoices == nil {
+		invoices = []model.StripeInvoice{}
+	}
+	c.JSON(http.StatusOK, gin.H{"res": invoices})
+}
+
 // RouteV1 routes user api given config and gin.Engine
 func Routes(cfg *config.Config, h *Handler, r *gin.Engine, auth *jwt.GinJWTMiddleware) {
 
@@ -163,6 +204,7 @@ func Routes(cfg *config.Config, h *Handler, r *gin.Engine, auth *jwt.GinJWTMiddl
 	{
 		paymentsV1.GET("create-subscription", h.CreateSubscription)
 		paymentsV1.POST("cancel-subscription", h.CancelSubscription)
+		paymentsV1.GET("invoices", h.ListInvoices)
 
 	}
 

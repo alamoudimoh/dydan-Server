@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"github.com/alamoudimoh/dydan-server/config"
+	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
 	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
+	mModel "github.com/alamoudimoh/dydan-server/internal/meter/model"
 	nModel "github.com/alamoudimoh/dydan-server/internal/notifier/model"
 	storageModel "github.com/alamoudimoh/dydan-server/internal/storage/model"
+	tModel "github.com/alamoudimoh/dydan-server/internal/thing/model"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	"github.com/alamoudimoh/dydan-server/logging"
 	modernsqlite "github.com/glebarez/go-sqlite"
@@ -28,9 +31,35 @@ var ErrInvalidPasswordResetToken = errors.New("invalid password reset token")
 // condition — not an internal failure.
 var ErrUserAlreadyExists = errors.New("an account with this username or email already exists")
 
+var (
+	ErrInvalidEmailChangeToken = errors.New("invalid or expired email change link")
+	ErrEmailAlreadyInUse       = errors.New("an account already uses this email address")
+)
+
 const passwordResetLifetime = time.Hour
 
+const EmailChangeLifetime = 30 * time.Minute
+
+// UserDataExport is the portable application-data portion of a self-service
+// export. It intentionally has no user/session/API-token/MFA/provider fields.
+// Each collection is loaded with both the authenticated user and active-circle
+// predicates, so one tenant's export cannot include another tenant's records.
+type UserDataExport struct {
+	Tasks         []chModel.Chore            `json:"tasks"`
+	TaskHistory   []chModel.ChoreHistory     `json:"taskHistory"`
+	Things        []tModel.Thing             `json:"things"`
+	ThingHistory  []tModel.ThingHistory      `json:"thingHistory"`
+	Meters        []mModel.Meter             `json:"meters"`
+	MeterReadings []mModel.Reading           `json:"meterReadings"`
+	Notifications []nModel.InboxNotification `json:"notifications"`
+}
+
 func passwordResetTokenHash(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func emailChangeTokenHash(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
 }
@@ -94,6 +123,102 @@ func (r *UserRepository) GetUserPreferences(c context.Context, userID int) (*uMo
 
 func (r *UserRepository) SaveUserPreferences(c context.Context, preference *uModel.UserPreference) error {
 	return r.db.WithContext(c).Save(preference).Error
+}
+
+// LoadUserDataExport builds the JSON-safe application-data portion of a user's
+// export. The checks for existing tables keep early-install and focused account
+// tests operational before optional feature migrations have run; a production
+// database has all of these tables and receives every collection below.
+func (r *UserRepository) LoadUserDataExport(c context.Context, userID, circleID int) (UserDataExport, error) {
+	data := UserDataExport{
+		Tasks:         []chModel.Chore{},
+		TaskHistory:   []chModel.ChoreHistory{},
+		Things:        []tModel.Thing{},
+		ThingHistory:  []tModel.ThingHistory{},
+		Meters:        []mModel.Meter{},
+		MeterReadings: []mModel.Reading{},
+		Notifications: []nModel.InboxNotification{},
+	}
+	db := r.db.WithContext(c)
+
+	if db.Migrator().HasTable(&chModel.Chore{}) {
+		// A user may export ordinary circle chores and only private chores they
+		// created or are assigned to — the same visibility rule used at runtime.
+		query := db.Model(&chModel.Chore{}).Where("chores.circle_id = ?", circleID)
+		if db.Migrator().HasTable(&chModel.ChoreAssignees{}) {
+			query = query.Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id AND chore_assignees.user_id = ?", userID).
+				Where("chores.is_private = ? OR chores.created_by = ? OR chore_assignees.user_id = ?", false, userID, userID)
+		} else {
+			query = query.Where("chores.is_private = ? OR chores.created_by = ?", false, userID)
+		}
+		if err := query.Order("chores.id").Find(&data.Tasks).Error; err != nil {
+			return data, err
+		}
+	}
+	if db.Migrator().HasTable(&chModel.ChoreHistory{}) && db.Migrator().HasTable(&chModel.Chore{}) {
+		query := db.Model(&chModel.ChoreHistory{}).
+			Select("chore_histories.id, chore_histories.chore_id, chore_histories.performed_at, chore_histories.completed_by, chore_histories.assigned_to, chore_histories.notes, chore_histories.due_date, chore_histories.updated_at, chore_histories.created_at, chore_histories.status, chore_histories.points, chore_histories.meter_id, chore_histories.meter_reading, chore_histories.sync_version, chore_histories.operation_id, chore_histories.voided_at, chore_histories.voided_by, chore_histories.void_reason").
+			Joins("JOIN chores ON chores.id = chore_histories.chore_id").
+			Where("chores.circle_id = ?", circleID)
+		if db.Migrator().HasTable(&chModel.ChoreAssignees{}) {
+			query = query.Joins("LEFT JOIN chore_assignees ON chores.id = chore_assignees.chore_id AND chore_assignees.user_id = ?", userID).
+				Where("chores.is_private = ? OR chores.created_by = ? OR chore_assignees.user_id = ?", false, userID, userID)
+		} else {
+			query = query.Where("chores.is_private = ? OR chores.created_by = ?", false, userID)
+		}
+		if err := query.Order("chore_histories.id").Find(&data.TaskHistory).Error; err != nil {
+			return data, err
+		}
+	}
+	if db.Migrator().HasTable(&tModel.Thing{}) {
+		if err := db.Where("user_id = ? AND circle_id = ?", userID, circleID).Order("id").Find(&data.Things).Error; err != nil {
+			return data, err
+		}
+	}
+	if db.Migrator().HasTable(&tModel.ThingHistory{}) && db.Migrator().HasTable(&tModel.Thing{}) {
+		if err := db.Model(&tModel.ThingHistory{}).
+			Joins("JOIN things ON things.id = thing_histories.thing_id").
+			Where("things.user_id = ? AND things.circle_id = ?", userID, circleID).
+			Order("thing_histories.id").Find(&data.ThingHistory).Error; err != nil {
+			return data, err
+		}
+	}
+	if db.Migrator().HasTable(&mModel.Meter{}) {
+		if err := db.Where("created_by = ? AND circle_id = ?", userID, circleID).Order("id").Find(&data.Meters).Error; err != nil {
+			return data, err
+		}
+	}
+	if db.Migrator().HasTable(&mModel.Reading{}) && db.Migrator().HasTable(&mModel.Meter{}) {
+		if err := db.Model(&mModel.Reading{}).
+			Joins("JOIN meters ON meters.id = meter_readings.meter_id").
+			Where("meters.created_by = ? AND meters.circle_id = ?", userID, circleID).
+			Order("meter_readings.id").Find(&data.MeterReadings).Error; err != nil {
+			return data, err
+		}
+	}
+	if db.Migrator().HasTable(&nModel.InboxNotification{}) {
+		if err := db.Where("user_id = ? AND circle_id = ?", userID, circleID).Order("id").Find(&data.Notifications).Error; err != nil {
+			return data, err
+		}
+	}
+	return data, nil
+}
+
+// EmailInUseByOther is an authenticated preflight only; ConsumeEmailChangeTransaction
+// repeats the uniqueness check inside its transaction to close the race.
+func (r *UserRepository) EmailInUseByOther(c context.Context, userID int, address string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(c).Model(&uModel.User{}).
+		Where("id <> ? AND LOWER(email) = ?", userID, strings.ToLower(strings.TrimSpace(address))).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// SaveErrorReport persists one client-submitted diagnostic. Ownership fields
+// are assigned by the handler from the authenticated session, so this is a
+// plain insert; there is no path by which a caller selects the owning user.
+func (r *UserRepository) SaveErrorReport(c context.Context, report *uModel.UserErrorReport) error {
+	return r.db.WithContext(c).Create(report).Error
 }
 
 func NewUserRepository(db *gorm.DB, cfg *config.Config) *UserRepository {
@@ -244,6 +369,69 @@ func (r *UserRepository) UpdateUser(c context.Context, user *uModel.User) error 
 			}
 		}
 		return nil
+	})
+}
+
+// CreateEmailChangeTransaction replaces any outstanding change transaction for
+// the account. The raw token is never persisted and is sent only to the new
+// address after this method returns.
+func (r *UserRepository) CreateEmailChangeTransaction(c context.Context, userID int, address, token string) error {
+	address = strings.ToLower(strings.TrimSpace(address))
+	now := time.Now().UTC()
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ? AND used_at IS NULL", userID).Delete(&uModel.EmailChangeTransaction{}).Error; err != nil {
+			return err
+		}
+		return tx.Create(&uModel.EmailChangeTransaction{
+			UserID: userID, Email: address, TokenHash: emailChangeTokenHash(token),
+			ExpiresAt: now.Add(EmailChangeLifetime), CreatedAt: now,
+		}).Error
+	})
+}
+
+func (r *UserRepository) DeleteEmailChangeTransaction(c context.Context, token string) error {
+	return r.db.WithContext(c).Where("token_hash = ?", emailChangeTokenHash(token)).Delete(&uModel.EmailChangeTransaction{}).Error
+}
+
+// ConsumeEmailChangeTransaction atomically validates a single-use link,
+// canonicalizes uniqueness, updates the email, and invalidates all existing
+// sessions. The transaction cannot be replayed even under concurrent requests.
+func (r *UserRepository) ConsumeEmailChangeTransaction(c context.Context, token string) error {
+	now := time.Now().UTC()
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		var change uModel.EmailChangeTransaction
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("token_hash = ? AND used_at IS NULL AND expires_at > ?", emailChangeTokenHash(token), now).
+			First(&change).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvalidEmailChangeToken
+			}
+			return err
+		}
+
+		var duplicate int64
+		if err := tx.Model(&uModel.User{}).Where("id <> ? AND LOWER(email) = ?", change.UserID, change.Email).Count(&duplicate).Error; err != nil {
+			return err
+		}
+		if duplicate > 0 {
+			return ErrEmailAlreadyInUse
+		}
+		updated := tx.Model(&uModel.User{}).Where("id = ?", change.UserID).Updates(map[string]interface{}{
+			"email": change.Email, "credential_version": gorm.Expr("credential_version + 1"),
+		})
+		if updated.Error != nil {
+			if classifyDuplicateIdentity(updated.Error) {
+				return ErrEmailAlreadyInUse
+			}
+			return updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		if err := tx.Model(&uModel.EmailChangeTransaction{}).Where("id = ? AND used_at IS NULL", change.ID).Update("used_at", now).Error; err != nil {
+			return err
+		}
+		return tx.Model(&uModel.UserSession{}).Where("user_id = ? AND revoked_at IS NULL", change.UserID).Update("revoked_at", now).Error
 	})
 }
 

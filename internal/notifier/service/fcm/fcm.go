@@ -26,6 +26,34 @@ type FCMNotificationPayload struct {
 	Data     map[string]string `json:"data,omitempty"`
 }
 
+type InboxPushSender interface {
+	SendInboxNotification(context.Context, string, string, string, map[string]string) error
+}
+
+type disabledInboxPushSender struct{}
+
+func (disabledInboxPushSender) SendInboxNotification(context.Context, string, string, string, map[string]string) error {
+	return nil
+}
+
+func NewInboxPushSender(sender *FCMNotifier) InboxPushSender {
+	if sender == nil || sender.client == nil {
+		return disabledInboxPushSender{}
+	}
+	return sender
+}
+
+func (f *FCMNotifier) SendInboxNotification(ctx context.Context, token, title, body string, data map[string]string) error {
+	if f == nil || f.client == nil || token == "" {
+		return nil
+	}
+	_, err := f.client.Send(ctx, &messaging.Message{Token: token, Notification: &messaging.Notification{Title: title, Body: body}, Data: data,
+		Android: &messaging.AndroidConfig{Notification: &messaging.AndroidNotification{ChannelID: androidNotificationChannelID()}},
+		APNS:    &messaging.APNSConfig{Payload: &messaging.APNSPayload{Aps: &messaging.Aps{Alert: &messaging.ApsAlert{Title: title, Body: body}, Badge: getBadgePointer(1), Sound: "default"}}},
+	})
+	return err
+}
+
 func NewFCMNotifier(config *config.Config) (*FCMNotifier, error) {
 	if config == nil {
 		return nil, nil // Return nil when config is nil - allows app to start without FCM

@@ -63,7 +63,7 @@ func newEAPIHarness(t *testing.T) *eapiHarness {
 	producer := events.NewEventsProducer(cfg)
 	producer.Start(context.Background())
 
-	api := NewAPI(choreRepo, userRepo, circleRepo, nPlanner, nRepo.NewNotificationRepository(db), producer, nil)
+	api := NewAPI(choreRepo, userRepo, circleRepo, nPlanner, nRepo.NewNotificationRepository(db), nil, producer, nil)
 	return &eapiHarness{db: db, api: api}
 }
 

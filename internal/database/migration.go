@@ -59,6 +59,7 @@ func Migration(db *gorm.DB) error {
 		uModel.APIToken{},
 		uModel.UserNotificationTarget{},
 		uModel.UserPreference{},
+		uModel.UserErrorReport{},
 		lModel.Label{},
 		chModel.ChoreLabels{},
 		projModel.Project{},
@@ -87,6 +88,7 @@ func Migration(db *gorm.DB) error {
 		authlimit.Bucket{},
 		authlimit.CapacityGuard{},
 		emailModel.RuntimeConfiguration{},
+		uModel.EmailChangeTransaction{},
 	); err != nil {
 		return err
 	}

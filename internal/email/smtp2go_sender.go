@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/alamoudimoh/dydan-server/config"
@@ -31,8 +33,9 @@ type smtp2goTemplateRequest struct {
 	Sender       string      `json:"sender"`
 	To           []string    `json:"to"`
 	Subject      string      `json:"subject"`
-	TemplateID   string      `json:"template_id"`
-	TemplateData interface{} `json:"template_data"`
+	TemplateID   string      `json:"template_id,omitempty"`
+	TemplateData interface{} `json:"template_data,omitempty"`
+	TextBody     string      `json:"text_body,omitempty"`
 }
 
 type smtp2goResponse struct {
@@ -101,6 +104,39 @@ func (s *SMTP2GoSender) sendTemplate(ctx context.Context, to, subject, templateI
 	return fmt.Errorf("smtp2go failed to send email, data: %v", apiResp.Data)
 }
 
+func (s *SMTP2GoSender) SendNotificationEmail(ctx context.Context, to, subject, body string) error {
+	requestBody := smtp2goTemplateRequest{Sender: s.fromMail, To: []string{to}, Subject: subject, TextBody: body}
+	jsonBytes, err := json.Marshal(requestBody)
+	if err != nil {
+		return fmt.Errorf("failed to marshal notification: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", smtp2goEndpoint, bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create notification request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Smtp2go-Api-Key", s.apiKey)
+	req.Header.Set("Accept", "application/json")
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send notification request: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("smtp2go notification returned status: %s", resp.Status)
+	}
+	var apiResp smtp2goResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return fmt.Errorf("failed to decode smtp2go notification response: %w", err)
+	}
+	if data, ok := apiResp.Data.(map[string]interface{}); ok {
+		if succeeded, ok := data["succeeded"].(float64); ok && succeeded > 0 {
+			return nil
+		}
+	}
+	return fmt.Errorf("smtp2go notification was not accepted")
+}
+
 func (s *SMTP2GoSender) SendResetPasswordEmail(c context.Context, to, code string) error {
 	fullURL := fmt.Sprintf("%s/password/update#c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
@@ -111,6 +147,11 @@ func (s *SMTP2GoSender) SendVerificationEmail(to, code string) error {
 	fullURL := fmt.Sprintf("%s/verify?c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
 	return s.sendTemplate(context.Background(), to, "Dydan! Verify your email", s.verifyTemplateID, templateData)
+}
+
+func (s *SMTP2GoSender) SendEmailChangeVerification(c context.Context, to, token string) error {
+	verificationURL := strings.TrimRight(s.appHost, "/") + "/email-change/verify?token=" + url.QueryEscape(token)
+	return s.sendTemplate(c, to, "Dydan: confirm your new email address", s.verifyTemplateID, map[string]interface{}{"verifyURL": verificationURL})
 }
 
 // SendTestEmail uses the configured verification template through the same

@@ -23,9 +23,9 @@ import (
 )
 
 type reportFixture struct {
-	db   *gorm.DB
+	db     *gorm.DB
 	circle cModel.Circle
-	user  uModel.User
+	user   uModel.User
 }
 
 func setupReportFixture(t *testing.T, role cModel.UserRole, seed func(db *gorm.DB, fx *reportFixture)) (*reportFixture, *Handler) {
@@ -34,7 +34,7 @@ func setupReportFixture(t *testing.T, role cModel.UserRole, seed func(db *gorm.D
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&uModel.User{}, &cModel.Circle{}, &cModel.UserCircle{}, &chModel.Chore{}, &chModel.ChoreAssignees{}, &chModel.ChoreHistory{}, &lModel.Label{}, &tModel.ThingChore{}, &pModel.PointsHistory{}, &rModel.RewardRequest{}, &Goal{}); err != nil {
+	if err := db.AutoMigrate(&uModel.User{}, &uModel.UserPreference{}, &cModel.Circle{}, &cModel.UserCircle{}, &chModel.Chore{}, &chModel.ChoreAssignees{}, &chModel.ChoreHistory{}, &lModel.Label{}, &tModel.ThingChore{}, &pModel.PointsHistory{}, &rModel.RewardRequest{}, &Goal{}); err != nil {
 		t.Fatal(err)
 	}
 	fx := &reportFixture{db: db}
@@ -54,6 +54,33 @@ func setupReportFixture(t *testing.T, role cModel.UserRole, seed func(db *gorm.D
 		seed(db, fx)
 	}
 	return fx, NewHandler(db, cRepo.NewCircleRepository(db))
+}
+
+func TestReportActivityVisibilityFiltersOtherMemberButNotSelf(t *testing.T) {
+	fx, h := setupReportFixture(t, cModel.UserRoleAdmin, func(db *gorm.DB, fx *reportFixture) {
+		peer := uModel.User{Username: "hidden-peer", Email: "hidden@example.test", CircleID: fx.circle.ID, Timezone: "UTC"}
+		if err := db.Create(&peer).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Create(&cModel.UserCircle{UserID: peer.ID, CircleID: fx.circle.ID, Role: cModel.UserRoleMember, IsActive: true}).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Create(&uModel.UserPreference{UserID: peer.ID, Value: `{"privacy":{"activityVisible":false}}`}).Error; err != nil {
+			t.Fatal(err)
+		}
+		now := time.Now().UTC()
+		chore := chModel.Chore{Name: "hidden", CircleID: fx.circle.ID, CreatedBy: peer.ID, AssignedTo: &peer.ID, IsActive: true}
+		if err := db.Create(&chore).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Create(&chModel.ChoreHistory{ChoreID: chore.ID, CompletedBy: peer.ID, AssignedTo: &peer.ID, PerformedAt: &now, Status: chModel.ChoreHistoryStatusCompleted}).Error; err != nil {
+			t.Fatal(err)
+		}
+	})
+	body := runReport(t, fx, h)
+	if body["completed"].(float64) != 0 || len(body["members"].([]any)) != 0 {
+		t.Fatalf("hidden member leaked into report: %v", body)
+	}
 }
 
 func runReport(t *testing.T, fx *reportFixture, h *Handler) map[string]any {

@@ -18,6 +18,18 @@ import (
 var ErrDuplicateCategory = errors.New("a category with this name already exists")
 var ErrCategoryNotFound = errors.New("category not found in circle")
 
+// DefaultCategoryNames are the server-owned categories displayed by the
+// approved task editor. They are initialized per circle, not per user, and
+// remain ordinary editable/archivable circle categories afterwards.
+var DefaultCategoryNames = []string{
+	"household",
+	"personal",
+	"work",
+	"school",
+	"health",
+	"finance",
+}
+
 type LabelRepository struct {
 	db *gorm.DB
 }
@@ -44,6 +56,39 @@ func (r *LabelRepository) GetCircleCategories(ctx context.Context, circleID int,
 		return nil, err
 	}
 	return labels, nil
+}
+
+// EnsureDefaultCategories backfills the task editor's server-owned defaults
+// for a circle that has not seen all of them yet. It never alters a category
+// already present in the circle (including an archived one) and all lookups
+// are constrained by circle_id, so a request in one circle cannot create or
+// observe categories in another.
+func (r *LabelRepository) EnsureDefaultCategories(ctx context.Context, circleID, createdBy int) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var existing []lModel.Label
+		if err := tx.Where("circle_id = ? AND is_category = ?", circleID, true).Find(&existing).Error; err != nil {
+			return err
+		}
+		seen := make(map[string]struct{}, len(existing))
+		for _, category := range existing {
+			seen[strings.ToLower(category.Name)] = struct{}{}
+		}
+		for _, name := range DefaultCategoryNames {
+			if _, found := seen[strings.ToLower(name)]; found {
+				continue
+			}
+			circle := circleID
+			if err := tx.Create(&lModel.Label{
+				Name:       name,
+				CreatedBy:  createdBy,
+				CircleID:   &circle,
+				IsCategory: true,
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (r *LabelRepository) IsActiveCategoryInCircle(ctx context.Context, id, circleID int) bool {
