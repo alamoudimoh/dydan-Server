@@ -1323,6 +1323,10 @@ func (h *Handler) getIntegrationStatus(c *gin.Context) {
 	if c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
 		scheme = "https"
 	}
+	notificationEmailConfigured := false
+	if capability, ok := h.email.(email.NotificationCapability); ok {
+		notificationEmailConfigured = capability.NotificationEmailAvailable(c.Request.Context())
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"res": gin.H{
 			"apiDocs": gin.H{
@@ -1344,6 +1348,19 @@ func (h *Handler) getIntegrationStatus(c *gin.Context) {
 				"url":       webhookURL,
 				"editable":  webhookEditable,
 				"plusOnly":  !user.IsPlusMember(),
+			},
+			// These preference rows are capability-driven so Settings cannot make a
+			// no-op control look functional. Analytics, personalization, and beta
+			// features have no corresponding runtime service in this deployment.
+			"settings": gin.H{
+				"notificationEmail": gin.H{
+					"available":               notificationEmailConfigured && strings.TrimSpace(user.Email) != "",
+					"emailDeliveryConfigured": notificationEmailConfigured,
+					"accountEmailAvailable":   strings.TrimSpace(user.Email) != "",
+				},
+				"analytics":       gin.H{"available": false},
+				"personalization": gin.H{"available": false},
+				"betaFeatures":    gin.H{"available": false},
 			},
 		},
 	})

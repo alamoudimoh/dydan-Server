@@ -139,6 +139,7 @@ func main() {
 		// runtime configuration has been saved.
 		fx.Provide(email.NewRuntimeStore),
 		fx.Provide(email.NewSender),
+		fx.Provide(email.NewNotificationSender),
 		fx.Provide(email.NewHandler),
 
 		// MFA services

@@ -32,17 +32,19 @@ type API struct {
 	circleRepo    *cRepo.CircleRepository
 	nPlanner      *nps.NotificationPlanner
 	nRepo         *nRepo.NotificationRepository
+	inbox         *nps.InboxService
 	eventProducer *events.EventsProducer
 	stRepo        *stRepo.SubTasksRepository
 }
 
-func NewAPI(cr *chRepo.ChoreRepository, userRepo *uRepo.UserRepository, circleRepo *cRepo.CircleRepository, nPlanner *nps.NotificationPlanner, nr *nRepo.NotificationRepository, eventProducer *events.EventsProducer, stRepo *stRepo.SubTasksRepository) *API {
+func NewAPI(cr *chRepo.ChoreRepository, userRepo *uRepo.UserRepository, circleRepo *cRepo.CircleRepository, nPlanner *nps.NotificationPlanner, nr *nRepo.NotificationRepository, inbox *nps.InboxService, eventProducer *events.EventsProducer, stRepo *stRepo.SubTasksRepository) *API {
 	return &API{
 		choreRepo:     cr,
 		userRepo:      userRepo,
 		circleRepo:    circleRepo,
 		nPlanner:      nPlanner,
 		nRepo:         nr,
+		inbox:         inbox,
 		eventProducer: eventProducer,
 		stRepo:        stRepo,
 	}
@@ -411,6 +413,16 @@ func (h *API) CompleteChore(c *gin.Context) {
 			"error": "Error completing chore",
 		})
 		return
+	}
+	if h.inbox != nil {
+		if history, historyErr := h.choreRepo.GetChoreHistory(c, chore.ID); historyErr == nil {
+			for _, entry := range history {
+				if entry.Status == chModel.ChoreHistoryStatusCompleted && entry.CompletedBy == performer && entry.PerformedAt != nil && entry.PerformedAt.Equal(completedDate) {
+					_ = h.inbox.NotifyFamilyActivity(c, chore, entry)
+					break
+				}
+			}
+		}
 	}
 	if chore.SubTasks != nil && chore.FrequencyType != chModel.FrequencyTypeOnce {
 		h.stRepo.ResetSubtasksCompletion(c, chore.ID)

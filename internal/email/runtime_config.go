@@ -240,6 +240,23 @@ func (s *RuntimeSender) sender(ctx context.Context) (Sender, error) {
 	return NewEmailSender(cfg), nil
 }
 
+func (s *RuntimeSender) SendNotificationEmail(ctx context.Context, to, subject, body string) error {
+	sender, err := s.sender(ctx)
+	if err != nil {
+		return err
+	}
+	notifier, ok := sender.(NotificationSender)
+	if !ok {
+		return ErrDeliveryDisabled
+	}
+	return notifier.SendNotificationEmail(ctx, to, subject, body)
+}
+
+func (s *RuntimeSender) NotificationEmailAvailable(ctx context.Context) bool {
+	status, err := s.store.Status(ctx)
+	return err == nil && status.Configured
+}
+
 func (s *RuntimeSender) SendVerificationEmail(to, code string) error {
 	sender, err := s.sender(context.Background())
 	if err != nil {
