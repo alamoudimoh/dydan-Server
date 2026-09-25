@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/alamoudimoh/dydan-server/config"
@@ -24,6 +25,13 @@ type Sender interface {
 	SendTestEmail(c context.Context, to string) error
 }
 
+// EmailChangeSender is intentionally separate from Sender so existing callers
+// and test doubles do not accidentally claim they can deliver a security link.
+// Runtime SMTP and SMTP2GO implementations both provide it.
+type EmailChangeSender interface {
+	SendEmailChangeVerification(context.Context, string, string) error // to, raw transaction token
+}
+
 var ErrDeliveryDisabled = fmt.Errorf("email delivery is disabled")
 
 type DisabledSender struct{}
@@ -37,6 +45,10 @@ func (DisabledSender) SendVerificationEmail(string, string) error {
 }
 
 func (DisabledSender) SendTestEmail(context.Context, string) error {
+	return ErrDeliveryDisabled
+}
+
+func (DisabledSender) SendEmailChangeVerification(context.Context, string, string) error {
 	return ErrDeliveryDisabled
 }
 
@@ -292,6 +304,17 @@ func (es *EmailSender) SendVerificationEmail(to, code string) error {
 	}
 	return nil
 
+}
+
+func (es *EmailSender) SendEmailChangeVerification(_ context.Context, to, token string) error {
+	verificationURL := strings.TrimRight(es.appHost, "/") + "/email-change/verify?token=" + url.QueryEscape(token)
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", es.fromMail)
+	msg.SetHeader("To", to)
+	msg.SetHeader("Subject", "Dydan: confirm your new email address")
+	msg.SetBody("text/plain", "Confirm this email address for your Dydan account:\n\n"+verificationURL+"\n\nThis link expires in 30 minutes and can be used once. If you did not request this change, ignore this email.")
+	msg.AddAlternative("text/html", "<p>Confirm this email address for your Dydan account:</p><p><a href=\""+verificationURL+"\">Confirm email change</a></p><p>This link expires in 30 minutes and can be used once. If you did not request this change, ignore this email.</p>")
+	return es.client.DialAndSend(msg)
 }
 
 func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string) error {

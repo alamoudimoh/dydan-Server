@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	auth "github.com/alamoudimoh/dydan-server/internal/auth"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 
@@ -104,6 +106,34 @@ func (h *Handler) loadPreferences(ctx context.Context, userID int) (Preferences,
 		return Preferences{}, err
 	}
 	return preferences, nil
+}
+
+// verboseRequestLogger emits a structured per-request diagnostic entry when the
+// authenticated account has VerboseLogging enabled (Settings > Experimental).
+// It runs last in the /users/* chain so it can observe the outcome of the
+// request, and the flag itself is read from the same preferences table the
+// Settings toggle writes to, so it is enforceable server-side, not client-side.
+func (h *Handler) verboseRequestLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+		user, ok := auth.CurrentUser(c)
+		if !ok {
+			return
+		}
+		prefs, err := h.loadPreferences(c.Request.Context(), user.ID)
+		if err != nil || !prefs.VerboseLogging {
+			return
+		}
+		logging.FromContext(c).Infow("verbose.request",
+			"userID", user.ID,
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+			"status", c.Writer.Status(),
+			"bytes", c.Writer.Size(),
+			"elapsedMs", float64(time.Since(start).Microseconds())/1000.0,
+		)
+	}
 }
 
 func (h *Handler) getPreferences(c *gin.Context) {

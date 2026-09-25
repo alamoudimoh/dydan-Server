@@ -196,6 +196,26 @@ func (a *StripeDB) SaveInvoice(ctx context.Context, invoice *pModel.StripeInvoic
 	return invoice, nil
 }
 
+// ListInvoicesForCustomer returns the newest invoices recorded for one Stripe
+// customer. The customer id is resolved from the authenticated account by the
+// handler, so this can only ever return rows belonging to the caller.
+func (a *StripeDB) ListInvoicesForCustomer(ctx context.Context, customerID string, limit int) ([]pModel.StripeInvoice, error) {
+	logger := logging.FromContext(ctx)
+	if limit < 1 || limit > 100 {
+		limit = 24
+	}
+	var invoices []pModel.StripeInvoice
+	if err := a.db.WithContext(ctx).
+		Where("customer_id = ?", customerID).
+		Order("received_at DESC, invoice_id DESC").
+		Limit(limit).
+		Find(&invoices).Error; err != nil {
+		logger.Errorw("invoice.db.List failed", "err", err)
+		return nil, err
+	}
+	return invoices, nil
+}
+
 func (a *StripeDB) UpdateSubscription(ctx context.Context, subscription *pModel.StripeSubscription) error {
 	logger := logging.FromContext(ctx)
 

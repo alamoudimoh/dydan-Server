@@ -263,3 +263,15 @@ func (s *RuntimeSender) SendTestEmail(ctx context.Context, to string) error {
 	}
 	return sender.SendTestEmail(ctx, to)
 }
+
+func (s *RuntimeSender) SendEmailChangeVerification(ctx context.Context, to, token string) error {
+	sender, err := s.sender(ctx)
+	if err != nil {
+		return err
+	}
+	emailChangeSender, ok := sender.(EmailChangeSender)
+	if !ok {
+		return ErrDeliveryDisabled
+	}
+	return emailChangeSender.SendEmailChangeVerification(ctx, to, token)
+}

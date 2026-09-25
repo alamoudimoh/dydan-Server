@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/alamoudimoh/dydan-server/config"
@@ -111,6 +113,11 @@ func (s *SMTP2GoSender) SendVerificationEmail(to, code string) error {
 	fullURL := fmt.Sprintf("%s/verify?c=%s", s.appHost, encodeEmailAndCode(to, code))
 	templateData := map[string]interface{}{"verifyURL": fullURL}
 	return s.sendTemplate(context.Background(), to, "Dydan! Verify your email", s.verifyTemplateID, templateData)
+}
+
+func (s *SMTP2GoSender) SendEmailChangeVerification(c context.Context, to, token string) error {
+	verificationURL := strings.TrimRight(s.appHost, "/") + "/email-change/verify?token=" + url.QueryEscape(token)
+	return s.sendTemplate(c, to, "Dydan: confirm your new email address", s.verifyTemplateID, map[string]interface{}{"verifyURL": verificationURL})
 }
 
 // SendTestEmail uses the configured verification template through the same

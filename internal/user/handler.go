@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
 	"net/http"
+	"net/mail"
 	"path/filepath"
 	"strings"
 	"time"
@@ -62,6 +64,9 @@ type Handler struct {
 	singleCircleInstance   bool
 	mfaMaxAttempts         int
 	oauthRedirectURLs      []string
+	serveSwagger           bool
+	legal                  config.LegalConfig
+	billingEnabled         bool
 }
 
 func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
@@ -98,6 +103,12 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		singleCircleInstance:   config.SingleCircleInstance,
 		mfaMaxAttempts:         config.MFAConfig.MaxVerificationAttempts,
 		oauthRedirectURLs:      oauthRedirectURLs,
+		serveSwagger:           config.Server.ServeSwagger,
+		legal:                  config.Legal,
+		// Billing history is only offered when a payment provider is actually
+		// configured; otherwise the Settings screen reports the capability as
+		// absent instead of showing a view that could never return invoices.
+		billingEnabled: strings.TrimSpace(config.StripeConfig.APIKey) != "",
 	}
 }
 
@@ -1187,6 +1198,293 @@ func (h *Handler) UpdateUserDetails(c *gin.Context) {
 	c.JSON(200, user)
 }
 
+// exportMyData returns a portable, user-scoped JSON document directly to the
+// authenticated requester. It intentionally projects account fields instead of
+// serializing the User model, so credentials and internal security state cannot
+// enter a browser download.
+func (h *Handler) exportMyData(c *gin.Context) {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+	preferences, err := h.userRepo.GetUserPreferences(c.Request.Context(), user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to prepare data export"})
+		return
+	}
+	var preferenceData interface{}
+	if preferences != nil && preferences.Value != "" {
+		if err := json.Unmarshal([]byte(preferences.Value), &preferenceData); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to prepare data export"})
+			return
+		}
+	}
+	data, err := h.userRepo.LoadUserDataExport(c.Request.Context(), user.ID, user.CircleID)
+	if err != nil {
+		logging.FromContext(c).Errorw("account.handler.exportMyData failed to prepare export", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to prepare data export"})
+		return
+	}
+	document := gin.H{
+		"format":     "dydan-user-export/v1",
+		"exportedAt": time.Now().UTC().Format(time.RFC3339),
+		"account": gin.H{
+			"id": user.ID, "username": user.Username, "displayName": user.DisplayName,
+			"email": user.Email, "timezone": user.Timezone, "circleId": user.CircleID,
+			"userType": user.UserType,
+		},
+		"preferences": preferenceData,
+		"data":        data,
+	}
+	c.Header("Content-Disposition", `attachment; filename="dydan-my-data.json"`)
+	c.Header("Cache-Control", "no-store, private")
+	c.JSON(http.StatusOK, document)
+}
+
+// importMyData restores the portable, user-scoped document produced by
+// exportMyData. The document is verified to belong to the authenticated user
+// (id and email match) before any field is applied; credentials and security
+// material are never exported in the first place, so a restore can only ever
+// write the user's own preferences back to their own account.
+func (h *Handler) importMyData(c *gin.Context) {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+	var payload struct {
+		Format  string `json:"format"`
+		Account *struct {
+			ID    int    `json:"id"`
+			Email string `json:"email"`
+		} `json:"account"`
+		Preferences json.RawMessage `json:"preferences"`
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil || payload.Format != "dydan-user-export/v1" || payload.Account == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data export file"})
+		return
+	}
+	if payload.Account.ID != user.ID || !strings.EqualFold(strings.TrimSpace(payload.Account.Email), user.Email) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "This export file belongs to a different account"})
+		return
+	}
+	if len(payload.Preferences) == 0 || string(payload.Preferences) == "null" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "The export file contains no preferences to restore"})
+		return
+	}
+	var preferences Preferences
+	if err := json.Unmarshal(payload.Preferences, &preferences); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "The export file is not a valid dydan export"})
+		return
+	}
+	if err := validatePreferences(preferences); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "The export file contains invalid preferences"})
+		return
+	}
+	encoded, err := json.Marshal(preferences)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to restore your data"})
+		return
+	}
+	if err := h.userRepo.SaveUserPreferences(c.Request.Context(), &uModel.UserPreference{UserID: user.ID, Value: string(encoded)}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to restore your data"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"res": preferences, "restored": "preferences"})
+}
+
+// getIntegrationStatus reports which external integrations this server actually
+// exposes to the requesting account. It is read-only and capability-driven:
+// integrations whose credentials/configuration are absent are reported as not
+// available instead of showing a connect switch that would silently discard.
+func (h *Handler) getIntegrationStatus(c *gin.Context) {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+	webhookEditable := false
+	if user.IsPlusMember() {
+		if admins, err := h.circleRepo.GetCircleAdmins(c, user.CircleID); err == nil {
+			for _, admin := range admins {
+				if admin.ID == user.ID {
+					webhookEditable = true
+					break
+				}
+			}
+		}
+	}
+	var webhookURL string
+	if user.WebhookURL != nil {
+		webhookURL = *user.WebhookURL
+	}
+	scheme := "http"
+	if c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
+		scheme = "https"
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"res": gin.H{
+			"apiDocs": gin.H{
+				"enabled": h.serveSwagger,
+				"url":     scheme + "://" + c.Request.Host + "/swagger/index.html",
+			},
+			"googleCalendar": gin.H{"available": false},
+			"caldav":         gin.H{"available": false},
+			"alexa":          gin.H{"available": false},
+			"legal": gin.H{
+				"privacyPolicyUrl": h.legal.PrivacyPolicyURL,
+				"termsUrl":         h.legal.TermsURL,
+			},
+			"billing": gin.H{
+				"invoiceHistory": h.billingEnabled,
+			},
+			"webhooks": gin.H{
+				"available": true,
+				"url":       webhookURL,
+				"editable":  webhookEditable,
+				"plusOnly":  !user.IsPlusMember(),
+			},
+		},
+	})
+}
+
+// reportProblem accepts the diagnostic submitted by the approved "Report this
+// problem" control on the error screen and persists it against the
+// authenticated account. The request body may only describe the problem; the
+// owning user, circle, user agent, and request path are stamped server-side so
+// a report can never be filed against another account, and no credential or
+// message content is accepted from the client.
+func (h *Handler) reportProblem(c *gin.Context) {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+	var payload struct {
+		Summary string `json:"summary" binding:"required,max=200"`
+		Details string `json:"details" binding:"max=20000"`
+		Screen  string `json:"screen" binding:"max=64"`
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "An error summary is required"})
+		return
+	}
+	summary := strings.TrimSpace(payload.Summary)
+	if summary == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "An error summary is required"})
+		return
+	}
+	report := &uModel.UserErrorReport{
+		UserID:    user.ID,
+		CircleID:  user.CircleID,
+		Summary:   summary,
+		Details:   payload.Details,
+		Screen:    strings.TrimSpace(payload.Screen),
+		UserAgent: c.GetHeader("User-Agent"),
+		Path:      c.Request.URL.Path,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := h.userRepo.SaveErrorReport(c.Request.Context(), report); err != nil {
+		logging.FromContext(c).Errorw("failed to store client error report", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to record this report"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"res": gin.H{"id": report.ID, "recordedAt": report.CreatedAt}})
+}
+
+// startEmailChange requires fresh knowledge of the current credential before
+// issuing a one-time proof-of-control link to the replacement address. The
+// account email remains unchanged until that link is consumed.
+func (h *Handler) startEmailChange(c *gin.Context) {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+	var request struct {
+		Email           string `json:"email" binding:"required,max=254"`
+		CurrentPassword string `json:"currentPassword" binding:"required,max=128"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Enter a valid new email address and your current password"})
+		return
+	}
+	address := strings.ToLower(strings.TrimSpace(request.Email))
+	parsed, err := mail.ParseAddress(address)
+	if err != nil || parsed.Address != address {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Enter a valid new email address"})
+		return
+	}
+	if address == strings.ToLower(strings.TrimSpace(currentUser.Email)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Choose an email address different from your current one"})
+		return
+	}
+	duplicate, err := h.userRepo.EmailInUseByOther(c.Request.Context(), currentUser.ID, address)
+	if err != nil {
+		logging.FromContext(c).Errorw("account.handler.startEmailChange failed to check destination", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to start email change"})
+		return
+	}
+	if duplicate {
+		c.JSON(http.StatusConflict, gin.H{"error": "Another account already uses this email address"})
+		return
+	}
+	if err := auth.Matches(currentUser.Password, request.CurrentPassword); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Current password is incorrect"})
+		return
+	}
+	token, err := auth.GenerateEmailResetToken(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to start email change"})
+		return
+	}
+	if err := h.userRepo.CreateEmailChangeTransaction(c.Request.Context(), currentUser.ID, address, token); err != nil {
+		logging.FromContext(c).Errorw("account.handler.startEmailChange failed to persist transaction", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to start email change"})
+		return
+	}
+	sender, ok := h.email.(email.EmailChangeSender)
+	if !ok {
+		_ = h.userRepo.DeleteEmailChangeTransaction(c.Request.Context(), token)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Verified email delivery is unavailable"})
+		return
+	}
+	if err := sender.SendEmailChangeVerification(c.Request.Context(), address, token); err != nil {
+		_ = h.userRepo.DeleteEmailChangeTransaction(c.Request.Context(), token)
+		logging.FromContext(c).Errorw("account.handler.startEmailChange failed to send verification", "err", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Could not send the verification email. Check delivery settings and try again."})
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{"message": "Verification email sent", "expiresInSeconds": int(uRepo.EmailChangeLifetime.Seconds())})
+}
+
+// verifyEmailChange is intentionally unauthenticated: possession of the
+// short-lived, single-use link proves control of the new address. It never
+// accepts an account identifier from the browser.
+func (h *Handler) verifyEmailChange(c *gin.Context) {
+	var request struct {
+		Token string `json:"token" binding:"required,max=512"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email change link"})
+		return
+	}
+	if err := h.userRepo.ConsumeEmailChangeTransaction(c.Request.Context(), request.Token); err != nil {
+		switch {
+		case errors.Is(err, uRepo.ErrInvalidEmailChangeToken):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "This email change link is invalid, expired, or has already been used"})
+		case errors.Is(err, uRepo.ErrEmailAlreadyInUse):
+			c.JSON(http.StatusConflict, gin.H{"error": "Another account already uses this email address"})
+		default:
+			logging.FromContext(c).Errorw("account.handler.verifyEmailChange failed", "err", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to confirm email change"})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Email address updated. Please sign in again."})
+}
+
 func (h *Handler) CreateLongLivedToken(c *gin.Context) {
 	currentUser, ok := auth.CurrentUser(c)
 	if !ok {
@@ -1974,10 +2272,14 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 	authHandler.SetCSRFCheck(csrfCheck)
 
 	userRoutes := router.Group("api/v1/users")
-	userRoutes.Use(jwtAuth.MiddlewareFunc(), utils.RateLimitMiddleware(limiter))
+	userRoutes.Use(jwtAuth.MiddlewareFunc(), utils.RateLimitMiddleware(limiter), h.verboseRequestLogger())
 	{
 		userRoutes.GET("/", h.GetAllUsers())
 		userRoutes.GET("/profile", h.GetUserProfile)
+		userRoutes.GET("/export", h.requirePermission(auth.PermissionManageAccount), h.exportMyData)
+		userRoutes.POST("/import", h.requirePermission(auth.PermissionManageAccount), h.importMyData)
+		userRoutes.GET("/integrations", h.requirePermission(auth.PermissionManageAccount), h.getIntegrationStatus)
+		userRoutes.POST("/error-reports", h.requirePermission(auth.PermissionManageAccount), h.reportProblem)
 		userRoutes.PUT("", h.UpdateUserDetails)
 		userRoutes.GET("/preferences", h.requirePermission(auth.PermissionManageAccount), h.getPreferences)
 		userRoutes.PUT("/preferences", h.requirePermission(auth.PermissionManageAccount), h.updatePreferences)
@@ -1988,6 +2290,7 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.PUT("/webhook", h.requirePermission(auth.PermissionManageCircle), h.setWebhook)
 		userRoutes.PUT("/targets", h.UpdateNotificationTarget)
 		userRoutes.PUT("change_password", securityLimiter.Middleware("password-change", cfg.Server.RateLimitPasswordChangePeriod, int64(cfg.Server.RateLimitPasswordChange)), utils.RateLimitMiddleware(pwChangeLimiter), h.updateUserPasswordLoggedInOnly)
+		userRoutes.POST("/email-change", securityLimiter.Middleware("email-change-start", cfg.Server.RateLimitPasswordChangePeriod, int64(cfg.Server.RateLimitPasswordChange)), h.startEmailChange)
 		userRoutes.POST("profile_photo", h.updateProfilePhoto)
 		userRoutes.GET("storage", h.getStorageUsage)
 		userRoutes.POST("/logout", securityLimiter.Middleware("logout", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth), authlimit.AccountField{Name: "refresh_token"}), authHandler.LogoutHandler)
@@ -2009,6 +2312,8 @@ func Routes(router *gin.Engine, h *Handler, jwtAuth *jwt.GinJWTMiddleware, limit
 		userRoutes.PUT("/subaccounts/password", securityLimiter.Middleware("child-password-change", cfg.Server.RateLimitPasswordChangePeriod, int64(cfg.Server.RateLimitPasswordChange)), h.requirePermission(auth.PermissionManageSubaccounts), h.updateChildPassword)
 		userRoutes.DELETE("/subaccounts/:id", h.requirePermission(auth.PermissionManageSubaccounts), h.deleteChildUser)
 	}
+	publicUserRoutes := router.Group("api/v1/users")
+	publicUserRoutes.POST("/email-change/verify", securityLimiter.Middleware("email-change-verify", cfg.Server.RateLimitAuthPeriod, int64(cfg.Server.RateLimitAuth)), h.verifyEmailChange)
 
 	authRoutes := router.Group("api/v1/auth")
 	authRoutes.Use(utils.RateLimitMiddleware(limiter))

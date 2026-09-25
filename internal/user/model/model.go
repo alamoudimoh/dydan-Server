@@ -78,6 +78,37 @@ type UserPreference struct {
 	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at"`
 }
 
+// UserErrorReport is a client-submitted diagnostic captured by the approved
+// "Report this problem" control on the error screen. The user id and circle id
+// are taken from the authenticated session rather than the request body, so a
+// report can never be filed against another account. The client only supplies
+// the descriptive text it already displays; the server stamps the trustworthy
+// metadata (who, which circle, which route, when).
+type UserErrorReport struct {
+	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID    int       `json:"-" gorm:"column:user_id;not null;index"`
+	CircleID  int       `json:"-" gorm:"column:circle_id;not null;index"`
+	Summary   string    `json:"summary" gorm:"column:summary;type:text;not null"`
+	Details   string    `json:"details" gorm:"column:details;type:text"`
+	Screen    string    `json:"screen" gorm:"column:screen;type:varchar(64)"`
+	UserAgent string    `json:"-" gorm:"column:user_agent;type:text"`
+	Path      string    `json:"-" gorm:"column:path;type:varchar(255)"`
+	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;index"`
+}
+
+// EmailChangeTransaction is a short-lived, single-use proof that the account
+// holder controls a replacement email address. Tokens are stored only as
+// hashes, so a database disclosure cannot be replayed as an email-change link.
+type EmailChangeTransaction struct {
+	ID        int        `json:"-" gorm:"primaryKey;autoIncrement"`
+	UserID    int        `json:"-" gorm:"column:user_id;not null;index"`
+	Email     string     `json:"-" gorm:"column:email;not null"`
+	TokenHash string     `json:"-" gorm:"column:token_hash;not null;uniqueIndex"`
+	ExpiresAt time.Time  `json:"-" gorm:"column:expires_at;not null;index"`
+	UsedAt    *time.Time `json:"-" gorm:"column:used_at"`
+	CreatedAt time.Time  `json:"-" gorm:"column:created_at"`
+}
+
 // UserDeviceToken represents FCM/push notification tokens for user devices
 type UserDeviceToken struct {
 	ID           int       `json:"id" gorm:"primaryKey;autoIncrement"`                                             // Primary key
