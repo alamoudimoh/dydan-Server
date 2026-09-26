@@ -2,9 +2,12 @@ package chore
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/alamoudimoh/dydan-server/config"
 	chModel "github.com/alamoudimoh/dydan-server/internal/chore/model"
@@ -61,6 +64,40 @@ func categoryByName(t *testing.T, repo *LabelRepository, circleID int, name stri
 		t.Fatalf("category %q not found: %v", name, err)
 	}
 	return label
+}
+
+// allCategories returns every category in a circle, archived included, in id
+// order, so a test can assert on the complete post-ensure state.
+func allCategories(t *testing.T, repo *LabelRepository, circleID int) []lModel.Label {
+	t.Helper()
+	var labels []lModel.Label
+	if err := repo.db.Where("circle_id = ? AND is_category = ?", circleID, true).
+		Order("id").Find(&labels).Error; err != nil {
+		t.Fatal(err)
+	}
+	return labels
+}
+
+// identityOf reports a category's stable default identity, or "" for a custom
+// category.
+func identityOf(category lModel.Label) string {
+	if category.DefaultKey == nil {
+		return ""
+	}
+	return *category.DefaultKey
+}
+
+// countNamesNamed counts the rows in a circle whose name matches, so a test can
+// prove a default was not reseeded a second time.
+func countNamed(t *testing.T, repo *LabelRepository, circleID int, name string) int {
+	t.Helper()
+	var count int64
+	if err := repo.db.Model(&lModel.Label{}).
+		Where("circle_id = ? AND is_category = ? AND LOWER(name) = LOWER(?)", circleID, true, name).
+		Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	return int(count)
 }
 
 func TestCategoryCircleScopeDuplicateAndArchive(t *testing.T) {
@@ -413,4 +450,311 @@ func TestCategoryWriteBumpsAffectedChoreSyncVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertBumped("restore", before, loadChore(t, repo, affected.ID).SyncVersion)
+}
+
+// seedDefaults seeds all six defaults into a circle, mirroring what a first
+// category read does for a brand new Circle.
+func seedDefaults(t *testing.T, repo *LabelRepository, circleID int) {
+	t.Helper()
+	if err := repo.EnsureDefaultCategories(context.Background(), circleID, 1); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSeededDefaultsCarryStableIdentity(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleID := 2001
+	seedDefaults(t, repo, circleID)
+
+	categories := allCategories(t, repo, circleID)
+	if len(categories) != len(DefaultCategoryNames) {
+		t.Fatalf("unexpected default count: %d", len(categories))
+	}
+	for _, category := range categories {
+		want := strings.ToLower(category.Name)
+		if got := identityOf(category); got != want {
+			t.Fatalf("default %q identity = %q, want %q", category.Name, got, want)
+		}
+	}
+	_ = ctx
+}
+
+func TestRenamedDefaultIsNotReseededUnderItsOriginalName(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleID := 2002
+	seedDefaults(t, repo, circleID)
+
+	work := categoryByName(t, repo, circleID, "work")
+	if err := repo.UpdateCategory(ctx, circleID, &lModel.Label{ID: work.ID, Name: "Day job", Color: "#d32f2f"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-running ensure is what used to resurrect "work" on every read.
+	for round := 0; round < 3; round++ {
+		if err := repo.EnsureDefaultCategories(ctx, circleID, 1); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if count := countNamed(t, repo, circleID, "work"); count != 0 {
+		t.Fatalf("renamed default was reseeded under its original name (%d rows)", count)
+	}
+	categories := allCategories(t, repo, circleID)
+	if len(categories) != len(DefaultCategoryNames) {
+		t.Fatalf("circle grew to %d rows, want %d", len(categories), len(DefaultCategoryNames))
+	}
+	// The renamed row kept the identity, its new name and its new color.
+	renamed := categoryByName(t, repo, circleID, "Day job")
+	if identityOf(renamed) != "work" {
+		t.Fatalf("rename lost the default identity: %q", identityOf(renamed))
+	}
+	if renamed.Color != "#d32f2f" {
+		t.Fatalf("rename lost the color: %q", renamed.Color)
+	}
+	if renamed.ID != work.ID {
+		t.Fatalf("rename replaced the row: %d -> %d", work.ID, renamed.ID)
+	}
+}
+
+func TestRecoloredDefaultIsNotReseeded(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleID := 2003
+	seedDefaults(t, repo, circleID)
+
+	health := categoryByName(t, repo, circleID, "health")
+	if err := repo.UpdateCategory(ctx, circleID, &lModel.Label{ID: health.ID, Name: "health", Color: "#00bcd4"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.EnsureDefaultCategories(ctx, circleID, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	if count := countNamed(t, repo, circleID, "health"); count != 1 {
+		t.Fatalf("recolored default was duplicated: %d rows", count)
+	}
+	if got := categoryByName(t, repo, circleID, "health"); got.Color != "#00bcd4" || identityOf(got) != "health" {
+		t.Fatalf("recolor was reverted or identity lost: %+v", got)
+	}
+}
+
+func TestArchivedDefaultIsNotReseededAndRestoresWithItsIdentity(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleID := 2004
+	seedDefaults(t, repo, circleID)
+
+	school := categoryByName(t, repo, circleID, "school")
+	chore := newChore(t, repo, circleID, &school.ID)
+
+	if err := repo.SetCategoryArchived(ctx, circleID, school.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	// Archiving must not cause the default to come back as a fresh row.
+	if err := repo.EnsureDefaultCategories(ctx, circleID, 1); err != nil {
+		t.Fatal(err)
+	}
+	if count := countNamed(t, repo, circleID, "school"); count != 1 {
+		t.Fatalf("archived default was reseeded as a new row: %d rows", count)
+	}
+	if all := allCategories(t, repo, circleID); len(all) != len(DefaultCategoryNames) {
+		t.Fatalf("archive changed the circle row count: %d", len(all))
+	}
+	// The existing assignment survives the archive.
+	if reloaded := loadChore(t, repo, chore.ID); reloaded.CategoryID == nil || *reloaded.CategoryID != school.ID {
+		t.Fatalf("archive severed the existing assignment: %+v", reloaded.CategoryID)
+	}
+
+	if err := repo.SetCategoryArchived(ctx, circleID, school.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.EnsureDefaultCategories(ctx, circleID, 1); err != nil {
+		t.Fatal(err)
+	}
+	restored := categoryByName(t, repo, circleID, "school")
+	if identityOf(restored) != "school" || restored.ID != school.ID {
+		t.Fatalf("restore lost the identity or the row: %+v", restored)
+	}
+	if countNamed(t, repo, circleID, "school") != 1 {
+		t.Fatal("restore duplicated the default")
+	}
+	if all := allCategories(t, repo, circleID); len(all) != len(DefaultCategoryNames) {
+		t.Fatalf("restore changed the circle row count: %d", len(all))
+	}
+}
+
+func TestUserCategorySpelledLikeADefaultIsNotDuplicated(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleID := 2005
+
+	// A category the user made that happens to be spelled like a default. It
+	// carries no identity, so identity cannot suppress it, and the name check
+	// is what stops a second "work" being seeded next to it.
+	custom := &lModel.Label{Name: "Work", CircleID: &circleID, CreatedBy: 1}
+	if err := repo.CreateCategory(ctx, custom); err != nil {
+		t.Fatal(err)
+	}
+	if identityOf(*custom) != "" {
+		t.Fatalf("a user-created category claimed a default identity: %q", identityOf(*custom))
+	}
+
+	if err := repo.EnsureDefaultCategories(ctx, circleID, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	if count := countNamed(t, repo, circleID, "work"); count != 1 {
+		t.Fatalf("a user category named like a default was duplicated: %d rows", count)
+	}
+	all := allCategories(t, repo, circleID)
+	if len(all) != len(DefaultCategoryNames) {
+		t.Fatalf("unexpected row count: %d", len(all))
+	}
+	// The custom row is untouched and the other five defaults are present.
+	kept := categoryByName(t, repo, circleID, "Work")
+	if kept.ID != custom.ID || identityOf(kept) != "" {
+		t.Fatalf("the user category was adopted or replaced: %+v", kept)
+	}
+	if identityOf(categoryByName(t, repo, circleID, "household")) != "household" {
+		t.Fatal("the remaining defaults were not seeded with an identity")
+	}
+}
+
+func TestCreateCategoryCannotClaimADefaultIdentity(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleID := 2006
+
+	forged := "work"
+	car := &lModel.Label{
+		Name:       "Forged",
+		Color:      "#616161",
+		DefaultKey: &forged,
+		CircleID:   &circleID,
+		CreatedBy:  1,
+	}
+	if err := repo.CreateCategory(ctx, car); err != nil {
+		t.Fatal(err)
+	}
+	if identityOf(*car) != "" {
+		t.Fatalf("CreateCategory let a caller claim the %q identity", identityOf(*car))
+	}
+
+	seedDefaults(t, repo, circleID)
+	// The real "work" default is still seeded, because the forged row never
+	// took the identity.
+	if count := countNamed(t, repo, circleID, "work"); count != 1 {
+		t.Fatalf("forged identity changed seeding: %d rows named work", count)
+	}
+	if identityOf(categoryByName(t, repo, circleID, "work")) != "work" {
+		t.Fatal("the real work default was not seeded with its identity")
+	}
+}
+
+func TestPartialBackfillSkipsDefaultsAlreadyClaimedByIdentity(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleID := 2007
+
+	// A circle holding only a renamed "work" plus one custom category: the
+	// renamed default keeps its identity, so "work" is not reseeded, while the
+	// five genuinely missing defaults are still backfilled.
+	renamed := &lModel.Label{Name: "Day job", Color: "#d32f2f", CircleID: &circleID, CreatedBy: 1}
+	if err := repo.CreateCategory(ctx, renamed); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.db.Model(&lModel.Label{}).Where("id = ?", renamed.ID).
+		Update("default_key", "work").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.CreateCategory(ctx, &lModel.Label{Name: "Garden", CircleID: &circleID, CreatedBy: 1}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := repo.EnsureDefaultCategories(ctx, circleID, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	all := allCategories(t, repo, circleID)
+	// "Day job" already occupies the "work" slot, so only the five genuinely
+	// missing defaults are added: Day job + Garden + 5 = 6 defaults + 1 custom.
+	if len(all) != len(DefaultCategoryNames)+1 {
+		t.Fatalf("partial backfill produced %d rows, want %d", len(all), len(DefaultCategoryNames)+1)
+	}
+	if count := countNamed(t, repo, circleID, "work"); count != 0 {
+		t.Fatalf("a claimed identity was reseeded under its original name: %d rows", count)
+	}
+	seeded := 0
+	for _, category := range all {
+		if identityOf(category) != "" {
+			seeded++
+		}
+	}
+	if seeded != len(DefaultCategoryNames) {
+		t.Fatalf("expected %d identified defaults, got %d", len(DefaultCategoryNames), seeded)
+	}
+}
+
+// TestDefaultIdentityIsNotExposedByTheCategoryAPI pins the /api/v1/categories
+// response shape. The identity is server-internal bookkeeping, so adding the
+// column must not change a single byte of what clients receive.
+func TestDefaultIdentityIsNotExposedByTheCategoryAPI(t *testing.T) {
+	key := "work"
+	archived := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	payload, err := json.Marshal(&lModel.Label{
+		ID:         7,
+		Name:       "Day job",
+		Color:      "#d32f2f",
+		CreatedBy:  3,
+		ArchivedAt: &archived,
+		DefaultKey: &key,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(payload, &body); err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"default_key", "defaultKey", "DefaultKey"} {
+		if _, present := body[forbidden]; present {
+			t.Fatalf("the default identity leaked into the API payload: %s", payload)
+		}
+	}
+	// The fields clients already rely on are unchanged.
+	for _, required := range []string{"id", "name", "color", "created_by", "archivedAt"} {
+		if _, present := body[required]; !present {
+			t.Fatalf("expected field %q is missing from %s", required, payload)
+		}
+	}
+}
+
+func TestDefaultIdentityIsScopedPerCircle(t *testing.T) {
+	repo := categoryRepo(t)
+	ctx := context.Background()
+	circleOne, circleTwo := 2008, 2009
+	seedDefaults(t, repo, circleOne)
+	seedDefaults(t, repo, circleTwo)
+
+	// Renaming the default in one circle must not affect the other.
+	work := categoryByName(t, repo, circleOne, "work")
+	if err := repo.UpdateCategory(ctx, circleOne, &lModel.Label{ID: work.ID, Name: "Day job", Color: "#d32f2f"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.EnsureDefaultCategories(ctx, circleOne, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	if count := countNamed(t, repo, circleOne, "work"); count != 0 {
+		t.Fatalf("circle one was reseeded: %d rows named work", count)
+	}
+	other := categoryByName(t, repo, circleTwo, "work")
+	if identityOf(other) != "work" {
+		t.Fatalf("circle two's default lost its identity: %q", identityOf(other))
+	}
+	if count := countNamed(t, repo, circleTwo, "work"); count != 1 {
+		t.Fatalf("circle two was affected by circle one's rename: %d rows", count)
+	}
 }

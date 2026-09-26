@@ -87,23 +87,46 @@ func (r *LabelRepository) GetCircleCategories(ctx context.Context, circleID int,
 	return labels, nil
 }
 
+// defaultCategoryIdentity normalizes a seeded-default key for comparison.
+func defaultCategoryIdentity(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
 // EnsureDefaultCategories backfills the task editor's server-owned defaults
 // for a circle that has not seen all of them yet. It never alters a category
 // already present in the circle (including an archived one) and all lookups
 // are constrained by circle_id, so a request in one circle cannot create or
 // observe categories in another.
+//
+// A default counts as present when either its stable identity (Label.DefaultKey)
+// is already claimed in the circle, or a row still carries its display name.
+// The identity is what makes a renamed default survive: "work" renamed to
+// "Day job" keeps default_key = "work", so the original name is never seeded a
+// second time. The name check covers rows written before the identity existed,
+// and keeps a user category that merely happens to be spelled like a default
+// from being duplicated.
 func (r *LabelRepository) EnsureDefaultCategories(ctx context.Context, circleID, createdBy int) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var existing []lModel.Label
 		if err := tx.Where("circle_id = ? AND is_category = ?", circleID, true).Find(&existing).Error; err != nil {
 			return err
 		}
-		seen := make(map[string]struct{}, len(existing))
+		claimed := make(map[string]struct{}, len(existing))
+		named := make(map[string]struct{}, len(existing))
 		for _, category := range existing {
-			seen[strings.ToLower(category.Name)] = struct{}{}
+			if category.DefaultKey != nil {
+				if identity := defaultCategoryIdentity(*category.DefaultKey); identity != "" {
+					claimed[identity] = struct{}{}
+				}
+			}
+			named[strings.ToLower(category.Name)] = struct{}{}
 		}
 		for _, name := range DefaultCategoryNames {
-			if _, found := seen[strings.ToLower(name)]; found {
+			identity := defaultCategoryIdentity(name)
+			if _, found := claimed[identity]; found {
+				continue
+			}
+			if _, found := named[identity]; found {
 				continue
 			}
 			circle := circleID
@@ -112,9 +135,11 @@ func (r *LabelRepository) EnsureDefaultCategories(ctx context.Context, circleID,
 			// including a default the user has since renamed or recolored —
 			// are skipped above and never rewritten here.
 			color, _ := DefaultCategoryColor(name)
+			key := name
 			if err := tx.Create(&lModel.Label{
 				Name:       name,
 				Color:      color,
+				DefaultKey: &key,
 				CreatedBy:  createdBy,
 				CircleID:   &circle,
 				IsCategory: true,
@@ -135,6 +160,11 @@ func (r *LabelRepository) IsActiveCategoryInCircle(ctx context.Context, id, circ
 func (r *LabelRepository) CreateCategory(ctx context.Context, label *lModel.Label) error {
 	label.IsCategory = true
 	label.Name = strings.TrimSpace(label.Name)
+	// A default identity is granted only by EnsureDefaultCategories and by the
+	// identify-defaults migration. Clearing it here means a user-created
+	// category can never claim (or inherit) a seeded default's slot, however
+	// the caller happened to populate the struct.
+	label.DefaultKey = nil
 	if label.Name == "" || len([]rune(label.Name)) > 80 {
 		return errors.New("category name must be between 1 and 80 characters")
 	}
