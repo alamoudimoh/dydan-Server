@@ -21,6 +21,27 @@ var ErrCategoryNotFound = errors.New("category not found in circle")
 // DefaultCategoryNames are the server-owned categories displayed by the
 // approved task editor. They are initialized per circle, not per user, and
 // remain ordinary editable/archivable circle categories afterwards.
+//
+// The values are the persisted-entity color palette shared with the clients
+// (src/utils/Colors.js LABEL_COLORS). They are DATA, not theme tokens: a
+// category color is stored on the row and rendered verbatim, so these hex
+// values must never be renumbered, renamed, or re-mapped onto theme
+// variables. They are also deliberately theme-independent — the light/dark
+// accents in src/theme/tokens.js differ per mode, which a stored color
+// cannot be. Keys must match DefaultCategoryNames exactly; the two are
+// zipped by index when a circle is seeded.
+var defaultCategoryColors = map[string]string{
+	"household": "#26a69a", // Teal
+	"personal":  "#7e57c2", // Grape
+	"work":      "#616161", // Charcoal
+	"school":    "#80d8ff", // Sky Blue
+	"health":    "#4caf50", // Emerald
+	"finance":   "#ffc107", // Amber
+}
+
+// DefaultCategoryNames are the server-owned categories displayed by the
+// approved task editor. They are initialized per circle, not per user, and
+// remain ordinary editable/archivable circle categories afterwards.
 var DefaultCategoryNames = []string{
 	"household",
 	"personal",
@@ -28,6 +49,14 @@ var DefaultCategoryNames = []string{
 	"school",
 	"health",
 	"finance",
+}
+
+// DefaultCategoryColor reports the seeded color for a default category name.
+// Names outside DefaultCategoryNames have no seeded color: they are either
+// user-created or a customized default, and must be left untouched.
+func DefaultCategoryColor(name string) (string, bool) {
+	color, ok := defaultCategoryColors[strings.ToLower(strings.TrimSpace(name))]
+	return color, ok
 }
 
 type LabelRepository struct {
@@ -78,8 +107,14 @@ func (r *LabelRepository) EnsureDefaultCategories(ctx context.Context, circleID,
 				continue
 			}
 			circle := circleID
+			// Newly seeded rows get a stable color so a freshly created
+			// Circle is never left with color-less badges. Existing rows —
+			// including a default the user has since renamed or recolored —
+			// are skipped above and never rewritten here.
+			color, _ := DefaultCategoryColor(name)
 			if err := tx.Create(&lModel.Label{
 				Name:       name,
+				Color:      color,
 				CreatedBy:  createdBy,
 				CircleID:   &circle,
 				IsCategory: true,
@@ -115,6 +150,11 @@ func (r *LabelRepository) CreateCategory(ctx context.Context, label *lModel.Labe
 	})
 }
 
+// UpdateCategory renames and/or recolors a circle category. Both fields are
+// persisted together. The circle-scoped WHERE and the RowsAffected check are
+// what enforce authorization, so they must stay: a category from another
+// Circle (or a non-category) is reported as ErrCategoryNotFound rather than
+// being edited.
 func (r *LabelRepository) UpdateCategory(ctx context.Context, circleID int, label *lModel.Label) error {
 	label.Name = strings.TrimSpace(label.Name)
 	if label.Name == "" || len([]rune(label.Name)) > 80 {
@@ -128,31 +168,55 @@ func (r *LabelRepository) UpdateCategory(ctx context.Context, circleID int, labe
 		if count > 0 {
 			return ErrDuplicateCategory
 		}
-		result := tx.Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND is_category = ?", label.ID, circleID, true).Update("name", label.Name)
+		// An explicit column map is required: GORM's struct Updates ignores
+		// zero values, which would silently drop a color cleared to "" and
+		// make clearing a color impossible.
+		result := tx.Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND is_category = ?", label.ID, circleID, true).
+			Updates(map[string]interface{}{"name": label.Name, "color": label.Color})
 		if result.Error != nil {
 			return result.Error
 		}
 		if result.RowsAffected != 1 {
 			return ErrCategoryNotFound
 		}
-		return nil
+		// Chores embed the category (name/color) in their payload, so a
+		// rename or recolor is invisible to clients syncing on sync_version
+		// until the affected chores are bumped. Reuse the label mechanism.
+		choreIDs, err := r.choreIDsWithCategory(ctx, tx, label.ID)
+		if err != nil {
+			return err
+		}
+		return r.bumpChoreSyncVersions(ctx, tx, choreIDs)
 	})
 }
 
+// SetCategoryArchived archives or restores a circle category. Archiving is
+// deliberately not a delete: the row and its id survive, so every existing
+// chores/things/routine_items/goals reference stays valid and history keeps
+// resolving the category name. Archived categories are only barred from new
+// assignments (see IsActiveCategoryInCircle).
 func (r *LabelRepository) SetCategoryArchived(ctx context.Context, circleID, id int, archived bool) error {
 	var value *time.Time
 	if archived {
 		now := time.Now().UTC()
 		value = &now
 	}
-	result := r.db.WithContext(ctx).Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND is_category = ?", id, circleID, true).Update("archived_at", value)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected != 1 {
-		return ErrCategoryNotFound
-	}
-	return nil
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&lModel.Label{}).Where("id = ? AND circle_id = ? AND is_category = ?", id, circleID, true).Update("archived_at", value)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return ErrCategoryNotFound
+		}
+		// archived_at is part of the serialized category, so chores embedding
+		// it change shape on archive and restore just as they do on rename.
+		choreIDs, err := r.choreIDsWithCategory(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+		return r.bumpChoreSyncVersions(ctx, tx, choreIDs)
+	})
 }
 
 func (r *LabelRepository) CreateLabels(ctx context.Context, labels []*lModel.Label) error {
@@ -277,6 +341,19 @@ func (r *LabelRepository) choreIDsWithLabels(ctx context.Context, tx *gorm.DB, l
 		Where("label_id IN (?)", labelIDs).
 		Distinct().
 		Pluck("chore_id", &choreIDs).Error; err != nil {
+		return nil, err
+	}
+	return choreIDs, nil
+}
+
+// choreIDsWithCategory returns the distinct chores whose payload embeds the
+// given category. The category counterpart of choreIDsWithLabels.
+func (r *LabelRepository) choreIDsWithCategory(ctx context.Context, tx *gorm.DB, categoryID int) ([]int, error) {
+	var choreIDs []int
+	if err := tx.WithContext(ctx).Model(&chModel.Chore{}).
+		Where("category_id = ?", categoryID).
+		Distinct().
+		Pluck("id", &choreIDs).Error; err != nil {
 		return nil, err
 	}
 	return choreIDs, nil

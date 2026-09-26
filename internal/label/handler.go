@@ -153,7 +153,10 @@ func (h *Handler) updateCategory(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
-	label := &lModel.Label{ID: req.ID, Name: req.Name}
+	// Color is persisted alongside the name. The request binds it already
+	// (LabelReq.Color); dropping it here is what previously made recoloring a
+	// category a silent no-op.
+	label := &lModel.Label{ID: req.ID, Name: req.Name, Color: req.Color}
 	if err := h.lRepo.UpdateCategory(c, currentUser.CircleID, label); err != nil {
 		categoryError(c, err)
 		return
