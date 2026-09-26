@@ -48,7 +48,7 @@ docker build --quiet --tag "$image" \
 
 docker run -d \
   --name "$container" \
-  --publish 127.0.0.1::2021 \
+  --publish 127.0.0.1::7171 \
   --volume "$data_dir:/data" \
   --env DT_JWT_ACCESS_TOKEN_TIME=15m \
   --env DT_JWT_SESSION_TIME=24h \
@@ -57,7 +57,7 @@ docker run -d \
 
 port=""
 for _ in $(seq 1 60); do
-  port=$(docker port "$container" 2021/tcp 2>/dev/null | sed -E 's/.*:([0-9]+)$/\1/' | head -n 1)
+  port=$(docker port "$container" 7171/tcp 2>/dev/null | sed -E 's/.*:([0-9]+)$/\1/' | head -n 1)
   if [[ -n "$port" ]] && curl --fail --silent "http://127.0.0.1:${port}/api/v1/health" >/dev/null 2>&1; then
     break
   fi

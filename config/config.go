@@ -406,7 +406,7 @@ func NewConfig() *Config {
 			ReadTimeout:      10 * time.Second,
 			WriteTimeout:     10 * time.Second,
 			WebhookTimeout:   5 * time.Second,
-			CorsAllowOrigins: []string{"http://localhost:5173", "http://localhost:7926", "http://localhost", "https://localhost", "capacitor://localhost"},
+			CorsAllowOrigins: []string{"http://localhost:5173", "http://localhost:2925", "http://localhost:7926", "http://localhost", "https://localhost", "capacitor://localhost"},
 			ServeFrontend:    true,
 
 			RateLimitPasswordChangePeriod: 60 * time.Second,

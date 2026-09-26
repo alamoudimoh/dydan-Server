@@ -9,7 +9,7 @@
 # data_dir: /data
 # is_user_creation_disabled: true
 # server:
-#   port: 2021
+#   port: 7171
 # logging:
 #   level: info
 # database:

@@ -61,13 +61,13 @@ assert_root_owned_volume_migration() {
 
   docker run -d \
     --name "$root_container" \
-    --publish 127.0.0.1::2021 \
+    --publish 127.0.0.1::7171 \
     --volume "$root_data_dir:/data" \
     "$image" >/dev/null
 
   local port
   for _ in $(seq 1 60); do
-    if port=$(docker port "$root_container" 2021/tcp 2>/dev/null | sed -E 's/.*:([0-9]+)$/\1/' | head -n 1) &&
+    if port=$(docker port "$root_container" 7171/tcp 2>/dev/null | sed -E 's/.*:([0-9]+)$/\1/' | head -n 1) &&
       [[ -n "$port" ]] &&
       curl --fail --silent --show-error "http://127.0.0.1:${port}/api/v1/health" >/dev/null; then
       break
@@ -98,7 +98,7 @@ assert_root_owned_volume_migration
 start_container() {
   docker run -d \
     --name "$container" \
-    --publish 127.0.0.1::2021 \
+    --publish 127.0.0.1::7171 \
     --volume "$data_dir:/data" \
     "$image" >/dev/null
 }
@@ -116,7 +116,7 @@ wait_for_health() {
 }
 
 container_port() {
-  docker port "$container" 2021/tcp | sed -E 's/.*:([0-9]+)$/\1/' | head -n 1
+  docker port "$container" 7171/tcp | sed -E 's/.*:([0-9]+)$/\1/' | head -n 1
 }
 
 assert_clean_migrations() {

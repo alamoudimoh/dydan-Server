@@ -117,7 +117,7 @@ func (h *Handler) loadPreferences(ctx context.Context, userID int) (Preferences,
 // Settings toggle writes to, so it is enforceable server-side, not client-side.
 func (h *Handler) verboseRequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		start := time.Now()
+		start := time.Now().UTC()
 		c.Next()
 		user, ok := auth.CurrentUser(c)
 		if !ok {

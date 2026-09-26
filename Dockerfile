@@ -112,10 +112,10 @@ LABEL com.dydan.frontend.commit=${DYDAN_FRONTEND_COMMIT} \
       org.opencontainers.image.source=https://github.com/alamoudimoh/dydan-server
 
 # Expose the application port
-EXPOSE 2021
+EXPOSE 7171
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:2021/api/v1/health || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost:7171/api/v1/health || exit 1
 
 # Run through the privilege-dropping entrypoint; the Go binary is exec'd as
 # the unprivileged "dydan" user (uid/gid 1000) with PID 1 semantics intact.

@@ -6,10 +6,10 @@ The existing DyDan authentication implementation was **already correct**. The is
 
 When DyDan is accessed through HTTPS behind a reverse proxy (Nginx Proxy Manager):
 1. Browser sends `Origin: https://example.local` header
-2. Nginx forwards to `http://dydan:2021` with `X-Forwarded-Proto: https`
+2. Nginx forwards to `http://dydan:7171` with `X-Forwarded-Proto: https`
 3. If Nginx's IP is **not** in `DYDAN_TRUSTED_PROXIES`:
    - DyDan ignores the forwarded headers (security feature)
-   - DyDan computes origin as `http://dydan:2021`
+   - DyDan computes origin as `http://dydan:7171`
    - CSRF check rejects `Origin: https://example.local` as cross-origin
    - Result: "Your session expired"
 
@@ -109,15 +109,15 @@ NPM → DyDan:
   RemoteAddr: 172.24.0.2:54321
   X-Forwarded-Proto: https (IGNORED - untrusted source)
   X-Forwarded-Host: example.local (IGNORED)
-  Host: dydan:2021 (internal Docker hostname)
+  Host: dydan:7171 (internal Docker hostname)
   Origin: https://example.local
 
 DyDan Processing:
   ✗ Proxy trust: 172.24.0.2 NOT in allowlist
   ✗ RequestScheme: http (no TLS, no trusted X-Forwarded-Proto)
-  ✗ RequestHost: dydan:2021 (from Host header)
-  ✗ Computed origin: http://dydan:2021
-  ✗ CSRF: Origin https://example.local ≠ http://dydan:2021
+  ✗ RequestHost: dydan:7171 (from Host header)
+  ✗ Computed origin: http://dydan:7171
+  ✗ CSRF: Origin https://example.local ≠ http://dydan:7171
   ✗ Result: 403 Forbidden (Cross-origin request rejected)
 
 Browser:
@@ -219,7 +219,7 @@ services:
     container_name: dydan
     restart: unless-stopped
     ports:
-      - "2021:2021"
+      - "7171:7171"
     environment:
       TZ: Asia/Riyadh
       DYDAN_TRUSTED_PROXIES: "172.24.0.2"  # NPM's actual IP
