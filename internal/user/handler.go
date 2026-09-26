@@ -11,7 +11,9 @@ import (
 	"html"
 	"net/http"
 	"net/mail"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -67,6 +69,27 @@ type Handler struct {
 	serveSwagger           bool
 	legal                  config.LegalConfig
 	billingEnabled         bool
+	serverVersion          string
+	serverCommit           string
+	serverBuildDate        string
+	deployment             string
+	serverOS               string
+	serverArchitecture     string
+	databaseType           string
+	storageType            string
+}
+
+func deploymentKind() string {
+	if deployment := strings.TrimSpace(os.Getenv("DYDAN_DEPLOYMENT")); deployment != "" {
+		return deployment
+	}
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return "docker"
+	}
+	if _, err := os.Stat("/run/.containerenv"); err == nil {
+		return "container"
+	}
+	return "server"
 }
 
 func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
@@ -108,7 +131,15 @@ func NewHandler(ur *uRepo.UserRepository, cr *cRepo.CircleRepository,
 		// Billing history is only offered when a payment provider is actually
 		// configured; otherwise the Settings screen reports the capability as
 		// absent instead of showing a view that could never return invoices.
-		billingEnabled: strings.TrimSpace(config.StripeConfig.APIKey) != "",
+		billingEnabled:     strings.TrimSpace(config.StripeConfig.APIKey) != "",
+		serverVersion:      config.Info.Version,
+		serverCommit:       config.Info.Commit,
+		serverBuildDate:    config.Info.BuildDate,
+		deployment:         deploymentKind(),
+		serverOS:           runtime.GOOS,
+		serverArchitecture: runtime.GOARCH,
+		databaseType:       config.Database.Type,
+		storageType:        config.Storage.StorageType,
 	}
 }
 
@@ -1329,6 +1360,16 @@ func (h *Handler) getIntegrationStatus(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"res": gin.H{
+			"server": gin.H{
+				"version":         h.serverVersion,
+				"commit":          h.serverCommit,
+				"buildDate":       h.serverBuildDate,
+				"deployment":      h.deployment,
+				"operatingSystem": h.serverOS,
+				"architecture":    h.serverArchitecture,
+				"database":        h.databaseType,
+				"storage":         h.storageType,
+			},
 			"apiDocs": gin.H{
 				"enabled": h.serveSwagger,
 				"url":     scheme + "://" + c.Request.Host + "/swagger/index.html",
