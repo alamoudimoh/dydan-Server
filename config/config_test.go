@@ -104,7 +104,7 @@ func TestZeroConfigDefaultsAndPersistentSecret(t *testing.T) {
 	if first.Database.Path != filepath.Join(dataDir, "dydan.db") {
 		t.Fatalf("database path=%q", first.Database.Path)
 	}
-	if first.Server.Port != 2021 || !first.Server.ServeFrontend {
+	if first.Server.Port != 7171 || !first.Server.ServeFrontend {
 		t.Fatalf("server defaults not populated: %#v", first.Server)
 	}
 	if first.IsUserCreationDisabled || !first.RealTimeConfig.Enabled || !first.RealTimeConfig.SSEEnabled {
@@ -256,7 +256,7 @@ func TestZeroConfigStartupWithoutConfigFiles(t *testing.T) {
 	if cfg.Name != "dydan" {
 		t.Fatalf("name=%q", cfg.Name)
 	}
-	if cfg.Server.Port != 2021 {
+	if cfg.Server.Port != 7171 {
 		t.Fatalf("port=%d", cfg.Server.Port)
 	}
 }

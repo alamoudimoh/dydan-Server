@@ -188,7 +188,7 @@ type JwtConfig struct {
 }
 
 type ServerConfig struct {
-	Port             int           `mapstructure:"port" yaml:"port" default:"2021"`
+	Port             int           `mapstructure:"port" yaml:"port" default:"7171"`
 	RatePeriod       time.Duration `mapstructure:"rate_period" yaml:"rate_period" default:"60s"`
 	RateLimit        int           `mapstructure:"rate_limit" yaml:"rate_limit" default:"300"`
 	ReadTimeout      time.Duration `mapstructure:"read_timeout" yaml:"read_timeout" default:"5s"`
@@ -197,7 +197,7 @@ type ServerConfig struct {
 	CorsAllowOrigins []string      `mapstructure:"cors_allow_origins" yaml:"cors_allow_origins"`
 	ServeFrontend    bool          `mapstructure:"serve_frontend" yaml:"serve_frontend"`
 	ServeSwagger     bool          `mapstructure:"serve_swagger" yaml:"serve_swagger"`
-	PublicHost       string        `mapstructure:"public_host" yaml:"public_host" default:"http://localhost:2021"`
+	PublicHost       string        `mapstructure:"public_host" yaml:"public_host" default:"http://localhost:7171"`
 
 	// Dedicated budget for password changes (per IP, per period). Tighter than
 	// the general API bucket so the current-password check cannot be
@@ -400,7 +400,7 @@ func NewConfig() *Config {
 			AccessTokenTime: 15 * time.Minute,
 		},
 		Server: ServerConfig{
-			Port:             2021,
+			Port:             7171,
 			RatePeriod:       60 * time.Second,
 			RateLimit:        300,
 			ReadTimeout:      10 * time.Second,

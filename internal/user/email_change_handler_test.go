@@ -366,7 +366,19 @@ func TestIntegrationStatusReportsRealCapabilities(t *testing.T) {
 	if err := db.Create(&cModel.UserCircle{UserID: 7, CircleID: 3, Role: cModel.UserRoleAdmin, IsActive: true}).Error; err != nil {
 		t.Fatal(err)
 	}
-	h := &Handler{userRepo: uRepo.NewUserRepository(db, &config.Config{}), circleRepo: cRepo.NewCircleRepository(db), serveSwagger: false}
+	h := &Handler{
+		userRepo:           uRepo.NewUserRepository(db, &config.Config{}),
+		circleRepo:         cRepo.NewCircleRepository(db),
+		serveSwagger:       false,
+		serverVersion:      "test-build",
+		serverCommit:       "abc123",
+		serverBuildDate:    "2026-09-26T00:00:00Z",
+		deployment:         "docker",
+		serverOS:           "linux",
+		serverArchitecture: "amd64",
+		databaseType:       "sqlite",
+		storageType:        "local",
+	}
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/integrations", nil)
@@ -378,6 +390,16 @@ func TestIntegrationStatusReportsRealCapabilities(t *testing.T) {
 	}
 	var body struct {
 		Res struct {
+			Server struct {
+				Version         string `json:"version"`
+				Commit          string `json:"commit"`
+				BuildDate       string `json:"buildDate"`
+				Deployment      string `json:"deployment"`
+				OperatingSystem string `json:"operatingSystem"`
+				Architecture    string `json:"architecture"`
+				Database        string `json:"database"`
+				Storage         string `json:"storage"`
+			} `json:"server"`
 			APIDocs struct {
 				Enabled bool   `json:"enabled"`
 				URL     string `json:"url"`
@@ -398,6 +420,9 @@ func TestIntegrationStatusReportsRealCapabilities(t *testing.T) {
 	}
 	if body.Res.APIDocs.Enabled {
 		t.Fatal("serve_swagger=false must report apiDocs.disabled")
+	}
+	if body.Res.Server.Version != "test-build" || body.Res.Server.Commit != "abc123" || body.Res.Server.BuildDate != "2026-09-26T00:00:00Z" || body.Res.Server.Deployment != "docker" || body.Res.Server.OperatingSystem != "linux" || body.Res.Server.Architecture != "amd64" || body.Res.Server.Database != "sqlite" || body.Res.Server.Storage != "local" {
+		t.Fatalf("server info = %+v", body.Res.Server)
 	}
 	if body.Res.GoogleCalendar.Available {
 		t.Fatal("no google calendar credential configured")
