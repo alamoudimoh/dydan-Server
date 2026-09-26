@@ -96,6 +96,13 @@ func (h *Handler) getCategories(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
+	// The task editor displays this server-owned default category set. Lazily
+	// ensuring it also backfills existing circles created before categories were
+	// introduced, while preserving every category the circle already owns.
+	if err := h.lRepo.EnsureDefaultCategories(c, currentUser.CircleID, currentUser.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error preparing categories"})
+		return
+	}
 	labels, err := h.lRepo.GetCircleCategories(c, currentUser.CircleID, c.Query("includeArchived") == "true")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Error getting categories"})
@@ -146,7 +153,10 @@ func (h *Handler) updateCategory(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
-	label := &lModel.Label{ID: req.ID, Name: req.Name}
+	// Color is persisted alongside the name. The request binds it already
+	// (LabelReq.Color); dropping it here is what previously made recoloring a
+	// category a silent no-op.
+	label := &lModel.Label{ID: req.ID, Name: req.Name, Color: req.Color}
 	if err := h.lRepo.UpdateCategory(c, currentUser.CircleID, label); err != nil {
 		categoryError(c, err)
 		return

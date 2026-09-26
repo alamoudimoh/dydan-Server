@@ -81,7 +81,7 @@ point to the same image digest. The normal deployment path uses `latest`:
 
 ```bash
 docker pull ghcr.io/alamoudimoh/dydan:latest
-docker run -d -v /data:/data -p 2021:2021 ghcr.io/alamoudimoh/dydan:latest
+docker run -d -v /data:/data -p 7171:7171 ghcr.io/alamoudimoh/dydan:latest
 ```
 
 The legacy locator `ghcr.io/alamoudimoh/daydan` was retired during the move
@@ -90,7 +90,7 @@ compatibility artifact and must not be used in new configurations or
 deployments.
 
 The default deployment uses SQLite, stores persistent state in the
-`dydan-data` volume, serves the API and embedded client on port `2021`, and
+`dydan-data` volume, serves the API and embedded client on port `7171`, and
 requires no configuration file, database selection, or manually generated JWT
 secret. The frontend build uses same-origin `/api` requests.
 

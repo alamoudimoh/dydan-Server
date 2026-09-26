@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	auth "github.com/alamoudimoh/dydan-server/internal/auth"
+	"github.com/alamoudimoh/dydan-server/internal/preferences"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
+	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
 
@@ -50,12 +53,13 @@ type PrivacyPreferences struct {
 }
 
 func defaultPreferences() Preferences {
+	d := preferences.DefaultNotificationSettings()
 	return Preferences{
 		Theme: "dydan", Appearance: "light", DefaultView: "focus",
 		Language: "en", DateFormat: "MM/DD/YYYY", TimeFormat: "h:mm A",
 		FirstDayOfWeek: 0, Currency: "USD", ShowItemBadges: true,
 		RememberSidebar: true,
-		Notifications:   NotificationPreferences{TaskReminders: true, RoutineNudges: true, Rewards: true, PushChannel: true},
+		Notifications:   NotificationPreferences{TaskReminders: d.TaskReminders, RoutineNudges: d.RoutineNudges, FamilyActivity: d.FamilyActivity, Rewards: d.Rewards, WeeklySummary: d.WeeklySummary, QuietHours: d.QuietHours, PushChannel: d.PushChannel, EmailChannel: d.EmailChannel},
 		Privacy:         PrivacyPreferences{ActivityVisible: true, Analytics: true, Personalization: true},
 	}
 }
@@ -96,7 +100,7 @@ func (h *Handler) loadPreferences(ctx context.Context, userID int) (Preferences,
 	if stored == nil || stored.Value == "" {
 		return defaultPreferences(), nil
 	}
-	var preferences Preferences
+	preferences := defaultPreferences()
 	if err := json.Unmarshal([]byte(stored.Value), &preferences); err != nil {
 		return Preferences{}, err
 	}
@@ -104,6 +108,34 @@ func (h *Handler) loadPreferences(ctx context.Context, userID int) (Preferences,
 		return Preferences{}, err
 	}
 	return preferences, nil
+}
+
+// verboseRequestLogger emits a structured per-request diagnostic entry when the
+// authenticated account has VerboseLogging enabled (Settings > Experimental).
+// It runs last in the /users/* chain so it can observe the outcome of the
+// request, and the flag itself is read from the same preferences table the
+// Settings toggle writes to, so it is enforceable server-side, not client-side.
+func (h *Handler) verboseRequestLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now().UTC()
+		c.Next()
+		user, ok := auth.CurrentUser(c)
+		if !ok {
+			return
+		}
+		prefs, err := h.loadPreferences(c.Request.Context(), user.ID)
+		if err != nil || !prefs.VerboseLogging {
+			return
+		}
+		logging.FromContext(c).Infow("verbose.request",
+			"userID", user.ID,
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+			"status", c.Writer.Status(),
+			"bytes", c.Writer.Size(),
+			"elapsedMs", float64(time.Since(start).Microseconds())/1000.0,
+		)
+	}
 }
 
 func (h *Handler) getPreferences(c *gin.Context) {

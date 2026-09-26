@@ -10,6 +10,7 @@ import (
 	cModel "github.com/alamoudimoh/dydan-server/internal/circle/model"
 	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
 	pModel "github.com/alamoudimoh/dydan-server/internal/points"
+	"github.com/alamoudimoh/dydan-server/internal/preferences"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -244,8 +245,23 @@ func (h *Handler) report(c *gin.Context) {
 	if !ok {
 		return
 	}
+	hidden, err := preferences.HiddenActivityUserIDs(c, h.db, cid)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Unable to load activity visibility"})
+		return
+	}
+	// Never apply a caller's own opt-out to their personal report.
+	visibleToCaller := make([]int, 0, len(hidden))
+	for _, id := range hidden {
+		if id != uid {
+			visibleToCaller = append(visibleToCaller, id)
+		}
+	}
 	hist := func() *gorm.DB {
 		q := h.db.WithContext(c).Table("chore_histories h").Joins("JOIN chores ch ON ch.id=h.chore_id").Where("ch.circle_id=? AND h.status=? AND h.performed_at>=? AND h.performed_at<?", cid, chModel.ChoreHistoryStatusCompleted, b.Start, b.End).Where("(ch.is_private=? OR ch.created_by=? OR h.assigned_to=? OR h.completed_by=?)", false, uid, uid, uid)
+		if len(visibleToCaller) > 0 {
+			q = q.Where("h.completed_by NOT IN ?", visibleToCaller)
+		}
 		if !manager(role) {
 			q = q.Where("h.completed_by=?", uid)
 		}

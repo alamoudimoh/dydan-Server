@@ -97,6 +97,18 @@ func (s *Scheduler) loadAndSendNotificationJob(c context.Context) (time.Duration
 	}
 
 	for _, notification := range getAllPendingNotifications {
+		allowed, preferenceErr := s.inbox.AllowsExternalTaskDelivery(c, notification.UserID, notification.TypeID, startTime)
+		if preferenceErr != nil {
+			log.Error("Error checking notification delivery preferences", "error", preferenceErr)
+			continue
+		}
+		if !allowed {
+			// This is a user-requested suppression, not a retryable transport
+			// error. Mark it handled so it cannot be sent later after quiet hours
+			// or a category/channel preference changes.
+			notification.IsSent = true
+			continue
+		}
 		err := s.notifier.SendNotification(c, notification)
 		if err != nil {
 			log.Error("Error sending notification", err)

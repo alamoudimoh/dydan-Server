@@ -129,6 +129,7 @@ func main() {
 		fx.Provide(notifier.NewNotifier),
 		fx.Provide(events.NewEventsProducer),
 		fx.Provide(fcm.NewFCMNotifier),
+		fx.Provide(fcm.NewInboxPushSender),
 
 		// Rate limiter
 		fx.Provide(utils.NewRateLimiter),
@@ -139,6 +140,7 @@ func main() {
 		// runtime configuration has been saved.
 		fx.Provide(email.NewRuntimeStore),
 		fx.Provide(email.NewSender),
+		fx.Provide(email.NewNotificationSender),
 		fx.Provide(email.NewHandler),
 
 		// MFA services

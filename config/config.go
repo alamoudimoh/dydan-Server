@@ -51,9 +51,22 @@ type Config struct {
 	FCM                    FCMConfig           `mapstructure:"fcm" yaml:"fcm"`
 	FeatureLimits          FeatureLimitsConfig `mapstructure:"feature_limits" yaml:"feature_limits"`
 	Storage                StorageConfig       `mapstructure:"storage" yaml:"storage"`
+	Legal                  LegalConfig         `mapstructure:"legal" yaml:"legal"`
 	SingleCircleInstance   bool                `mapstructure:"single_circle_instance" yaml:"single_circle_instance"`
 	DisablePasswordAuth    bool                `mapstructure:"disable_password_auth" yaml:"disable_password_auth"`
 	Info                   Info
+}
+
+// LegalConfig carries deployment-specific links that the approved Settings
+// screen surfaces. Each is optional: an unset value is reported as "not
+// configured" so the UI can show a truthful status instead of a control that
+// leads nowhere.
+type LegalConfig struct {
+	// PrivacyPolicyURL is the absolute https:// URL of the deployment's
+	// published privacy policy.
+	PrivacyPolicyURL string `mapstructure:"privacy_policy_url" yaml:"privacy_policy_url"`
+	// TermsURL is the absolute https:// URL of the deployment's terms of use.
+	TermsURL string `mapstructure:"terms_url" yaml:"terms_url"`
 }
 
 type Info struct {
@@ -175,7 +188,7 @@ type JwtConfig struct {
 }
 
 type ServerConfig struct {
-	Port             int           `mapstructure:"port" yaml:"port" default:"2021"`
+	Port             int           `mapstructure:"port" yaml:"port" default:"7171"`
 	RatePeriod       time.Duration `mapstructure:"rate_period" yaml:"rate_period" default:"60s"`
 	RateLimit        int           `mapstructure:"rate_limit" yaml:"rate_limit" default:"300"`
 	ReadTimeout      time.Duration `mapstructure:"read_timeout" yaml:"read_timeout" default:"5s"`
@@ -184,7 +197,7 @@ type ServerConfig struct {
 	CorsAllowOrigins []string      `mapstructure:"cors_allow_origins" yaml:"cors_allow_origins"`
 	ServeFrontend    bool          `mapstructure:"serve_frontend" yaml:"serve_frontend"`
 	ServeSwagger     bool          `mapstructure:"serve_swagger" yaml:"serve_swagger"`
-	PublicHost       string        `mapstructure:"public_host" yaml:"public_host" default:"http://localhost:2021"`
+	PublicHost       string        `mapstructure:"public_host" yaml:"public_host" default:"http://localhost:7171"`
 
 	// Dedicated budget for password changes (per IP, per period). Tighter than
 	// the general API bucket so the current-password check cannot be
@@ -387,13 +400,13 @@ func NewConfig() *Config {
 			AccessTokenTime: 15 * time.Minute,
 		},
 		Server: ServerConfig{
-			Port:             2021,
+			Port:             7171,
 			RatePeriod:       60 * time.Second,
 			RateLimit:        300,
 			ReadTimeout:      10 * time.Second,
 			WriteTimeout:     10 * time.Second,
 			WebhookTimeout:   5 * time.Second,
-			CorsAllowOrigins: []string{"http://localhost:5173", "http://localhost:7926", "http://localhost", "https://localhost", "capacitor://localhost"},
+			CorsAllowOrigins: []string{"http://localhost:5173", "http://localhost:2925", "http://localhost:7926", "http://localhost", "https://localhost", "capacitor://localhost"},
 			ServeFrontend:    true,
 
 			RateLimitPasswordChangePeriod: 60 * time.Second,
@@ -754,6 +767,23 @@ func validateSecurityConfig(cfg *Config) error {
 	}
 	if cfg.StripeConfig.WebhookTolerance < 0 || cfg.StripeConfig.WebhookTolerance > 24*time.Hour {
 		return fmt.Errorf("stripe.webhook_tolerance must be between 0 and 24h")
+	}
+	// Legal links are rendered as outbound anchors in the approved Settings
+	// screen, so they must be absolute HTTPS URLs. A `javascript:` or relative
+	// value would otherwise turn a configuration typo into a client-side
+	// navigation hazard; reject it at startup instead.
+	for name, raw := range map[string]string{
+		"legal.privacy_policy_url": cfg.Legal.PrivacyPolicyURL,
+		"legal.terms_url":          cfg.Legal.TermsURL,
+	} {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			continue
+		}
+		parsed, err := url.Parse(trimmed)
+		if err != nil || parsed.Host == "" || parsed.Scheme != "https" {
+			return fmt.Errorf("%s must be an absolute https:// URL", name)
+		}
 	}
 	mail := cfg.EmailConfig
 	provider := strings.ToLower(strings.TrimSpace(mail.Provider))

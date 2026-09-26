@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/alamoudimoh/dydan-server/config"
@@ -24,6 +25,24 @@ type Sender interface {
 	SendTestEmail(c context.Context, to string) error
 }
 
+// EmailChangeSender is intentionally separate from Sender so existing callers
+// and test doubles do not accidentally claim they can deliver a security link.
+// Runtime SMTP and SMTP2GO implementations both provide it.
+type NotificationSender interface {
+	SendNotificationEmail(c context.Context, to, subject, body string) error
+}
+
+// NotificationCapability is deliberately read-only. It lets Settings render
+// the email channel truthfully without exposing transport configuration or
+// credentials to an account browser.
+type NotificationCapability interface {
+	NotificationEmailAvailable(context.Context) bool
+}
+
+type EmailChangeSender interface {
+	SendEmailChangeVerification(context.Context, string, string) error // to, raw transaction token
+}
+
 var ErrDeliveryDisabled = fmt.Errorf("email delivery is disabled")
 
 type DisabledSender struct{}
@@ -40,10 +59,25 @@ func (DisabledSender) SendTestEmail(context.Context, string) error {
 	return ErrDeliveryDisabled
 }
 
+func (DisabledSender) SendNotificationEmail(context.Context, string, string, string) error {
+	return ErrDeliveryDisabled
+}
+
+func (DisabledSender) SendEmailChangeVerification(context.Context, string, string) error {
+	return ErrDeliveryDisabled
+}
+
 // NewSender resolves email configuration at send time. This makes a saved
 // administrator configuration immediately active without a restart while
 // retaining the original environment/file configuration as its fallback.
 func NewSender(store *RuntimeStore) Sender {
+	return &RuntimeSender{store: store}
+}
+
+// NewNotificationSender is a separate FX binding for the same runtime sender.
+// Keeping the security/transactional Sender interface intact avoids widening
+// existing test doubles while making notification delivery injectable.
+func NewNotificationSender(store *RuntimeStore) NotificationSender {
 	return &RuntimeSender{store: store}
 }
 
@@ -294,6 +328,17 @@ func (es *EmailSender) SendVerificationEmail(to, code string) error {
 
 }
 
+func (es *EmailSender) SendEmailChangeVerification(_ context.Context, to, token string) error {
+	verificationURL := strings.TrimRight(es.appHost, "/") + "/email-change/verify?token=" + url.QueryEscape(token)
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", es.fromMail)
+	msg.SetHeader("To", to)
+	msg.SetHeader("Subject", "Dydan: confirm your new email address")
+	msg.SetBody("text/plain", "Confirm this email address for your Dydan account:\n\n"+verificationURL+"\n\nThis link expires in 30 minutes and can be used once. If you did not request this change, ignore this email.")
+	msg.AddAlternative("text/html", "<p>Confirm this email address for your Dydan account:</p><p><a href=\""+verificationURL+"\">Confirm email change</a></p><p>This link expires in 30 minutes and can be used once. If you did not request this change, ignore this email.</p>")
+	return es.client.DialAndSend(msg)
+}
+
 func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string) error {
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", es.fromMail)
@@ -524,6 +569,16 @@ func (es *EmailSender) SendResetPasswordEmail(c context.Context, to, code string
 // SendTestEmail deliberately uses the existing SMTP transport rather than a
 // parallel test-only mail path, so an administrator validates the exact
 // credentials and transport used for transactional delivery.
+
+func (es *EmailSender) SendNotificationEmail(_ context.Context, to, subject, body string) error {
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", es.fromMail)
+	msg.SetHeader("To", to)
+	msg.SetHeader("Subject", subject)
+	msg.SetBody("text/plain", body)
+	return es.client.DialAndSend(msg)
+}
+
 func (es *EmailSender) SendTestEmail(_ context.Context, to string) error {
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", es.fromMail)

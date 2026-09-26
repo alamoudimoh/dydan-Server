@@ -19,7 +19,7 @@ jwt:
   session_time: 168h # 7 days
   max_refresh: 1440h # 60 days 
 server:
-  port: 2021
+  port: 7171
   read_timeout: 10s
   write_timeout: 10s
   rate_period: 60s
@@ -31,6 +31,7 @@ server:
   rate_limit_max_active_buckets: 100000
   cors_allow_origins:
     - "http://localhost:5173"
+    - "http://localhost:2925"
     - "http://localhost:7926"
     # the below are required for the android app to work
     - "https://localhost"

@@ -20,7 +20,7 @@ func passwordResetRepo(t *testing.T) (*UserRepository, *gorm.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&cModel.Circle{}, &uModel.User{}, &uModel.UserPasswordReset{}, &uModel.UserSession{}, &uModel.MFASession{}); err != nil {
+	if err := db.AutoMigrate(&cModel.Circle{}, &uModel.User{}, &uModel.UserPasswordReset{}, &uModel.UserSession{}, &uModel.MFASession{}, &uModel.EmailChangeTransaction{}); err != nil {
 		t.Fatal(err)
 	}
 	return NewUserRepository(db, &config.Config{IsDydanCloud: false}), db

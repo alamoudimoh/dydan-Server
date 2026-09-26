@@ -131,6 +131,23 @@ func TestAssetCircleIsolationLinkingArchiveAndHistory(t *testing.T) {
 	if response.Code != 204 {
 		t.Fatalf("archive returned %d: %s", response.Code, response.Body.String())
 	}
+	c, response = maintenanceContext("PATCH", "/assets/"+itoa(asset.ID)+"/archive", admin, map[string]bool{"archived": false})
+	c.Params = gin.Params{{Key: "id", Value: itoa(asset.ID)}}
+	h.SetArchiveState(c)
+	if response.Code != 204 {
+		t.Fatalf("unarchive returned %d: %s", response.Code, response.Body.String())
+	}
+	c, response = maintenanceContext("DELETE", "/assets/"+itoa(asset.ID)+"/links?choreId="+itoa(chores[1].ID), admin, nil)
+	c.Params = gin.Params{{Key: "id", Value: itoa(asset.ID)}}
+	h.Unlink(c)
+	if response.Code != 204 {
+		t.Fatalf("unlink chore returned %d: %s", response.Code, response.Body.String())
+	}
+	var links int64
+	db.Model(&tModel.ThingChore{}).Where("thing_id = ? AND chore_id = ?", asset.ID, chores[1].ID).Count(&links)
+	if links != 0 {
+		t.Fatal("unlink did not persist")
+	}
 	var count int64
 	db.Model(&chModel.ChoreHistory{}).Where("chore_id = ?", chores[0].ID).Count(&count)
 	if count != 1 {

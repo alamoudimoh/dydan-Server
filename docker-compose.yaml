@@ -5,7 +5,7 @@ services:
     container_name: dydan
     restart: unless-stopped
     ports:
-      - "2021:2021"
+      - "7171:7171"
     volumes:
       - dydan-data:/data
 

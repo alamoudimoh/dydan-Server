@@ -129,7 +129,7 @@ location / {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header X-Forwarded-Host  $host;
     proxy_set_header Host              $host;
-    proxy_pass http://127.0.0.1:2021;
+    proxy_pass http://127.0.0.1:7171;
 }
 ```
 
@@ -145,7 +145,7 @@ Caddy's `reverse_proxy` already sanitizes `X-Forwarded-*` by default:
 
 ```caddyfile
 example.com {
-    reverse_proxy 127.0.0.1:2021
+    reverse_proxy 127.0.0.1:7171
 }
 ```
 
@@ -250,13 +250,13 @@ distributed security control.
 
 When you access Dydan through `https://example.local`:
 1. Browser sends `Origin: https://example.local`
-2. Nginx proxies to `http://dydan-container:2021`
+2. Nginx proxies to `http://dydan-container:7171`
 3. Dydan sees request from Nginx's IP
 4. If Nginx's IP is not trusted:
    - Dydan ignores `X-Forwarded-Proto: https`
    - Dydan ignores `X-Forwarded-Host: example.local`
-   - Dydan uses `Host: dydan-container:2021`
-   - Origin `https://example.local` doesn't match computed origin `http://dydan-container:2021`
+   - Dydan uses `Host: dydan-container:7171`
+   - Origin `https://example.local` doesn't match computed origin `http://dydan-container:7171`
    - CSRF rejects the request
 
 **Solution**:

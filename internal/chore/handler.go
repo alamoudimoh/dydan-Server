@@ -2560,6 +2560,20 @@ func (h *Handler) CompleteChore(c *gin.Context) {
 		})
 		return
 	}
+	// Completion is the authoritative family-activity event. The inbox service
+	// performs actor visibility, active circle membership, recipient preference,
+	// quiet-hour and channel filtering; delivery failure never rolls back the
+	// completed chore.
+	if h.inbox != nil {
+		if history, historyErr := h.choreRepo.GetChoreHistory(c, chore.ID); historyErr == nil {
+			for _, entry := range history {
+				if entry.Status == chModel.ChoreHistoryStatusCompleted && entry.CompletedBy == completedBy && entry.PerformedAt != nil && entry.PerformedAt.Equal(completedDate) {
+					_ = h.inbox.NotifyFamilyActivity(c, chore, entry)
+					break
+				}
+			}
+		}
+	}
 	updatedChore, err := h.choreRepo.GetChore(c, id, effectiveUser.ID, actualUser.CircleID)
 	if err != nil {
 		logger.Error("Failed to retrieve chore", "error", err)
@@ -3763,6 +3777,10 @@ func (h *Handler) ApproveChore(c *gin.Context) {
 	entityID := chore.ID
 	if h.inbox != nil {
 		_ = h.inbox.Notify(c, &nModel.InboxNotification{CircleID: currentUser.CircleID, UserID: completedBy, Type: "task_approved", Severity: "success", Title: "Task completion approved", Message: chore.Name, EntityType: "chore", EntityID: &entityID, DedupKey: fmt.Sprintf("task_approved:%d:%d:%d", chore.ID, completedBy, pendingHistory.ID)})
+		// ApproveChore promotes this exact pending history row to completed.
+		// The original performer remains the actor; currentUser is only approver.
+		pendingHistory.Status = chModel.ChoreHistoryStatusCompleted
+		_ = h.inbox.NotifyFamilyActivity(c, chore, pendingHistory)
 	}
 
 	updatedChore, err := h.choreRepo.GetChore(c, id, currentUser.ID, currentUser.CircleID)

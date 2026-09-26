@@ -22,7 +22,7 @@ jwt:
   session_time: 1h        # Token valid for 1 hour (access token lifetime)
   max_refresh: 24h       # Can refresh for 24 hours from original login (24h)
 server:
-  port: 2021
+  port: 7171
   read_timeout: 10s
   write_timeout: 10s
   rate_period: 60s
@@ -34,6 +34,7 @@ server:
   rate_limit_max_active_buckets: 100000
   cors_allow_origins:
     - "http://localhost:5173"
+    - "http://localhost:2925"
     - "http://localhost:7926"
     # Required for Capacitor apps running on Android and iOS
     - "capacitor://localhost"

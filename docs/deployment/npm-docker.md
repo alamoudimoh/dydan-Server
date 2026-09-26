@@ -20,10 +20,10 @@ Browser (HTTPS)
     - Validates certificates
          ↓
     Internal Docker Network: 01_apps_dydan_default
-    http://dydan:2021 (or http://172.24.0.X:2021)
+    http://dydan:7171 (or http://172.24.0.X:7171)
          ↓
   [DyDan Container]
-    - Port 2021 (internal)
+    - Port 7171 (internal)
     - Embedded AppWeb frontend
     - No TLS, no separate frontend container
 ```
@@ -53,7 +53,7 @@ services:
     container_name: dydan
     restart: unless-stopped
     ports:
-      - "2021:2021"
+      - "7171:7171"
     environment:
       TZ: Asia/Riyadh
       # CRITICAL: Set this to NPM's IP on the Docker network
@@ -103,7 +103,7 @@ This is slightly less secure but works if container IPs are dynamic.
    - Domain Names: `example.local` (or your actual domain)
    - Scheme: `http`
    - Forward Hostname / IP: `dydan` (container name) or `172.24.0.X` (DyDan's IP)
-   - Forward Port: `2021`
+   - Forward Port: `7171`
    - ☑ Cache Assets (optional, recommended)
    - ☐ Block Common Exploits (not needed for internal apps)
    - ☐ Websockets Support (not needed for DyDan)
@@ -183,7 +183,7 @@ Without these headers, DyDan sees:
 - NPM not sending forwarding headers
 - Fix: Add custom Nginx config in NPM's Advanced tab
 
-**Works on port 2021 directly but not through NPM:**
+**Works on port 7171 directly but not through NPM:**
 
 - NPM configuration issue
 - Verify NPM's custom config matches the example above
@@ -225,7 +225,7 @@ services:
     container_name: dydan
     restart: unless-stopped
     ports:
-      - "2021:2021"
+      - "7171:7171"
     environment:
       TZ: Asia/Riyadh
       DYDAN_TRUSTED_PROXIES: "nginx-proxy-manager"  # Or use IP
