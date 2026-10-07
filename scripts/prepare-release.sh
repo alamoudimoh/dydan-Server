@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # prepare-release.sh — create a synchronized release tag across both Dydan
-# repositories so an official vX.Y.Z release deterministically pairs one server
+# repositories so a stable vYYYYMM-NN (or legacy vX.Y.Z) release pairs one server
 # commit with one frontend commit.
 #
 # Usage:
-#   scripts/prepare-release.sh vX.Y.Z [/path/to/dydan-AppWeb]
+#   scripts/prepare-release.sh vYYYYMM-NN [/path/to/dydan-AppWeb]
 #
 # The script only creates LOCAL annotated tags after validating everything;
 # it never pushes and never overwrites anything. Pushing is a separate,
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 vX.Y.Z [/path/to/dydan-AppWeb]" >&2
+  echo "Usage: $0 vYYYYMM-NN [/path/to/dydan-AppWeb]" >&2
   exit 2
 }
 
@@ -22,8 +22,8 @@ if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
 fi
 TAG="$1"
 
-if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "ERROR: '$TAG' is not a stable semver tag of the form vX.Y.Z." >&2
+if ! [[ "$TAG" =~ ^v[0-9]{6}-[0-9]+$ || "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "ERROR: '$TAG' is not a stable vYYYYMM-NN or legacy vX.Y.Z tag." >&2
   echo "       Beta/pre-release tags are cut by beta-release.yml and must not be created here." >&2
   exit 1
 fi

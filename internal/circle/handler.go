@@ -17,9 +17,9 @@ import (
 	cRepo "github.com/alamoudimoh/dydan-server/internal/circle/repo"
 	pRepo "github.com/alamoudimoh/dydan-server/internal/points/repo"
 	"github.com/alamoudimoh/dydan-server/internal/storage"
-	"github.com/alamoudimoh/dydan-server/internal/utils"
 	uModel "github.com/alamoudimoh/dydan-server/internal/user/model"
 	uRepo "github.com/alamoudimoh/dydan-server/internal/user/repo"
+	"github.com/alamoudimoh/dydan-server/internal/utils"
 	"github.com/alamoudimoh/dydan-server/logging"
 	"github.com/gin-gonic/gin"
 )
