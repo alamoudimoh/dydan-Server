@@ -57,7 +57,9 @@ assert_root_owned_volume_migration() {
   chmod 600 "$root_data_dir/jwt-secret"
   mkdir -p "$root_data_dir/uploads"
   printf 'x' >"$root_data_dir/uploads/root-file.txt"
-  sudo chown -R root:root "$root_data_dir"
+  docker run --rm --user 0:0 \
+    --volume "$root_data_dir:/legacy" \
+    --entrypoint chown "$image" -R root:root /legacy
 
   docker run -d \
     --name "$root_container" \
@@ -81,17 +83,20 @@ assert_root_owned_volume_migration() {
   }
 
   # All pre-existing files must now belong to the unprivileged runtime user.
-  test "$(sudo stat -c %u "$root_data_dir/jwt-secret")" = "1000"
-  test "$(sudo stat -c %u "$root_data_dir/uploads/root-file.txt")" = "1000"
+  test "$(stat -c %u "$root_data_dir/jwt-secret")" = "1000"
+  test "$(stat -c %u "$root_data_dir/uploads/root-file.txt")" = "1000"
   test "$(docker exec "$root_container" stat -c %u /proc/1)" = "1000"
 
   docker rm -f "$root_container" >/dev/null
-  sudo rm -rf -- "$root_data_dir"
+  docker run --rm --user 0:0 \
+    --volume "$root_data_dir:/legacy" \
+    --entrypoint chown "$image" -R "$(id -u):$(id -g)" /legacy
+  rm -rf -- "$root_data_dir"
 }
 
 assert_compose_config
 docker build --tag "$image" \
-  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-../dydan-app}" .
+  --build-context "frontend=${DYDAN_FRONTEND_CONTEXT:-../dydan-AppWeb}" .
 assert_image_runtime
 assert_root_owned_volume_migration
 

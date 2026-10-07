@@ -59,7 +59,7 @@ jobs:
               LAST_RELEASE_DATE=$(git log -1 --format=%aI "$LAST_RELEASE")
             fi
             echo "Last release date: $LAST_RELEASE_DATE"
-            FRONTEND_NEW=$(gh api "repos/${{ github.repository_owner }}/DyDan-AppWeb/commits?sha=develop&since=${LAST_RELEASE_DATE}&per_page=1" --jq 'length')
+            FRONTEND_NEW=$(gh api "repos/${{ github.repository_owner }}/DyDan-AppWeb/commits?sha=main&since=${LAST_RELEASE_DATE}&per_page=1" --jq 'length')
             echo "New frontend commits since ${LAST_RELEASE}: ${FRONTEND_NEW}"
           fi
 
@@ -98,12 +98,12 @@ jobs:
           echo "should_release=true" >> "$GITHUB_OUTPUT"
 
           # Beta is moving-edge, but it must still be traceable: resolve the
-          # Dydan AppWeb develop HEAD exactly once here and pass the immutable
+          # Dydan AppWeb main HEAD exactly once here and pass the immutable
           # SHA to go-release.yml so the branch cannot move between
           # provenance resolution and the build.
-          FRONTEND_SHA=$(git ls-remote "https://github.com/${{ github.repository_owner }}/DyDan-AppWeb.git" refs/heads/develop | awk '{print $1}')
+          FRONTEND_SHA=$(git ls-remote "https://github.com/${{ github.repository_owner }}/DyDan-AppWeb.git" refs/heads/main | awk '{print $1}')
           if [ -z "$FRONTEND_SHA" ]; then
-            echo "::error::Could not resolve the Dydan AppWeb develop HEAD."
+            echo "::error::Could not resolve the Dydan AppWeb main HEAD."
             exit 1
           fi
           echo "Pinning frontend commit: $FRONTEND_SHA"

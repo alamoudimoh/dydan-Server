@@ -15,7 +15,7 @@ on:
         required: true
         type: string
       frontend_ref:
-        description: "Dydan AppWeb ref (tag/branch/SHA) to embed. Required for reproducible builds; empty = AppWeb develop HEAD (non-reproducible)."
+        description: "Dydan AppWeb ref (tag/branch/SHA) to embed. Required for reproducible builds; empty = AppWeb main HEAD (non-reproducible)."
         required: false
         type: string
 
@@ -54,9 +54,9 @@ jobs:
       # - Official tagged release (push of a vX.Y.Z tag): the exact same tag
       #   must exist in the AppWeb repository; otherwise the job FAILS. Rebuilding the
       #   same server tag must never silently embed a moving branch such as
-      #   develop.
+      #   main.
       # - Manual dispatch: an explicit frontend_ref (tag/branch/full SHA) is
-      #   used as-is. If omitted, AppWeb develop HEAD is used and the
+      #   used as-is. If omitted, AppWeb main HEAD is used and the
       #   build is clearly identified as a non-reproducible development build.
       #
       # In every case the ref is resolved to one immutable commit SHA here,
@@ -170,6 +170,6 @@ jobs:
               echo "✅ Reproducible release: server tag and frontend ref are immutable."
             else
               echo ""
-              echo "⚠️ **Non-reproducible development build**: frontend resolved from moving branch \`develop\`. Do not treat this image as a release."
+              echo "⚠️ **Non-reproducible development build**: frontend resolved from moving branch \`main\`. Do not treat this image as a release."
             fi
           } >> "$GITHUB_STEP_SUMMARY"

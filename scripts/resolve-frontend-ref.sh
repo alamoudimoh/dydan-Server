@@ -13,9 +13,9 @@
 # Resolution rules:
 # - Official tagged release: the exact same tag must exist in AppWeb,
 #   otherwise this script FAILS. A release must never silently embed a moving
-#   branch such as develop.
+#   branch such as main.
 # - Manual dispatch with frontend_ref: that ref is used as-is.
-# - Manual dispatch without frontend_ref: AppWeb develop HEAD is used and
+# - Manual dispatch without frontend_ref: AppWeb main HEAD is used and
 #   the result is flagged reproducible=false (non-reproducible dev build).
 #
 # Outputs: "ref", "sha" and "reproducible" lines.
@@ -38,7 +38,7 @@ elif [ "${IS_TAG_PUSH:-false}" = "true" ]; then
     exit 1
   fi
 else
-  REF="develop"
+  REF="main"
   REPRODUCIBLE=false
   echo "No frontend ref supplied for manual build; using moving branch: $REF"
   echo "This build is NON-REPRODUCIBLE (development build)."

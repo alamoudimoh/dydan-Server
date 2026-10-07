@@ -4,7 +4,7 @@
 # commit with one frontend commit.
 #
 # Usage:
-#   scripts/prepare-release.sh vX.Y.Z [/path/to/dydan-app]
+#   scripts/prepare-release.sh vX.Y.Z [/path/to/dydan-AppWeb]
 #
 # The script only creates LOCAL annotated tags after validating everything;
 # it never pushes and never overwrites anything. Pushing is a separate,
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 vX.Y.Z [/path/to/dydan-app]" >&2
+  echo "Usage: $0 vX.Y.Z [/path/to/dydan-AppWeb]" >&2
   exit 2
 }
 
@@ -33,7 +33,7 @@ SERVER_REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 if [ $# -eq 2 ]; then
   APP_REPO="$2"
 else
-  APP_REPO="$SERVER_REPO/../dydan-app"
+  APP_REPO="$SERVER_REPO/../dydan-AppWeb"
   if [ ! -d "$APP_REPO" ]; then
     echo "ERROR: Frontend repository not found at '$APP_REPO'." >&2
     echo "       Provide an explicit path as the second argument." >&2
@@ -54,17 +54,17 @@ for repo in "$SERVER_REPO" "$APP_REPO"; do
   fi
 
   branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD)
-  if [ "$branch" != "develop" ]; then
-    echo "ERROR: $name is on branch '$branch'; releases must be tagged from 'develop'." >&2
+  if [ "$branch" != "main" ]; then
+    echo "ERROR: $name is on branch '$branch'; releases must be tagged from 'main'." >&2
     exit 1
   fi
 
-  git -C "$repo" rev-parse --verify --quiet 'refs/remotes/origin/develop' >/dev/null \
-    || { echo "ERROR: $name has no origin/develop remote branch." >&2; exit 1; }
-  ahead=$(git -C "$repo" rev-list --count "origin/develop..develop")
-  behind=$(git -C "$repo" rev-list --count "develop..origin/develop")
+  git -C "$repo" rev-parse --verify --quiet 'refs/remotes/origin/main' >/dev/null \
+    || { echo "ERROR: $name has no origin/main remote branch." >&2; exit 1; }
+  ahead=$(git -C "$repo" rev-list --count "origin/main..main")
+  behind=$(git -C "$repo" rev-list --count "main..origin/main")
   if [ "$ahead" != "0" ] || [ "$behind" != "0" ]; then
-    echo "ERROR: $name develop diverged from origin/develop (ahead: $ahead, behind: $behind)." >&2
+    echo "ERROR: $name main diverged from origin/main (ahead: $ahead, behind: $behind)." >&2
     echo "       Push/pull before preparing a release." >&2
     exit 1
   fi
@@ -95,7 +95,7 @@ echo "  dydan-server ($(basename "$SERVER_REPO"))"
 echo "    commit : $SERVER_SHA"
 echo "    subject: $SERVER_SUBJECT"
 echo ""
-echo "  dydan-app"
+echo "  dydan-AppWeb"
 echo "    commit : $APP_SHA"
 echo "    subject: $APP_SUBJECT"
 echo ""

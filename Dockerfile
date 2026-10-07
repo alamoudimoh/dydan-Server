@@ -4,7 +4,7 @@
 # node under QEMU when building multi-arch images.
 # The `frontend` named build context must point at the Dydan AppWeb repository
 # checkout (docker-compose.yaml wires it up automatically; plain docker users
-# can pass --build-context frontend=/path/to/dydan-app).
+# can pass --build-context frontend=/path/to/dydan-AppWeb).
 FROM --platform=$BUILDPLATFORM node:22-slim AS frontend-builder
 
 WORKDIR /web

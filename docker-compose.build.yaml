@@ -3,7 +3,7 @@
 # canonical published image (docker-compose.yaml -> ${DYDAN_IMAGE:-ghcr.io/alamoudimoh/dydan:latest});
 # this override is only for developers building from source:
 #
-#   DYDAN_FRONTEND_CONTEXT=../dydan-app \
+#   DYDAN_FRONTEND_CONTEXT=../dydan-AppWeb \
 #     docker compose -f docker-compose.yaml -f docker-compose.build.yaml up -d --build
 services:
   dydan:
@@ -11,7 +11,7 @@ services:
       context: .
       dockerfile: Dockerfile
       additional_contexts:
-        frontend: ${DYDAN_FRONTEND_CONTEXT:-../dydan-app}
+        frontend: ${DYDAN_FRONTEND_CONTEXT:-../dydan-AppWeb}
       args:
         VERSION: ${DYDAN_VERSION:-dev}
         COMMIT: ${DYDAN_COMMIT:-local}
@@ -21,7 +21,7 @@ services:
       context: .
       dockerfile: Dockerfile
       additional_contexts:
-        frontend: ${DYDAN_FRONTEND_CONTEXT:-../dydan-app}
+        frontend: ${DYDAN_FRONTEND_CONTEXT:-../dydan-AppWeb}
       args:
         VERSION: ${DYDAN_VERSION:-dev}
         COMMIT: ${DYDAN_COMMIT:-local}
